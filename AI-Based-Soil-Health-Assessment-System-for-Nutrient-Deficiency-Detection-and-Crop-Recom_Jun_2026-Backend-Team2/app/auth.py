@@ -1,0 +1,243 @@
+from datetime import datetime, timezone
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException, status
+from app.models import Language, User, UserRole, UserStatus
+from app.schemas import (
+    ChangePasswordRequest,
+    ForgotPasswordRequest,
+    UserLoginRequest,
+    UserRegisterRequest,
+    UserUpdateRequest,
+)
+from app.security import get_password_hash, verify_password
+
+def register_user(db: Session, user_data: UserRegisterRequest) -> User:
+    """
+    Registers a new user in the database.
+    Checks for email conflict first. Hashes password using bcrypt.
+    """
+    # 0. Validate password match
+    if user_data.password != user_data.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password and Confirm Password do not match."
+        )
+
+    # 1. Check if user already exists
+    normalized_email = str(user_data.email).strip().casefold()
+    existing_user = (
+        db.query(User)
+        .filter(func.lower(func.trim(User.email)) == normalized_email)
+        .first()
+    )
+    if existing_user:
+        # Return 409 Conflict as requested
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conflict: A user with this email address already exists."
+        )
+    
+    # 2. Validate that the provided language exists before creating the user.
+    language = db.query(Language).filter(Language.id == user_data.language_id).first()
+    if not language:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid language_id. Please provide a valid predefined language id."
+        )
+
+    # 3. Hash the password
+    hashed_password = get_password_hash(user_data.password)
+    
+    # 4. Create user entity
+    print("User Data:", user_data.model_dump())
+    print("Username:", user_data.username)
+    print("Region:", user_data.region)
+    db_user = User(
+        username=user_data.username,
+        email=normalized_email,
+        hashed_password=hashed_password,
+        role=UserRole.FARMER.value,
+        status=UserStatus.ACTIVE.value,
+        region=user_data.region,
+        language_id=user_data.language_id,
+    )
+    
+    # 4. Save to database
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def authenticate_user(db: Session, login_data: UserLoginRequest) -> User:
+    """
+    Authenticates a user with email and password.
+    Returns the user model if valid, raises HTTP 401 otherwise.
+    """
+    # 1. Fetch user by email
+    normalized_email = str(login_data.email).strip().casefold()
+    user = (
+        db.query(User)
+        .filter(func.lower(func.trim(User.email)) == normalized_email)
+        .first()
+    )
+    if not user:
+        # Return 401 Unauthorized as requested
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        
+    # 2. Verify hashed password matches
+    if not verify_password(login_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if user.status != UserStatus.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is not active. Please contact an administrator.",
+        )
+
+    # Track the current UTC login time and commit it before returning the user.
+    user.last_login_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return user
+
+
+def authenticate_admin_user(db: Session, login_data: UserLoginRequest) -> User:
+    """
+    Authenticates an administrator user for the Admin Portal.
+    Verifies credentials and strictly enforces role == 'admin'.
+    Raises 401 for bad credentials and 403 Forbidden for non-admin accounts.
+    """
+    user = authenticate_user(db, login_data)
+    if user.role != UserRole.ADMIN.value:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access Denied: You do not have administrator privileges to access the Admin Portal.",
+        )
+    return user
+
+
+def update_user_profile(
+    db: Session,
+    current_user: User,
+    user_data: UserUpdateRequest,
+) -> User:
+    """Update the authenticated user's email and preferred language."""
+    existing_user = (
+        db.query(User)
+        .filter(
+            func.lower(func.trim(User.email)) == str(user_data.email).strip().casefold(),
+            User.id != current_user.id,
+        )
+        .first()
+    )
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Conflict: A user with this email address already exists."
+        )
+
+    language = db.query(Language).filter(Language.id == user_data.language_id).first()
+    if not language:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid language_id. Please provide a valid predefined language id."
+        )
+
+    current_user.email = str(user_data.email).strip().casefold()
+    current_user.language_id = user_data.language_id
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+def _ensure_password_confirmation(new_password: str, confirm_password: str) -> None:
+    """Raise a client error when a submitted password confirmation does not match."""
+    if new_password != confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password and Confirm Password do not match.",
+        )
+
+
+def _commit_password_update(db: Session) -> None:
+    """Commit a password update and leave the session usable if persistence fails."""
+    try:
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to update password.",
+        ) from exc
+
+
+def change_user_password(
+    db: Session,
+    current_user: User,
+    password_data: ChangePasswordRequest,
+) -> None:
+    """Verify and replace the authenticated user's password."""
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    if not verify_password(password_data.current_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect.",
+        )
+
+    _ensure_password_confirmation(
+        password_data.new_password,
+        password_data.confirm_password,
+    )
+
+    if verify_password(password_data.new_password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current password.",
+        )
+
+    user.hashed_password = get_password_hash(password_data.new_password)
+    _commit_password_update(db)
+
+
+def reset_user_password(
+    db: Session,
+    password_data: ForgotPasswordRequest,
+) -> None:
+    """Replace a user's password after locating the account by email."""
+    normalized_email = str(password_data.email).strip().casefold()
+    user = (
+        db.query(User)
+        .filter(func.lower(func.trim(User.email)) == normalized_email)
+        .first()
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    _ensure_password_confirmation(
+        password_data.new_password,
+        password_data.confirm_password,
+    )
+
+    user.hashed_password = get_password_hash(password_data.new_password)
+    _commit_password_update(db)
