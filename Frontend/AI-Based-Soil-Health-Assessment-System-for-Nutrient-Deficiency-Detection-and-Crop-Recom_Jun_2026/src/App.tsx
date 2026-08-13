@@ -1,28 +1,30 @@
 import { useState, useEffect, useRef } from 'react'
-import api from './services/api'
 import { X, Eye, EyeOff, User, Mail, Phone, Lock, Globe, MapPin, Shield, Search, TrendingUp, Filter, Calendar, Bot, MessageSquare, FileText } from 'lucide-react'
 import Sidebar from './components/Sidebar'
 import Navbar from './components/Navbar'
-import { useTranslate } from './contexts/TranslationContext'
 import LandingPage from './pages/LandingPage'
 import AuthPages from './pages/AuthPages'
 import FarmerDashboard from './pages/FarmerDashboard'
 import AdminDashboard from './pages/AdminDashboard'
 import { SoilClassification, CropRecommendation, FertilizerRecommendation, DiseaseDetection } from './pages/AIModules'
 import AIChatbot from './pages/AIChatbot'
-import { WeatherDashboard, PredictionHistory, Notifications, Feedback, Profile, Settings, notifs } from './pages/MorePages'
+import { WeatherDashboard, PredictionHistory, Notifications, Feedback, Profile, Settings, generateRealNotifications } from './pages/MorePages'
 import { About } from './pages/About'
 import GuestExperience from './pages/GuestExperience'
 import FarmerCommunity from './pages/FarmerCommunity'
 import { Toast, LineSpinner, Input, SelectInput, Button } from './components/ui'
+import FloatingChatbot from './components/FloatingChatbot'
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { FEATURES } from './config'
+import api, { getCurrentUser, logoutUser, getAdminUsers, updateAdminUser, deleteAdminUser, type UserProfile } from './services/api'
+import { useTranslation } from './i18n'
 
 type AppState = 'landing' | 'auth' | 'app' | 'guest'
 type Role = 'farmer' | 'admin'
 export type ThemeMode = 'light' | 'dark' | 'system'
 
 function SplashScreen({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation()
   const [exiting, setExiting] = useState(false)
   useEffect(() => {
     const t1 = setTimeout(() => setExiting(true), 1800)
@@ -45,12 +47,24 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
 }
 
 export default function App() {
+  const { t } = useTranslation()
   const [splashDone, setSplashDone] = useState(false)
   const [appState, setAppState] = useState<AppState>('landing')
   const [authPage, setAuthPage] = useState<'login' | 'register' | 'forgot'>('login')
   const [role, setRole] = useState<Role>('farmer')
   const [currentPage, setCurrentPage] = useState('dashboard')
+
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const [user, setUser] = useState<UserProfile | null>(null)
+
+  useEffect(() => {
+    if (appState === 'app') {
+      getCurrentUser()
+        .then(u => setUser(u))
+        .catch(err => console.warn('App user fetch note:', err))
+    }
+  }, [appState])
 
   // ── Theme state: persisted, system-aware ──────────────────
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() =>
@@ -71,32 +85,13 @@ export default function App() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
-  // Check for auto-login on mount
-  useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      try {
-        const payloadBase64 = token.split('.')[1]
-        const decoded = JSON.parse(atob(payloadBase64))
-        if (decoded && decoded.role) {
-          setRole(decoded.role === 'admin' ? 'admin' : 'farmer')
-          setAppState('app')
-          setCurrentPage('dashboard')
-        }
-      } catch (err) {
-        console.error('Invalid token', err)
-        localStorage.removeItem('token')
-      }
-    }
-  }, [])
-
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode)
     localStorage.setItem('agroai_theme', mode)
     const messages: Record<ThemeMode, string> = {
-      light: '☀️ Light Theme Enabled',
-      dark: '🌙 Dark Theme Enabled',
-      system: '💻 Following System Theme',
+      light: t('theme.lightEnabled'),
+      dark: t('theme.darkEnabled'),
+      system: t('theme.followSystem'),
     }
     setThemeToast(messages[mode])
     setTimeout(() => setThemeToast(null), 2500)
@@ -109,50 +104,56 @@ export default function App() {
     setRole(r)
     setCurrentPage('dashboard')
     setAppState('app')
+    getCurrentUser().then(u => setUser(u)).catch(() => {})
   }
 
   // ── Global notification state ─────────────────────────────
-  const [notificationsList, setNotificationsList] = useState<any[]>([])
-
-  const fetchNotifications = async () => {
+  const [allNotifs, setAllNotifs] = useState(() => generateRealNotifications())
+  const [notifReadIds, setNotifReadIds] = useState<Set<string>>(() => {
     try {
-      const res = await api.get('/api/notifications')
-      setNotificationsList(res.data || [])
-    } catch (err) {
-      console.error(err)
-    }
-  }
+      const saved = JSON.parse(localStorage.getItem('notification_read_ids') || '[]')
+      return new Set(saved)
+    } catch { return new Set() }
+  })
 
   useEffect(() => {
-    if (appState === 'app') {
-      fetchNotifications()
+    const refresh = () => setAllNotifs(generateRealNotifications())
+    window.addEventListener('storage', refresh)
+    window.addEventListener('predictionCreated', refresh)
+    return () => {
+      window.removeEventListener('storage', refresh)
+      window.removeEventListener('predictionCreated', refresh)
     }
-  }, [appState])
+  }, [])
 
-  const notifUnreadCount = notificationsList.filter(n => !n.isRead).length
-
-  const markNotifRead = async (id: any) => {
-    setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n))
-    try {
-      await api.patch(`/api/notifications/${id}/read`)
-    } catch (err) {
-      console.error(err)
-    }
+  const notifUnreadCount = allNotifs.filter(n => !notifReadIds.has(n.id)).length
+  
+  const markNotifRead = (id: string) => {
+    setNotifReadIds(s => {
+      const newSet = new Set([...s, id])
+      try { localStorage.setItem('notification_read_ids', JSON.stringify([...newSet])) } catch {}
+      return newSet
+    })
+  }
+  
+  const markAllNotifsRead = () => {
+    const allIds = new Set(allNotifs.map(n => n.id))
+    setNotifReadIds(allIds)
+    try { localStorage.setItem('notification_read_ids', JSON.stringify([...allIds])) } catch {}
   }
 
-  const markAllNotifsRead = async () => {
-    setNotificationsList(prev => prev.map(n => ({ ...n, isRead: true })))
+  const handleLogout = async () => {
     try {
-      await api.patch('/api/notifications/read-all')
+      await logoutUser()
     } catch (err) {
-      console.error(err)
+      console.warn('Logout request failed; clearing the local session.', err)
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+    } finally {
+      setUser(null)
+      setAppState('landing')
+      setCurrentPage('dashboard')
     }
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    setAppState('landing')
-    setCurrentPage('dashboard')
   }
 
   const goToAuth = (page: 'login' | 'register' = 'login') => {
@@ -188,70 +189,74 @@ export default function App() {
   }
 
   return (
-    <div className={`flex h-screen overflow-hidden bg-background ${isDark ? 'dark-mode' : ''}`}>
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`fixed lg:static z-50 h-full transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <Sidebar
-          role={role}
-          currentPage={currentPage}
-          onNavigate={(page) => { setCurrentPage(page); setSidebarOpen(false) }}
-          onLogout={handleLogout}
-          onClose={() => setSidebarOpen(false)}
-          notifBadge={notifUnreadCount}
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Navbar
-          role={role}
-          page={currentPage}
-          darkMode={isDark}
-          onToggleDark={handleNavToggle}
-          onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-          onNavigate={setCurrentPage}
-          unreadNotifs={notifUnreadCount}
-        />
-
-        {currentPage === 'chatbot' ? (
-          <AIChatbot />
-        ) : (
-          <main key={currentPage} className="flex-1 overflow-y-auto bg-background animate-page-enter">
-            {currentPage === 'dashboard' && role === 'farmer' && <FarmerDashboard onNavigate={setCurrentPage} />}
-            {currentPage === 'dashboard' && role === 'admin' && <AdminDashboard onNavigate={setCurrentPage} />}
-            {currentPage === 'soil' && <SoilClassification onNavigate={setCurrentPage} />}
-            {currentPage === 'crop' && <CropRecommendation onNavigate={setCurrentPage} />}
-            {currentPage === 'fertilizer' && <FertilizerRecommendation onNavigate={setCurrentPage} />}
-            {FEATURES.DISEASE_DETECTION && currentPage === 'disease' && <DiseaseDetection onNavigate={setCurrentPage} />}
-            {currentPage === 'weather' && <WeatherDashboard onNavigate={setCurrentPage} />}
-            {currentPage === 'community' && <FarmerCommunity onNavigate={setCurrentPage} />}
-            {currentPage === 'history' && <PredictionHistory onNavigate={setCurrentPage} />}
-            {currentPage === 'notifications' && <Notifications onNavigate={setCurrentPage} notificationsList={notificationsList} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} />}
-            {currentPage === 'feedback' && <Feedback role={role} onNavigate={setCurrentPage} />}
-            {currentPage === 'profile' && <Profile onNavigate={setCurrentPage} />}
-            {currentPage === 'about' && <About onNavigate={setCurrentPage} />}
-            {currentPage === 'settings' && <Settings themeMode={themeMode} role={role} onSetTheme={setThemeMode} onNavigate={setCurrentPage} />}
-            {currentPage === 'chatbot-monitoring' && <AdminChatbotMonitoring />}
-            {currentPage === 'users' && <AdminUserManagement />}
-            {currentPage === 'analytics' && <AdminAnalytics />}
-
-            {currentPage === 'reports' && <AdminReports />}
-          </main>
+      <div className={`flex h-screen overflow-hidden bg-background ${isDark ? 'dark-mode' : ''}`}>
+        {/* Mobile Sidebar Overlay */}
+        {sidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
         )}
-      </div>
 
-      {themeToast && (
-        <Toast message={themeToast} type="success" onClose={() => setThemeToast(null)} />
-      )}
-    </div>
+        {/* Sidebar */}
+        <div className={`fixed lg:static z-50 h-full transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+          <Sidebar
+            role={role}
+            user={user}
+            currentPage={currentPage}
+            onNavigate={(page) => { setCurrentPage(page); setSidebarOpen(false) }}
+            onLogout={handleLogout}
+            onClose={() => setSidebarOpen(false)}
+            notifBadge={notifUnreadCount}
+          />
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <Navbar
+            role={role}
+            user={user}
+            page={currentPage}
+            darkMode={isDark}
+            onToggleDark={handleNavToggle}
+            onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
+            onNavigate={setCurrentPage}
+            unreadNotifs={notifUnreadCount}
+          />
+
+          {currentPage === 'chatbot' ? (
+            <AIChatbot />
+          ) : (
+            <main key={currentPage} className="flex-1 overflow-y-auto bg-background animate-page-enter">
+              {currentPage === 'dashboard' && role === 'farmer' && <FarmerDashboard onNavigate={setCurrentPage} />}
+              {currentPage === 'dashboard' && role === 'admin' && <AdminDashboard onNavigate={setCurrentPage} />}
+              {currentPage === 'soil' && <SoilClassification onNavigate={setCurrentPage} />}
+              {currentPage === 'crop' && <CropRecommendation onNavigate={setCurrentPage} />}
+              {currentPage === 'fertilizer' && <FertilizerRecommendation onNavigate={setCurrentPage} />}
+              {FEATURES.DISEASE_DETECTION && currentPage === 'disease' && <DiseaseDetection onNavigate={setCurrentPage} />}
+              {currentPage === 'weather' && <WeatherDashboard onNavigate={setCurrentPage} />}
+              {currentPage === 'community' && <FarmerCommunity onNavigate={setCurrentPage} />}
+              {currentPage === 'history' && <PredictionHistory onNavigate={setCurrentPage} />}
+              {currentPage === 'notifications' && <Notifications onNavigate={setCurrentPage} readIds={notifReadIds} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} />}
+              {currentPage === 'feedback' && <Feedback role={role} onNavigate={setCurrentPage} />}
+              {currentPage === 'profile' && <Profile onNavigate={setCurrentPage} />}
+              {currentPage === 'about' && <About onNavigate={setCurrentPage} />}
+              {currentPage === 'settings' && <Settings themeMode={themeMode} role={role} onSetTheme={setThemeMode} onNavigate={setCurrentPage} />}
+              {currentPage === 'chatbot-monitoring' && <AdminChatbotMonitoring />}
+              {currentPage === 'users' && <AdminUserManagement />}
+              {currentPage === 'analytics' && <AdminAnalytics />}
+
+              {currentPage === 'reports' && <AdminReports />}
+            </main>
+          )}
+        </div>
+
+        {themeToast && (
+          <Toast message={themeToast} type="success" onClose={() => setThemeToast(null)} />
+        )}
+
+        <FloatingChatbot />
+      </div>
   )
 }
 
@@ -270,6 +275,7 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
   onClose: () => void
   onSuccess: (u: UserRecord) => void
 }) {
+  const { t } = useTranslation()
   const [form, setForm] = useState({
     name: '', email: '', phone: '', password: '', confirm: '',
     role: 'Farmer', language: 'English',
@@ -358,8 +364,8 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-4 border-b border-border flex-shrink-0">
           <div>
-            <h2 className="text-lg font-bold text-text-primary">Add New User</h2>
-            <p className="text-sm text-text-muted mt-0.5">Create a new account for a farmer or administrator.</p>
+            <h2 className="text-lg font-bold text-text-primary">{t('addNewUser')}</h2>
+            <p className="text-sm text-text-muted mt-0.5">{t('createNewUserAccount')}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-text-muted hover:text-text-secondary hover:bg-background transition-colors mt-0.5 flex-shrink-0">
             <X size={18} />
@@ -371,35 +377,35 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
 
           {/* Personal Information */}
           <section>
-            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">Personal Information</p>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">{t('sections.personalInformation')}</p>
             <div className="space-y-4">
               <Input 
-                label="Full Name" 
+                label={t('form.fullName')} 
                 required 
                 error={errs.name} 
                 value={form.name} 
                 onChange={e => set('name', e.target.value)} 
-                placeholder="Enter full name" 
+                placeholder={t('placeholders.enterFullName')} 
                 icon={<User size={14} />} 
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input 
-                  label="Email Address" 
+                  label={t('form.emailAddress')} 
                   required 
                   error={errs.email} 
                   type="email" 
                   value={form.email} 
                   onChange={e => set('email', e.target.value)} 
-                  placeholder="user@example.com" 
+                  placeholder={t('placeholders.emailExample')} 
                   icon={<Mail size={14} />} 
                 />
                 <Input 
-                  label="Phone Number" 
-                  hint="(Optional)" 
+                  label={t('form.phoneNumber')} 
+                  hint={t('hints.optional')} 
                   type="tel" 
                   value={form.phone} 
                   onChange={e => set('phone', e.target.value)} 
-                  placeholder="+91 98765 43210" 
+                  placeholder={t('placeholders.phoneExample')} 
                   icon={<Phone size={14} />} 
                 />
               </div>
@@ -407,13 +413,13 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
                   <Input 
-                    label="Password" 
+                    label={t('form.password')} 
                     required 
                     error={errs.password} 
                     type={showPw ? 'text' : 'password'} 
                     value={form.password} 
                     onChange={e => set('password', e.target.value)} 
-                    placeholder="Min. 8 characters" 
+                    placeholder={t('placeholders.passwordMin8')} 
                     icon={<Lock size={14} />} 
                   />
                   <button onClick={() => setShowPw(!showPw)} className="absolute right-3 top-[38px] text-text-muted hover:text-text-secondary">
@@ -422,13 +428,13 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
                 </div>
                 <div className="relative">
                   <Input 
-                    label="Confirm Password" 
+                    label={t('form.confirmPassword')} 
                     required 
                     error={errs.confirm} 
                     type={showConfirm ? 'text' : 'password'} 
                     value={form.confirm} 
                     onChange={e => set('confirm', e.target.value)} 
-                    placeholder="Re-enter password" 
+                    placeholder={t('placeholders.reenterPassword')} 
                     icon={<Lock size={14} />} 
                   />
                   <button onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-[38px] text-text-muted hover:text-text-secondary">
@@ -439,13 +445,13 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectInput 
-                  label="User Role" 
+                  label={t('form.userRole')} 
                   value={form.role} 
                   onChange={e => set('role', e.target.value)} 
-                  options={['Farmer', 'Admin'].map(r => ({ value: r, label: r }))} 
+                  options={[{ value: 'Farmer', label: t('role.farmer') }, { value: 'Admin', label: t('role.admin') }]} 
                 />
                 <SelectInput 
-                  label="Language Preference" 
+                  label={t('languagePreference')} 
                   value={form.language} 
                   onChange={e => set('language', e.target.value)} 
                   options={ADD_USER_LANGUAGES.map(l => ({ value: l, label: l }))} 
@@ -458,23 +464,23 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
 
           {/* Location */}
           <section>
-            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">Location Information</p>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-4">{t('sections.locationInformation')}</p>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <SelectInput 
-                  label="Country" 
+                  label={t('country')} 
                   value={form.country} 
                   onChange={e => set('country', e.target.value)} 
                   options={ADD_USER_COUNTRIES.map(c => ({ value: c, label: c }))} 
                 />
-                <Input label="State" required error={errs.state} value={form.state} onChange={e => set('state', e.target.value)} placeholder="e.g. Punjab" />
+                <Input label={t('state')} required error={errs.state} value={form.state} onChange={e => set('state', e.target.value)} placeholder="e.g. Punjab" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input label="District" required error={errs.district} value={form.district} onChange={e => set('district', e.target.value)} placeholder="e.g. Ludhiana" />
-                <Input label="City / Village / Town" required error={errs.city} value={form.city} onChange={e => set('city', e.target.value)} placeholder="e.g. Kotkapura" />
+                <Input label={t('district')} required error={errs.district} value={form.district} onChange={e => set('district', e.target.value)} placeholder="e.g. Ludhiana" />
+                <Input label={t('cityVillage')} required error={errs.city} value={form.city} onChange={e => set('city', e.target.value)} placeholder="e.g. Kotkapura" />
               </div>
               <div className="md:max-w-xs">
-                <Input label="Postal Code" hint="(Optional)" value={form.postalCode} onChange={e => set('postalCode', e.target.value)} placeholder="e.g. 142001" />
+                <Input label={t('postalCode')} hint={t('optional')} value={form.postalCode} onChange={e => set('postalCode', e.target.value)} placeholder="e.g. 142001" />
               </div>
             </div>
           </section>
@@ -483,7 +489,7 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
 
           {/* Account Status */}
           <section>
-            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">Account Status</p>
+            <p className="text-xs font-semibold text-text-muted uppercase tracking-wider mb-3">{t('sections.accountStatus')}</p>
             <div className="flex gap-3">
               {(['active', 'inactive'] as const).map(s => (
                 <button key={s} onClick={() => set('accountStatus', s)}
@@ -525,15 +531,15 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border bg-background rounded-b-2xl flex-shrink-0">
-          <p className="text-xs text-text-muted hidden sm:block"><span className="text-red-500">*</span> Required fields</p>
+          <p className="text-xs text-text-muted hidden sm:block"><span className="text-red-500">*</span> {t('requiredFields')}</p>
           <div className="flex gap-3 ml-auto">
             <button onClick={onClose}
               className="px-5 py-2.5 rounded-xl border border-border text-sm font-semibold text-text-secondary hover:bg-background transition-colors">
-              Cancel
+              {t('cancel')}
             </button>
             <button onClick={handleSubmit} disabled={loading}
               className="px-5 py-2.5 gradient-primary text-white rounded-xl text-sm font-semibold disabled:opacity-60 flex items-center gap-2 min-w-[120px] justify-center transition-all">
-              {loading ? <><LineSpinner size={14} color="white" strokeWidth={2} /> Creating user...</> : 'Create User'}
+              {loading ? <><LineSpinner size={14} color="white" strokeWidth={2} /> {t('creatingUser')}</> : t('createUser')}
             </button>
           </div>
         </div>
@@ -544,60 +550,61 @@ function AddUserModal({ existingEmails, onClose, onSuccess }: {
 
 
 function AdminChatbotMonitoring() {
-  const { t } = useTranslate()
+  const { t } = useTranslation()
   const [timeRange, setTimeRange] = useState('Last 7 Days')
   const [selectedConversation, setSelectedConversation] = useState<any>(null)
-  const [analytics, setAnalytics] = useState<any>(null)
   const [recentActivity, setRecentActivity] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [analytics, setAnalytics] = useState<any>(null)
 
   useEffect(() => {
-    let active = true
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        const [analyticsRes, activityRes] = await Promise.all([
-          api.get('/api/chatbot/monitoring-analytics'),
-          api.get('/api/chatbot/recent-activity')
-        ])
-        if (!active) return
-        setAnalytics(analyticsRes.data)
-        
-        // Map recentActivity keys from backend
-        const mapped = (activityRes.data || []).map((it: any) => ({
-          id: it.id || `conv-${Math.floor(Math.random() * 10000)}`,
-          time: it.timestamp ? new Date(it.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now',
-          user: it.userName || 'Unknown',
-          role: it.userRole || 'Farmer',
-          lang: it.language || 'English',
-          q: it.question || '',
-          topic: it.topic || 'General',
-          status: it.status || 'Resolved',
-          responseTime: '1.2s'
-        }))
-        setRecentActivity(mapped)
-      } catch (err) {
-        console.error("Error fetching chatbot monitoring data:", err)
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-    fetchData()
-    return () => { active = false }
+    api.get('/api/chatbot/monitoring-analytics')
+      .then(res => setAnalytics(res.data))
+      .catch(err => console.warn('Analytics fetch note:', err))
+
+    api.get('/api/chatbot/recent-activity')
+      .then(res => {
+        if (Array.isArray(res.data) && res.data.length > 0) {
+          const mapped = res.data.map((it: any) => ({
+            id: it.id ? String(it.id) : `conv-${Math.random()}`,
+            time: it.timestamp || it.created_at || 'Recent',
+            user: it.userName || it.user || 'Farmer',
+            role: it.userRole || it.role || 'Farmer',
+            lang: it.language || 'English',
+            q: it.question || it.user_message || 'Agricultural inquiry',
+            response: it.assistant_response || 'Advisory response generated.',
+            topic: it.topic || 'General Query',
+            status: it.status || 'Resolved',
+            responseTime: '1.0s'
+          }))
+          setRecentActivity(mapped)
+        } else {
+          setRecentActivity([])
+        }
+      })
+      .catch(err => console.warn('Activity fetch note:', err))
   }, [])
 
-  const lineData = analytics?.trends ?? []
-  const topicsData = analytics?.topics ?? []
-  const languageData = analytics?.languages ?? []
+  const lineData = analytics?.trends?.length ? analytics.trends : [
+    { name: 'Mon', conversations: 0, activeUsers: 0 },
+    { name: 'Tue', conversations: 0, activeUsers: 0 },
+    { name: 'Wed', conversations: 0, activeUsers: 0 },
+    { name: 'Thu', conversations: 0, activeUsers: 0 },
+    { name: 'Fri', conversations: 0, activeUsers: 0 },
+    { name: 'Sat', conversations: 0, activeUsers: 0 },
+    { name: 'Sun', conversations: 0, activeUsers: 0 },
+  ]
+  const topicsData = analytics?.topics?.length ? analytics.topics : [
+    { name: 'Crop Recommendation', count: 0 },
+    { name: 'Weather', count: 0 },
+    { name: 'Fertilizer', count: 0 },
+    { name: 'Pest Management', count: 0 },
+    { name: 'Government Schemes', count: 0 },
+    { name: 'Soil Classification', count: 0 },
+  ]
+  const languageData = analytics?.languages?.length ? analytics.languages : [
+    { name: 'English', value: 1 },
+  ]
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B']
-
-  const filteredActivity = recentActivity.filter((r: any) =>
-    (r.user || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (r.q || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (r.topic || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (r.lang || '').toLowerCase().includes(searchQuery.toLowerCase())
-  )
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in relative">
@@ -611,7 +618,7 @@ function AdminChatbotMonitoring() {
             <div className="p-6 overflow-y-auto space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs text-text-muted">{t('user')}</p>
+                  <p className="text-xs text-text-muted">User</p>
                   <p className="font-medium text-text-primary">{selectedConversation.user} <span className="text-xs ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{selectedConversation.role}</span></p>
                 </div>
                 <div className="space-y-1">
@@ -619,28 +626,28 @@ function AdminChatbotMonitoring() {
                   <p className="font-mono text-sm text-text-primary">{selectedConversation.id}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-text-muted">{t('topic')} & {t('language')}</p>
+                  <p className="text-xs text-text-muted">Topic & Language</p>
                   <p className="font-medium text-text-primary">{selectedConversation.topic} · {selectedConversation.lang}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs text-text-muted">{t('aiProcessingTime')}</p>
+                  <p className="text-xs text-text-muted">AI Processing Time</p>
                   <p className="font-medium text-text-primary">{selectedConversation.responseTime}</p>
                 </div>
               </div>
               <div className="space-y-4 pt-4 border-t border-border">
                 <div className="bg-background rounded-xl p-4 ml-8 border border-border">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-text-secondary">{t('userQuestion')}</span>
+                    <span className="text-xs font-bold text-text-secondary">User Question</span>
                     <span className="text-xs text-text-muted">{selectedConversation.time}</span>
                   </div>
                   <p className="text-sm text-text-primary">{selectedConversation.q}</p>
                 </div>
                 <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl p-4 mr-8 border border-blue-100 dark:border-blue-900/30">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-blue-600 flex items-center gap-1"><Bot size={14} /> {t('agroAiResponse')}</span>
+                    <span className="text-xs font-bold text-blue-600 flex items-center gap-1"><Bot size={14} /> AgroAI Response</span>
                   </div>
                   <p className="text-sm text-text-primary leading-relaxed">
-                    Based on current conditions, the optimal time for sowing wheat in your region is between November 1st and November 15th. Ensure the soil temperature is between 20-22°C.
+                    {selectedConversation.response || 'Based on current soil test & weather conditions, recommended optimal advisory has been sent to the farmer.'}
                   </p>
                 </div>
               </div>
@@ -651,8 +658,8 @@ function AdminChatbotMonitoring() {
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">{t('chatbot-monitoring')}</h2>
-          <p className="text-sm text-text-muted">{t('chatbotMonitoringDesc')}</p>
+          <h2 className="text-2xl font-bold text-text-primary">Chatbot Monitoring</h2>
+          <p className="text-sm text-text-muted">Real-time metrics and conversation logs from database</p>
         </div>
         <SelectInput 
           options={[{label:'Today',value:'Today'},{label:'Last 7 Days',value:'Last 7 Days'},{label:'Last 30 Days',value:'Last 30 Days'}]} 
@@ -663,10 +670,10 @@ function AdminChatbotMonitoring() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { title: t('totalConversations'), value: loading ? '...' : (analytics?.kpis?.total_conversations?.toLocaleString() ?? '0'), trend: '+12%', up: true, icon: <MessageSquare size={20} className="text-blue-500" /> },
-          { title: t('questionsToday'), value: loading ? '...' : (analytics?.kpis?.questions_today?.toLocaleString() ?? '0'), trend: '+5%', up: true, icon: <Bot size={20} className="text-green-500" /> },
-          { title: t('activeChatbotUsers'), value: loading ? '...' : (analytics?.kpis?.active_users_today?.toLocaleString() ?? '0'), trend: '+18%', up: true, icon: <User size={20} className="text-purple-500" /> },
-          { title: t('avgQuestionsSession'), value: loading ? '...' : (analytics?.kpis?.avg_questions_per_session?.toString() ?? '0.0'), trend: '-2%', up: false, icon: <TrendingUp size={20} className="text-orange-500" /> }
+          { title: 'Total Conversations', value: analytics?.kpis?.total_conversations?.toLocaleString() ?? '0', trend: 'Live DB', up: true, icon: <MessageSquare size={20} className="text-blue-500" /> },
+          { title: 'Questions Today', value: analytics?.kpis?.questions_today?.toLocaleString() ?? '0', trend: 'Live DB', up: true, icon: <Bot size={20} className="text-green-500" /> },
+          { title: 'Active Chatbot Users', value: analytics?.kpis?.active_users_today?.toLocaleString() ?? '0', trend: 'Live DB', up: true, icon: <User size={20} className="text-purple-500" /> },
+          { title: 'Avg Questions/Session', value: analytics?.kpis?.avg_questions_per_session ?? '0.0', trend: 'Live DB', up: true, icon: <TrendingUp size={20} className="text-orange-500" /> }
         ].map((kpi, i) => (
           <div key={i} className="bg-surface rounded-2xl p-5 shadow-card border border-border flex flex-col justify-between hover:shadow-elevated transition-shadow">
             <div className="flex justify-between items-start mb-4">
@@ -685,47 +692,39 @@ function AdminChatbotMonitoring() {
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-6">{t('conversationTrends')}</h3>
+          <h3 className="font-bold text-text-primary mb-6">Conversation Trends</h3>
           <ResponsiveContainer width="100%" height={280}>
-            {loading ? (
-              <div className="flex items-center justify-center h-full text-text-muted">{t('loadingMetrics')}</div>
-            ) : (
-              <LineChart data={lineData} margin={{ left: -20, right: 10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="conversations" name={t('conversations')} stroke="#3B82F6" strokeWidth={3} dot={{r:4}} activeDot={{r:6}} />
-                <Line type="monotone" dataKey="activeUsers" name={t('activeUsers')} stroke="#10B981" strokeWidth={3} dot={{r:4}} activeDot={{r:6}} />
-              </LineChart>
-            )}
+            <LineChart data={lineData} margin={{ left: -20, right: 10 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Line type="monotone" dataKey="conversations" name="Conversations" stroke="#3B82F6" strokeWidth={3} dot={{r:4}} activeDot={{r:6}} />
+              <Line type="monotone" dataKey="activeUsers" name="Active Users" stroke="#10B981" strokeWidth={3} dot={{r:4}} activeDot={{r:6}} />
+            </LineChart>
           </ResponsiveContainer>
         </div>
 
         <div className="bg-surface rounded-2xl p-5 shadow-card border border-border flex flex-col">
-          <h3 className="font-bold text-text-primary mb-2">{t('languagesUsed')}</h3>
+          <h3 className="font-bold text-text-primary mb-2">Languages Used</h3>
           <div className="flex-1 min-h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
-              {loading ? (
-                <div className="flex items-center justify-center h-full text-text-muted">{t('loadingMetrics')}</div>
-              ) : (
-                <PieChart>
-                  <Pie data={languageData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                    {languageData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                  <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 11 }} />
-                </PieChart>
-              )}
+              <PieChart>
+                <Pie data={languageData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                  {languageData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 11 }} />
+              </PieChart>
             </ResponsiveContainer>
           </div>
           <div className="mt-4 p-4 bg-background rounded-xl border border-border flex justify-between items-center">
             <div>
-              <p className="text-xs text-text-muted">{t('avgResponseTime')}</p>
-              <p className="text-lg font-bold text-text-primary">1.2 sec</p>
+              <p className="text-xs text-text-muted">Avg Response Time</p>
+              <p className="text-lg font-bold text-text-primary">1.4 sec</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
               <Bot size={20} />
@@ -734,70 +733,57 @@ function AdminChatbotMonitoring() {
         </div>
 
         <div className="lg:col-span-3 bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-6">{t('mostCommonTopics')}</h3>
+          <h3 className="font-bold text-text-primary mb-6">Most Common Topics</h3>
           <ResponsiveContainer width="100%" height={280}>
-            {loading ? (
-              <div className="flex items-center justify-center h-full text-text-muted">{t('loadingMetrics')}</div>
-            ) : (
-              <BarChart data={topicsData} layout="vertical" margin={{ left: 50, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-                <XAxis type="number" hide />
-                <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={120} />
-                <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="count" fill="#8B5CF6" radius={[0, 4, 4, 0]} barSize={24} name={t('inquiries')} />
-              </BarChart>
-            )}
+            <BarChart data={topicsData} layout="vertical" margin={{ left: 50, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+              <XAxis type="number" hide />
+              <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={120} />
+              <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
+              <Bar dataKey="count" fill="#8B5CF6" radius={[0, 4, 4, 0]} barSize={24} name="Inquiries" />
+            </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       <div className="bg-surface rounded-2xl shadow-card border border-border overflow-hidden">
         <div className="p-5 border-b border-border flex items-center justify-between">
-          <h3 className="font-bold text-text-primary">{t('recentBotActivity')}</h3>
+          <h3 className="font-bold text-text-primary">Recent Bot Activity</h3>
           <div className="flex gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-background">
               <Search size={14} className="text-text-muted" />
-              <input 
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder={t('searchLogs')} 
-                className="bg-transparent text-xs outline-none" 
-              />
+              <input placeholder="Search logs..." className="bg-transparent text-xs outline-none" />
             </div>
           </div>
         </div>
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="p-10 text-center text-text-muted">{t('loadingMetrics')}</div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-background border-b border-border">
-                <tr>{[t('time'), t('user'), t('role'), t('language'), t('question'), t('topic'), t('status')].map(h => (
-                  <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide whitespace-nowrap">{h}</th>
-                ))}</tr>
-              </thead>
-              <tbody>
-                {filteredActivity.map((r, i) => (
-                  <tr key={i} onClick={() => setSelectedConversation(r)} className="border-b border-border hover:bg-background transition-colors cursor-pointer group">
-                    <td className="py-3 px-4 text-xs text-text-muted whitespace-nowrap">{r.time}</td>
-                    <td className="py-3 px-4 font-medium text-text-primary">{r.user}</td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${r.role.toLowerCase() === 'farmer' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>{t(r.role.toLowerCase() === 'farmer' ? 'farmerRole' : 'systemAdmin')}</span>
-                    </td>
-                    <td className="py-3 px-4 text-text-secondary text-xs">{r.lang}</td>
-                    <td className="py-3 px-4 text-text-primary max-w-xs truncate" title={r.q}>{r.q}</td>
-                    <td className="py-3 px-4 text-text-secondary text-xs">{r.topic}</td>
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${r.status.toLowerCase() === 'resolved' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-orange-50 text-orange-600 border border-orange-200'}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${r.status.toLowerCase() === 'resolved' ? 'bg-green-500' : 'bg-orange-500'}`}></span>
-                        {t(r.status.toLowerCase())}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <table className="w-full text-sm">
+            <thead className="bg-background border-b border-border">
+              <tr>{['Time', 'User', 'Role', 'Language', 'Question', 'Topic', 'Status'].map(h => (
+                <th key={h} className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide whitespace-nowrap">{h}</th>
+              ))}</tr>
+            </thead>
+            <tbody>
+              {recentActivity.map((r, i) => (
+                <tr key={i} onClick={() => setSelectedConversation(r)} className="border-b border-border hover:bg-background transition-colors cursor-pointer group">
+                  <td className="py-3 px-4 text-xs text-text-muted whitespace-nowrap">{r.time}</td>
+                  <td className="py-3 px-4 font-medium text-text-primary">{r.user}</td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${r.role === 'Farmer' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>{r.role}</span>
+                  </td>
+                  <td className="py-3 px-4 text-text-secondary text-xs">{r.lang}</td>
+                  <td className="py-3 px-4 text-text-primary max-w-xs truncate" title={r.q}>{r.q}</td>
+                  <td className="py-3 px-4 text-text-secondary text-xs">{r.topic}</td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${r.status === 'Resolved' ? 'bg-green-50 text-green-600 border border-green-200' : 'bg-orange-50 text-orange-600 border border-orange-200'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${r.status === 'Resolved' ? 'bg-green-500' : 'bg-orange-500'}`}></span>
+                      {r.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -806,7 +792,7 @@ function AdminChatbotMonitoring() {
 
 
 function AdminUserManagement() {
-  const { t, lang } = useTranslate()
+  const { t } = useTranslation()
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
@@ -820,8 +806,6 @@ function AdminUserManagement() {
   const [showDetailModal, setShowDetailModal] = useState(false)
   
   const [selectedUser, setSelectedUser] = useState<any>(null)
-  const [editStatus, setEditStatus] = useState('active')
-  const [editRole, setEditRole] = useState('farmer')
   const [toastMsg, setToastMsg] = useState('')
 
   const showToast = (msg: string) => {
@@ -833,26 +817,26 @@ function AdminUserManagement() {
     try {
       setLoading(true)
       setError('')
-      const res = await api.get('/admin/users')
-      const mapped = res.data.map((u: any) => ({
+      const data = await getAdminUsers()
+      const mapped = data.map((u: any) => ({
         id: u.id,
-        name: u.username || 'No Name',
+        name: u.username || 'User #' + u.id,
         email: u.email,
-        phone: '+91 9999999999',
+        phone: u.phone || u.phone_number || 'N/A',
         role: u.role === 'admin' ? 'Admin' : 'Farmer',
-        status: u.status,
-        region: u.region || 'Punjab',
-        joined: new Date(u.created_at).toLocaleDateString(lang === 'te' ? 'te-IN' : lang === 'hi' ? 'hi-IN' : lang === 'ta' ? 'ta-IN' : lang === 'kn' ? 'kn-IN' : lang === 'mr' ? 'mr-IN' : lang === 'bn' ? 'bn-IN' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleTimeString() : 'Never',
-        lang: u.language_id === 1 ? 'English' : u.language_id === 2 ? 'Telugu' : u.language_id === 3 ? 'Hindi' : u.language_id === 4 ? 'Tamil' : u.language_id === 5 ? 'Kannada' : u.language_id === 6 ? 'Marathi' : 'Bengali',
-        analyses: 0,
-        chatbot: 0
+        status: u.status || 'active',
+        region: u.region || 'N/A',
+        joined: u.created_at ? new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A',
+        lastLogin: u.last_login_at ? new Date(u.last_login_at).toLocaleString() : 'Never',
+        lang: u.language_id === 1 ? 'English' : u.language_id === 2 ? 'Telugu' : u.language_id === 3 ? 'Hindi' : 'English',
+        analyses: u.analyses ?? 0,
+        chatbot: u.chatbot ?? 0
       }))
       setUserList(mapped)
-      setLoading(false)
     } catch (err: any) {
-      console.error(err)
-      setError(t('failedToFetchUsers') || 'Failed to fetch user list.')
+      console.error('Failed to fetch admin users:', err)
+      setError(err.message || 'Failed to fetch user list from database.')
+    } finally {
       setLoading(false)
     }
   }
@@ -871,62 +855,54 @@ function AdminUserManagement() {
   })
 
   const handleDelete = async () => {
+    if (!selectedUser) return
     try {
-      await api.delete(`/admin/users/${selectedUser.id}`)
+      await deleteAdminUser(selectedUser.id)
       setShowDeleteModal(false)
-      showToast(t('userDeletedSuccessfully') || 'User deleted successfully.')
-      fetchUsers()
+      showToast('User deleted successfully.')
+      await fetchUsers()
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('failedToDeleteUser') || 'Failed to delete user.')
+      showToast(err.message || 'Failed to delete user.')
     }
   }
   
-  const handleEditSave = async () => {
+  const handleEditSave = async (updatedUser: any) => {
     try {
-      await api.put(`/admin/users/${selectedUser.id}`, {
-        role: editRole,
-        status: editStatus
+      await updateAdminUser(updatedUser.id, {
+        role: updatedUser.role === 'Admin' ? 'admin' : 'farmer',
+        status: updatedUser.status
       })
       setShowEditModal(false)
-      showToast(t('userUpdatedSuccessfully') || 'User updated successfully.')
-      fetchUsers()
+      showToast('User updated successfully.')
+      await fetchUsers()
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('failedToUpdateUser') || 'Failed to update user.')
+      showToast(err.message || 'Failed to update user.')
     }
   }
 
-  const openEditModal = (u: any) => {
-    setSelectedUser(u)
-    setEditStatus(u.status)
-    setEditRole(u.role === 'Admin' ? 'admin' : 'farmer')
-    setShowEditModal(true)
-  }
-
   const handlePromote = async () => {
-    if (confirm(t('confirmPromoteAdmin') || "Are you sure you want to promote this user to Admin?\nThis user will gain full administrative privileges.")) {
+    if (!selectedUser) return
+    if (confirm("Are you sure you want to promote this user to Admin?\nThis user will gain full administrative privileges.")) {
       try {
-        await api.put(`/admin/users/${selectedUser.id}`, {
-          role: 'admin'
-        })
+        await updateAdminUser(selectedUser.id, { role: 'admin' })
         setShowEditModal(false)
-        showToast(t('userPromotedToAdmin') || 'User promoted to Admin.')
-        fetchUsers()
+        showToast('User promoted to Admin.')
+        await fetchUsers()
       } catch (err: any) {
-        alert(err.response?.data?.detail || t('failedToPromoteUser') || 'Failed to promote user.')
+        showToast(err.message || 'Failed to promote user.')
       }
     }
   }
 
   const handleDeactivate = async () => {
+    if (!selectedUser) return
     try {
-      await api.put(`/admin/users/${selectedUser.id}`, {
-        status: 'inactive'
-      })
+      await updateAdminUser(selectedUser.id, { status: 'inactive' })
       setShowEditModal(false)
-      showToast(t('userDeactivated') || 'User account deactivated.')
-      fetchUsers()
+      showToast('User account deactivated.')
+      await fetchUsers()
     } catch (err: any) {
-      alert(err.response?.data?.detail || t('failedToDeactivateUser') || 'Failed to deactivate user.')
+      showToast(err.message || 'Failed to deactivate user.')
     }
   }
 
@@ -939,62 +915,6 @@ function AdminUserManagement() {
         </div>
       )}
 
-      {/* Add User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-surface rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-scale-in flex flex-col max-h-[90vh]">
-            <div className="p-5 border-b border-border flex items-center justify-between bg-background/50">
-              <h3 className="font-bold text-lg text-text-primary">{t('addNewUser')}</h3>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-surface rounded-lg transition-colors"><X size={20} className="text-text-muted" /></button>
-            </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault()
-              const target = e.target as any
-              const payload = {
-                username: target.username.value,
-                email: target.email.value,
-                password: target.password.value,
-                role: target.role.value,
-                status: target.status.value,
-                region: target.region.value,
-                language_id: parseInt(target.language_id.value)
-              }
-              try {
-                await api.post('/api/users', payload)
-                setShowAddModal(false)
-                showToast('User created successfully.')
-                fetchUsers()
-              } catch (err: any) {
-                console.error("Create User Error Details:", err)
-                alert(err.response?.data?.detail || 'Failed to create user. Please check your connection and input validity.')
-              }
-            }} className="p-6 overflow-y-auto space-y-6">
-              <div className="grid md:grid-cols-2 gap-4">
-                <Input name="username" label={t('fullName')} required />
-                <Input name="email" label={t('emailAddress')} type="email" required />
-                <Input name="password" label={t('password')} type="password" required />
-                <Input name="region" label={t('locationRegion')} required />
-                <SelectInput name="role" label={t('role')} options={[{label:t('farmerRole'),value:'farmer'},{label:t('systemAdmin'),value:'admin'}]} defaultValue="farmer" />
-                <SelectInput name="status" label={t('status')} options={[{label:t('active'),value:'active'},{label:t('inactive'),value:'inactive'},{label:t('suspended'),value:'suspended'}]} defaultValue="active" />
-                <SelectInput name="language_id" label={t('preferredLanguage')} options={[
-                  {label:'English',value:'1'},
-                  {label:'Telugu',value:'2'},
-                  {label:'Hindi',value:'3'},
-                  {label:'Tamil',value:'4'},
-                  {label:'Kannada',value:'5'},
-                  {label:'Marathi',value:'6'},
-                  {label:'Bengali',value:'7'}
-                ]} defaultValue="1" />
-              </div>
-              <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                <Button variant="secondary" type="button" onClick={() => setShowAddModal(false)}>{t('cancel')}</Button>
-                <Button variant="primary" type="submit">{t('createUser')}</Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1003,10 +923,10 @@ function AdminUserManagement() {
               <Shield className="text-red-600" size={32} />
             </div>
             <h3 className="font-bold text-xl text-text-primary mb-2">{t('deleteUser')}</h3>
-            <p className="text-sm text-text-secondary mb-6">{t('confirmDeleteUser')} <strong>{selectedUser?.name}</strong>?</p>
+            <p className="text-sm text-text-secondary mb-6">{t('deleteUserConfirm')} <strong>{selectedUser?.name}</strong>?</p>
             <div className="flex gap-3">
               <Button variant="secondary" className="flex-1 justify-center" onClick={() => setShowDeleteModal(false)}>{t('cancel')}</Button>
-              <Button variant="primary" className="flex-1 justify-center bg-red-600 hover:bg-red-700 border-red-600 text-white" onClick={handleDelete}>{t('delete')}</Button>
+              <Button variant="primary" className="flex-1 justify-center bg-red-600 hover:bg-red-700 border-red-600 text-white" onClick={handleDelete}>{t('deleteUser')}</Button>
             </div>
           </div>
         </div>
@@ -1024,28 +944,20 @@ function AdminUserManagement() {
               <div>
                 <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2"><User size={16}/> {t('personalInformation')}</h4>
                 <div className="grid md:grid-cols-2 gap-4">
-                  <Input label={t('fullName')} value={selectedUser.name} disabled />
-                  <Input label={t('emailAddress')} value={selectedUser.email} disabled />
-                  <Input label={t('phoneNumber')} value={selectedUser.phone} disabled />
-                  <Input label={t('locationRegion')} value={selectedUser.region} disabled />
-                  <SelectInput label={t('preferredLanguage')} options={[
-                    {label: t('English'), value: 'English'},
-                    {label: t('Telugu'), value: 'Telugu'},
-                    {label: t('Hindi'), value: 'Hindi'},
-                    {label: t('Tamil'), value: 'Tamil'},
-                    {label: t('Kannada'), value: 'Kannada'},
-                    {label: t('Marathi'), value: 'Marathi'},
-                    {label: t('Bengali'), value: 'Bengali'}
-                  ]} value={selectedUser.lang} onChange={()=>{}} disabled />
+                  <Input label={t('fullName')} defaultValue={selectedUser.name} />
+                  <Input label={t('emailAddress')} defaultValue={selectedUser.email} />
+                  <Input label={t('phoneNumber')} defaultValue={selectedUser.phone} />
+                  <Input label={t('locationRegion')} defaultValue={selectedUser.region} />
+                  <SelectInput label={t('languagePreference')} options={[{label:'English',value:'English'},{label:'Hindi',value:'Hindi'},{label:'Urdu',value:'Urdu'}]} value={selectedUser.lang} onChange={()=>{}} />
                 </div>
               </div>
               
               <div>
                 <h4 className="text-sm font-bold text-text-primary mb-4 flex items-center gap-2"><Lock size={16}/> {t('accountControls')}</h4>
                 <div className="grid md:grid-cols-2 gap-4 items-end">
-                  <SelectInput label={t('status')} options={[{label:t('active'),value:'active'},{label:t('suspended'),value:'suspended'},{label:t('inactive'),value:'inactive'}]} value={editStatus} onChange={e=>setEditStatus(e.target.value)} />
+                  <SelectInput label={t('status')} options={[{label:'Active',value:'active'},{label:'Suspended',value:'suspended'},{label:'Inactive',value:'inactive'}]} value={selectedUser.status} onChange={()=>{}} />
                   <div className="flex gap-2">
-                    <Button variant="primary" className="flex-1 justify-center" onClick={handleEditSave}>{t('saveChanges')}</Button>
+                    <Button variant="primary" className="flex-1 justify-center" onClick={() => handleEditSave(selectedUser)}>{t('saveChanges')}</Button>
                   </div>
                 </div>
               </div>
@@ -1065,7 +977,7 @@ function AdminUserManagement() {
                   <div className="flex items-center justify-between p-3 bg-white/60 rounded-lg border border-red-100">
                     <div>
                       <p className="font-semibold text-red-800 text-sm">{t('administrativePrivileges')}</p>
-                      <p className="text-xs text-red-600">{t('grantFullAccess')}</p>
+                      <p className="text-xs text-red-600">{t('grantAdminAccess')}</p>
                     </div>
                     <Button variant="primary" className="bg-red-600 hover:bg-red-700 border-red-600 text-white" onClick={handlePromote}>{t('promoteToAdmin')}</Button>
                   </div>
@@ -1081,7 +993,7 @@ function AdminUserManagement() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end">
           <div className="bg-surface w-full max-w-md h-full shadow-2xl animate-fade-in-up flex flex-col">
             <div className="p-6 border-b border-border flex items-center justify-between">
-              <h3 className="font-bold text-lg text-text-primary">{t('userOverview')}</h3>
+              <h3 className="font-bold text-lg text-text-primary">User Overview</h3>
               <button onClick={() => setShowDetailModal(false)} className="p-2 hover:bg-surface rounded-lg transition-colors"><X size={20} className="text-text-muted" /></button>
             </div>
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
@@ -1094,29 +1006,29 @@ function AdminUserManagement() {
                 <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${selectedUser.role === 'Admin' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>{selectedUser.role}</span>
               </div>
               <div className="space-y-4">
-                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide">{t('accountDetails')}</h4>
+                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide">Account Details</h4>
                 <div className="grid grid-cols-2 gap-y-4 text-sm">
-                  <div><p className="text-text-muted text-xs">{t('phone')}</p><p className="font-medium text-text-primary">{selectedUser.phone}</p></div>
-                  <div><p className="text-text-muted text-xs">{t('location')}</p><p className="font-medium text-text-primary">{selectedUser.region}</p></div>
-                  <div><p className="text-text-muted text-xs">{t('language')}</p><p className="font-medium text-text-primary">{selectedUser.lang}</p></div>
-                  <div><p className="text-text-muted text-xs">{t('status')}</p><p className="font-medium text-text-primary">{selectedUser.status}</p></div>
+                  <div><p className="text-text-muted text-xs">Phone</p><p className="font-medium text-text-primary">{selectedUser.phone}</p></div>
+                  <div><p className="text-text-muted text-xs">Location</p><p className="font-medium text-text-primary">{selectedUser.region}</p></div>
+                  <div><p className="text-text-muted text-xs">Language</p><p className="font-medium text-text-primary">{selectedUser.lang}</p></div>
+                  <div><p className="text-text-muted text-xs">Status</p><p className="font-medium text-text-primary">{selectedUser.status}</p></div>
                 </div>
               </div>
               <div className="space-y-4 pt-4 border-t border-border">
-                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide">{t('platformUsage')}</h4>
+                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wide">Platform Usage</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-background rounded-xl p-4 border border-border">
                     <p className="text-2xl font-bold text-text-primary">{selectedUser.analyses}</p>
-                    <p className="text-xs text-text-muted mt-1">{t('totalPredictions')}</p>
+                    <p className="text-xs text-text-muted mt-1">Total Predictions</p>
                   </div>
                   <div className="bg-background rounded-xl p-4 border border-border">
                     <p className="text-2xl font-bold text-text-primary">{selectedUser.chatbot}</p>
-                    <p className="text-xs text-text-muted mt-1">{t('chatbotInquiries')}</p>
+                    <p className="text-xs text-text-muted mt-1">Chatbot Inquiries</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-y-4 text-sm pt-2">
-                  <div><p className="text-text-muted text-xs">{t('joinDate')}</p><p className="font-medium text-text-primary">{selectedUser.joined}</p></div>
-                  <div><p className="text-text-muted text-xs">{t('lastLogin')}</p><p className="font-medium text-text-primary">{selectedUser.lastLogin}</p></div>
+                  <div><p className="text-text-muted text-xs">Join Date</p><p className="font-medium text-text-primary">{selectedUser.joined}</p></div>
+                  <div><p className="text-text-muted text-xs">Last Login</p><p className="font-medium text-text-primary">{selectedUser.lastLogin}</p></div>
                 </div>
               </div>
             </div>
@@ -1126,11 +1038,11 @@ function AdminUserManagement() {
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">{t('userManagement')}</h2>
-          <p className="text-sm text-text-muted">{t('registeredUsers', { count: userList.length })}</p>
+          <h2 className="text-2xl font-bold text-text-primary">User Management</h2>
+          <p className="text-sm text-text-muted">{userList.length} registered users</p>
         </div>
         <button onClick={() => setShowAddModal(true)} className="px-4 py-2 gradient-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
-          {t('addUserButton')}
+          + Add User
         </button>
       </div>
 
@@ -1140,84 +1052,75 @@ function AdminUserManagement() {
           <input 
             value={search} 
             onChange={e => setSearch(e.target.value)} 
-            placeholder={t('searchUsersPlaceholder') || 'Search by name, email, or phone...'}
+            placeholder="Search by name, email, or phone..."
             className="w-full bg-transparent text-sm text-text-primary placeholder-text-muted outline-none" 
           />
         </div>
         <div className="flex gap-3">
           <SelectInput 
-            options={[{label:t('allRoles'),value:'All'},{label:t('farmerRole'),value:'Farmer'},{label:t('systemAdmin'),value:'Admin'}]}
+            options={[{label:'All Roles',value:'All'},{label:'Farmer',value:'Farmer'},{label:'Admin',value:'Admin'}]}
             value={roleFilter}
             onChange={e => setRoleFilter(e.target.value)}
           />
           <SelectInput 
-            options={[{label:t('allStatus'),value:'All'},{label:t('active'),value:'active'},{label:t('pending'),value:'pending'},{label:t('suspended'),value:'suspended'},{label:t('inactive'),value:'inactive'}]}
+            options={[{label:'All Status',value:'All'},{label:'Active',value:'active'},{label:'Pending',value:'pending'},{label:'Suspended',value:'suspended'},{label:'Inactive',value:'inactive'}]}
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
           />
         </div>
       </div>
 
-      {loading ? (
-        <div className="p-8 text-center text-text-muted text-sm flex flex-col items-center justify-center gap-2">
-          <div className="w-6 h-6 rounded-full border-2 border-t-green-600 border-green-100 animate-spin" />
-          <span>{t('loadingUserAccounts')}</span>
-        </div>
-      ) : error ? (
-        <div className="p-8 text-center text-red-500 text-sm">{error}</div>
-      ) : (
-        <div className="bg-surface rounded-2xl shadow-card border border-border overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-background border-b border-border">
-              <tr>{[t('user'), t('role'), t('status'), t('joined'), t('actions')].map(h => (
-                <th key={h} className="py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
-              ))}</tr>
-            </thead>
-            <tbody>
-              {filtered.map((u, i) => (
-                <tr key={i} className="border-b border-border hover:bg-background transition-colors cursor-pointer" onClick={() => { setSelectedUser(u); setShowDetailModal(true); }}>
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
-                        {u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
-                      </div>
-                      <div>
-                        <p className="font-medium text-text-primary">{u.name}</p>
-                        <p className="text-[10px] text-text-muted">{u.email}</p>
-                      </div>
+      <div className="bg-surface rounded-2xl shadow-card border border-border overflow-hidden">
+        <table className="w-full text-sm text-left">
+          <thead className="bg-background border-b border-border">
+            <tr>{['User', 'Role', 'Status', 'Joined', 'Actions'].map(h => (
+              <th key={h} className="py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{h}</th>
+            ))}</tr>
+          </thead>
+          <tbody>
+            {filtered.map((u, i) => (
+              <tr key={i} className="border-b border-border hover:bg-background transition-colors cursor-pointer" onClick={() => { setSelectedUser(u); setShowDetailModal(true); }}>
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
+                      {u.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}
                     </div>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      u.role === 'Farmer' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'
-                    }`}>{u.role}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      u.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200'
-                      : u.status === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-200'
-                      : 'bg-background text-text-secondary border border-border'
-                    }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full mr-1 ${u.status === 'active' ? 'bg-green-500' : u.status === 'pending' ? 'bg-orange-500' : 'bg-gray-400'}`}></span>
-                      {u.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-xs text-text-muted">{u.joined}</td>
-                  <td className="py-3 px-4">
-                    <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                      <button onClick={() => openEditModal(u)} className="px-3 py-1.5 rounded-lg border border-border hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 text-xs font-medium transition-colors text-text-secondary">{t('edit')}</button>
-                      <button onClick={() => { setSelectedUser(u); setShowDeleteModal(true); }} className="px-3 py-1.5 rounded-lg bg-red-600 border border-red-600 text-white shadow-sm hover:bg-red-700 hover:border-red-700 hover:shadow active:scale-[0.98] text-xs font-medium transition-all">{t('delete')}</button>
+                    <div>
+                      <p className="font-medium text-text-primary">{u.name}</p>
+                      <p className="text-[10px] text-text-muted">{u.email}</p>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="p-8 text-center text-text-muted text-sm">No users found matching your criteria.</div>
-          )}
-        </div>
-      )}
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    u.role === 'Farmer' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'
+                  }`}>{u.role}</span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    u.status === 'active' ? 'bg-green-50 text-green-600 border border-green-200'
+                    : u.status === 'pending' ? 'bg-orange-50 text-orange-600 border border-orange-200'
+                    : 'bg-background text-text-secondary border border-border'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full mr-1 ${u.status === 'active' ? 'bg-green-500' : u.status === 'pending' ? 'bg-orange-500' : 'bg-gray-400'}`}></span>
+                    {u.status}
+                  </span>
+                </td>
+                <td className="py-3 px-4 text-xs text-text-muted">{u.joined}</td>
+                <td className="py-3 px-4">
+                  <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => { setSelectedUser(u); setShowEditModal(true); }} className="px-3 py-1.5 rounded-lg border border-border hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 text-xs font-medium transition-colors text-text-secondary">Edit</button>
+                    <button onClick={() => { setSelectedUser(u); setShowDeleteModal(true); }} className="px-3 py-1.5 rounded-lg bg-red-600 border border-red-600 text-white shadow-sm hover:bg-red-700 hover:border-red-700 hover:shadow active:scale-[0.98] text-xs font-medium transition-all">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div className="p-8 text-center text-text-muted text-sm">No users found matching your criteria.</div>
+        )}
+      </div>
     </div>
   )
 }
@@ -1234,76 +1137,44 @@ const analyticsData = [
 
 
 function AdminAnalytics() {
-  const { t } = useTranslate()
+  const { t } = useTranslation()
   const [dateRange, setDateRange] = useState('Last 7 Days')
-  const [userGrowth, setUserGrowth] = useState<any[]>([])
-  const [userLanguageData, setUserLanguageData] = useState<any[]>([])
-  const [analyticsData, setAnalyticsData] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    let active = true
-    const loadData = async () => {
-      try {
-        setLoading(true)
-        const [growthRes, usersRes, analyticsRes] = await Promise.all([
-          api.get('/admin/dashboard/user-growth'),
-          api.get('/admin/users').catch(() => ({ data: [] })),
-          api.get('/api/analytics/summary').catch(() => ({ data: null }))
-        ])
-        if (active) {
-          const mappedGrowth = growthRes.data.map((item: any) => ({
-            month: item.month,
-            predictions: Math.round(item.total * 2.3),
-            users: item.total
-          }))
-          setUserGrowth(mappedGrowth)
-
-          const languagesMap: Record<number, string> = {
-            1: 'English',
-            2: 'Telugu',
-            3: 'Hindi',
-            4: 'Tamil'
-          }
-          const langCounts: Record<string, number> = {}
-          usersRes.data.forEach((u: any) => {
-            const lName = languagesMap[u.language_id || 1] || 'English'
-            langCounts[lName] = (langCounts[lName] || 0) + 1
-          })
-          const mappedLang = Object.entries(langCounts).map(([name, value]) => ({
-            name,
-            value
-          }))
-          setUserLanguageData(mappedLang.length > 0 ? mappedLang : [
-            { name: 'English', value: 1 }
-          ])
-          if (analyticsRes?.data) {
-            setAnalyticsData(analyticsRes.data)
-          }
-          setLoading(false)
-        }
-      } catch (err) {
-        console.error(err)
-        if (active) setLoading(false)
-      }
-    }
-    loadData()
-    return () => { active = false }
-  }, [])
   
-  const soilData = analyticsData?.soil_type_distribution?.length > 0 ? analyticsData.soil_type_distribution : []
-  const languageData = analyticsData?.language_usage?.length > 0 ? analyticsData.language_usage : userLanguageData
-  const nutrientData = analyticsData?.nutrient_deficiency_stats?.length > 0 ? analyticsData.nutrient_deficiency_stats : []
-  const cropData = analyticsData?.crop_recommendation_counts?.length > 0 
-    ? analyticsData.crop_recommendation_counts.map((c: any) => ({ name: c.name, count: c.value }))
-    : []
-  
-  // Dynamic translations mapping
-  const translatedSoilData = soilData.map((item: any) => ({ ...item, name: t(item.name) || item.name }))
-  const translatedLanguageData = languageData.map((item: any) => ({ ...item, name: t(item.name) || item.name }))
-  const translatedNutrientData = nutrientData.map((item: any) => ({ ...item, name: t(item.name) || item.name }))
-  const translatedCropData = cropData.map((item: any) => ({ ...item, name: t(item.name) || item.name }))
+  const translatedAnalyticsData = analyticsData.map(item => ({
+    ...item,
+    month: t(item.month),
+    [t('totalPredictions')]: item.predictions,
+    [t('userManagement')]: item.users,
+  }))
 
+  const soilData = [
+    { name: t('Clay Soil'), value: 35 },
+    { name: t('Black Soil'), value: 25 },
+    { name: t('Loamy Soil'), value: 20 },
+    { name: t('Red Soil'), value: 10 },
+    { name: t('Sandy Soil'), value: 10 },
+  ]
+  const languageData = [
+    { name: 'English', value: 60 },
+    { name: 'Hindi', value: 20 },
+    { name: 'Punjabi', value: 8 },
+    { name: 'Tamil', value: 7 },
+    { name: 'Telugu', value: 5 },
+  ]
+  const nutrientData = [
+    { name: t('nitrogen'), value: 75 },
+    { name: t('phosphorus'), value: 45 },
+    { name: t('potassium'), value: 30 },
+    { name: t('soilPh'), value: 40 },
+  ]
+  const cropData = [
+    { name: t('Wheat'), count: 1200 },
+    { name: t('Rice'), count: 950 },
+    { name: t('Cotton'), count: 800 },
+    { name: t('Maize'), count: 650 },
+    { name: t('Other'), count: 500 },
+  ]
+  
   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#64748B', '#06B6D4']
 
   const renderChart = (data: any, children: React.ReactNode, height = 220) => {
@@ -1317,26 +1188,18 @@ function AdminAnalytics() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <LineSpinner size={24} color="green" />
-      </div>
-    )
-  }
-
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">{t('analyticsAndReports')}</h2>
-          <p className="text-sm text-text-muted">{t('platformWideUsage')}</p>
+          <h2 className="text-2xl font-bold text-text-primary">{t('analytics')}</h2>
+          <p className="text-sm text-text-muted">Platform-wide usage and insights</p>
         </div>
         <div className="flex items-center gap-2">
           <Calendar size={18} className="text-text-muted" />
           <SelectInput 
             options={[
-              {label: 'Today', value: 'Today'}, 
+              {label: t('today'), value: 'Today'}, 
               {label: 'Last 7 Days', value: 'Last 7 Days'}, 
               {label: 'Last 30 Days', value: 'Last 30 Days'}, 
               {label: 'Custom Range', value: 'Custom'}
@@ -1349,38 +1212,38 @@ function AdminAnalytics() {
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-4">{t('predictionsOverTime')}</h3>
-          {renderChart(userGrowth, (
-            <AreaChart data={userGrowth} margin={{ left: -20 }}>
+          <h3 className="font-bold text-text-primary mb-4">{t('predictionTrends')}</h3>
+          {renderChart(translatedAnalyticsData, (
+            <AreaChart data={translatedAnalyticsData} margin={{ left: -20 }}>
               <defs><linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#2E7D32" stopOpacity={0.2}/><stop offset="95%" stopColor="#2E7D32" stopOpacity={0}/></linearGradient></defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-              <Area type="monotone" dataKey="predictions" stroke="#2E7D32" strokeWidth={2} fill="url(#grad1)" name="Predictions" />
+              <Area type="monotone" dataKey={t('totalPredictions')} stroke="#2E7D32" strokeWidth={2} fill="url(#grad1)" name={t('totalPredictions')} />
             </AreaChart>
           ))}
         </div>
 
         <div className="bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-4">{t('userGrowth')}</h3>
-          {renderChart(userGrowth, (
-            <BarChart data={userGrowth} margin={{ left: -20 }}>
+          <h3 className="font-bold text-text-primary mb-4">{t('userManagement')}</h3>
+          {renderChart(translatedAnalyticsData, (
+            <BarChart data={translatedAnalyticsData} margin={{ left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-              <Bar dataKey="users" fill="#1565C0" radius={[6, 6, 0, 0]} name="Users" />
+              <Bar dataKey={t('userManagement')} fill="#1565C0" radius={[6, 6, 0, 0]} name={t('userManagement')} />
             </BarChart>
           ))}
         </div>
         
         <div className="bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-4">{t('soilTypeDistribution')}</h3>
-          {renderChart(translatedSoilData, (
+          <h3 className="font-bold text-text-primary mb-4">Soil Type Distribution</h3>
+          {renderChart(soilData, (
             <PieChart>
-              <Pie data={translatedSoilData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
-                {translatedSoilData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+              <Pie data={soilData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
+                {soilData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
               <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
               <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 11 }} />
@@ -1389,11 +1252,11 @@ function AdminAnalytics() {
         </div>
 
         <div className="bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-4">{t('languagesUsedPlatform')}</h3>
-          {renderChart(translatedLanguageData, (
+          <h3 className="font-bold text-text-primary mb-4">Languages Used (Platform)</h3>
+          {renderChart(languageData, (
             <PieChart>
-              <Pie data={translatedLanguageData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
-                {translatedLanguageData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+              <Pie data={languageData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
+                {languageData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
               <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
               <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 11 }} />
@@ -1402,11 +1265,11 @@ function AdminAnalytics() {
         </div>
 
         <div className="bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-4">{t('mostRecommendedCrops')}</h3>
-          {renderChart(translatedCropData, (
-            <BarChart data={translatedCropData} layout="vertical" margin={{ left: 20, right: 20 }}>
+          <h3 className="font-bold text-text-primary mb-4">Most Recommended Crops</h3>
+          {renderChart(cropData, (
+            <BarChart data={cropData} layout="vertical" margin={{ left: 20, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-              <XAxis type="number" domain={[0, 'auto']} hide />
+              <XAxis type="number" hide />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
               <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
               <Bar dataKey="count" fill="#2E7D32" radius={[0, 4, 4, 0]} barSize={20} name="Recommendations" />
@@ -1415,11 +1278,11 @@ function AdminAnalytics() {
         </div>
 
         <div className="bg-surface rounded-2xl p-5 shadow-card border border-border">
-          <h3 className="font-bold text-text-primary mb-4">{t('nutrientDeficiencyStats')}</h3>
-          {renderChart(translatedNutrientData, (
-            <BarChart data={translatedNutrientData} layout="vertical" margin={{ left: 40, right: 20 }}>
+          <h3 className="font-bold text-text-primary mb-4">Nutrient Deficiency Statistics</h3>
+          {renderChart(nutrientData, (
+            <BarChart data={nutrientData} layout="vertical" margin={{ left: 40, right: 20 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
-              <XAxis type="number" domain={[0, 'auto']} hide />
+              <XAxis type="number" hide />
               <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={90} />
               <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
               <Bar dataKey="value" fill="#F59E0B" radius={[0, 4, 4, 0]} barSize={20} name="Deficiency (%)" />
@@ -1432,109 +1295,34 @@ function AdminAnalytics() {
 }
 
 function AdminReports() {
-  const { t } = useTranslate()
+  const { t } = useTranslation()
   const [isGenerating, setIsGenerating] = useState(false)
-  const [reportType, setReportType] = useState('Overall Platform Report')
-  const [startDate, setStartDate] = useState('2026-07-01')
-  const [endDate, setEndDate] = useState('2026-07-28')
   const [reportFormat, setReportFormat] = useState('PDF')
-  const [reportsList, setReportsList] = useState<any[]>([])
-  const [loadingList, setLoadingList] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [reportsList, setReportsList] = useState([
+    { title: 'Monthly Platform Report — July 2026', type: 'Platform', date: 'Jul 25, 2026', size: '2.4 MB' },
+    { title: 'AI Model Performance Q2 2026', type: 'AI/ML', date: 'Jun 30, 2026', size: '4.1 MB' },
+    { title: 'User Engagement Analysis H1 2026', type: 'Analytics', date: 'Jun 30, 2026', size: '3.8 MB' },
+    { title: 'Security Audit Report July 2026', type: 'Security', date: 'Jul 20, 2026', size: '1.2 MB' },
+    ...(FEATURES.DISEASE_DETECTION ? [{ title: 'Disease Detection Accuracy Report', type: 'AI/ML', date: 'Jul 15, 2026', size: '5.6 MB' }] : [{ title: 'Crop Recommendation Accuracy Report', type: 'AI/ML', date: 'Jul 15, 2026', size: '5.6 MB' }]),
+  ])
   
   const [sections, setSections] = useState<string[]>(['Charts', 'Statistics'])
   const toggleSection = (s: string) => setSections(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
 
-  const fetchRecentReports = async () => {
-    setLoadingList(true)
-    try {
-      const resp = await api.get('/api/reports/recent')
-      setReportsList(resp.data || [])
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setLoadingList(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchRecentReports()
-  }, [])
-
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     setIsGenerating(true)
-    try {
-      const payload = {
-        report_type: reportType,
-        start_date: startDate,
-        end_date: endDate,
-        export_format: reportFormat,
-        included_sections: sections
-      }
-      
-      const response = await api.post('/api/reports/generate', payload, { responseType: 'blob' })
-      
-      const ext = reportFormat.toLowerCase() === 'pdf' ? 'pdf' : (reportFormat.toLowerCase() === 'csv' ? 'csv' : 'xlsx')
-      const fileName = `report_${reportType.toLowerCase().replace('/', '_')}.${ext}`
-      
-      const blob = new Blob([response.data], { type: response.headers['content-type'] })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', fileName)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      
-      fetchRecentReports()
-    } catch (err) {
-      console.error(err)
-      alert("Failed to generate report.")
-    } finally {
+    setTimeout(() => {
       setIsGenerating(false)
-    }
+      setReportsList([{ title: 'Custom Generated Report', type: 'Custom', date: 'Just now', size: '1.8 MB' }, ...reportsList])
+    }, 1500)
   }
-
-  const handleDownloadHistorical = async (reportId: number, filename: string) => {
-    try {
-      const response = await api.get(`/api/reports/download/${reportId}`, { responseType: 'blob' })
-      const blob = new Blob([response.data], { type: response.headers['content-type'] })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', filename)
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    } catch (err) {
-      console.error(err)
-      alert("Failed to download historical report.")
-    }
-  }
-
-  const filteredReports = reportsList.filter((r: any) =>
-    (r.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (r.type || '').toLowerCase().includes(searchQuery.toLowerCase())
-  )
-
-  const reportTypes = [
-    'User Activity Report', 
-    'Soil Analysis Report', 
-    'Crop Recommendation Report', 
-    'Fertilizer Recommendation Report', 
-    'Weather Analytics Report', 
-    'Chatbot Usage Report', 
-    'Community Activity Report', 
-    'Feedback Report', 
-    'Overall Platform Report'
-  ]
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in max-w-7xl mx-auto h-full flex flex-col">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">{t('reportGenerationCenter')}</h2>
-          <p className="text-sm text-text-muted">{t('reportGenerationCenterDesc')}</p>
+          <h2 className="text-2xl font-bold text-text-primary">Report Generation Center</h2>
+          <p className="text-sm text-text-muted">Create, manage and export comprehensive platform reports</p>
         </div>
       </div>
       
@@ -1542,23 +1330,18 @@ function AdminReports() {
         {/* Report Generator Panel */}
         <div className="lg:col-span-1 space-y-6 overflow-y-auto custom-scrollbar pr-1">
           <div className="bg-surface rounded-2xl shadow-card border border-border p-5">
-            <h3 className="font-bold text-text-primary mb-4 flex items-center gap-2"><FileText size={16} className="text-blue-500"/> {t('configureReport')}</h3>
+            <h3 className="font-bold text-text-primary mb-4 flex items-center gap-2"><FileText size={16} className="text-blue-500"/> Configure Report</h3>
             
             <div className="space-y-4">
-              <SelectInput 
-                label={t('reportType')} 
-                options={reportTypes.map(o => ({label: t(o), value: o}))} 
-                value={reportType} 
-                onChange={(e) => setReportType(e.target.value)} 
-              />
+              <SelectInput label="Report Type" options={['User Activity Report', 'Soil Analysis Report', 'Crop Recommendation Report', 'Fertilizer Recommendation Report', 'Weather Analytics Report', 'Chatbot Usage Report', 'Community Activity Report', 'Feedback Report', 'Overall Platform Report'].map(o => ({label: o, value: o}))} value="Overall Platform Report" onChange={()=>{}} />
               
               <div className="grid grid-cols-2 gap-3">
-                <Input label={t('startDate')} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                <Input label={t('endDate')} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <Input label="Start Date" type="date" defaultValue="2026-07-01" />
+                <Input label="End Date" type="date" defaultValue="2026-07-28" />
               </div>
               
               <div>
-                <p className="text-xs font-semibold text-text-primary mb-2">{t('exportFormat')}</p>
+                <p className="text-xs font-semibold text-text-primary mb-2">Export Format</p>
                 <div className="flex gap-2">
                   {['PDF', 'Excel', 'CSV'].map(f => (
                     <button key={f} onClick={() => setReportFormat(f)} className={`flex-1 py-2 rounded-lg border text-xs font-semibold transition-colors ${reportFormat === f ? 'bg-primary-50 text-primary-700 border-primary-300' : 'bg-background text-text-secondary border-border hover:border-text-muted'}`}>
@@ -1569,12 +1352,12 @@ function AdminReports() {
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-text-primary mb-2">{t('includeSections')}</p>
+                <p className="text-xs font-semibold text-text-primary mb-2">Include Sections</p>
                 <div className="grid grid-cols-2 gap-2">
                   {['Charts', 'Statistics', 'User Details', 'Recommendations', 'AI Insights'].map(s => (
                     <label key={s} className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all text-xs font-medium select-none ${sections.includes(s) ? 'border-blue-300 bg-blue-50 text-blue-700' : 'border-border text-text-secondary hover:border-border bg-background'}`}>
                       <input type="checkbox" checked={sections.includes(s)} onChange={() => toggleSection(s)} className="accent-blue-600 w-3.5 h-3.5 flex-shrink-0" />
-                      {t(s.replace(' ', '')) || t(s)}
+                      {s}
                     </label>
                   ))}
                 </div>
@@ -1582,18 +1365,18 @@ function AdminReports() {
               
               <div className="pt-2">
                 <Button variant="primary" className="w-full justify-center py-3" onClick={handleGenerate} disabled={isGenerating}>
-                  {isGenerating ? <><LineSpinner size={16} color="white" strokeWidth={2}/> {t('generating')}</> : t('generateReport')}
+                  {isGenerating ? <><LineSpinner size={16} color="white" strokeWidth={2}/> Generating...</> : 'Generate Report'}
                 </Button>
               </div>
             </div>
             
             <div className="mt-6 pt-4 border-t border-border space-y-2">
-              <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider">{t('reportSummary')}</h4>
+              <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider">Report Summary</h4>
               <div className="grid grid-cols-2 gap-y-2 text-sm">
-                <div><p className="text-text-muted text-[10px] uppercase">{t('lastGenerated')}</p><p className="font-medium text-text-primary text-xs">Today, 10:45 AM</p></div>
-                <div><p className="text-text-muted text-[10px] uppercase">{t('generatedBy')}</p><p className="font-medium text-text-primary text-xs">{t('systemAdmin')}</p></div>
-                <div><p className="text-text-muted text-[10px] uppercase">{t('estSize')}</p><p className="font-medium text-text-primary text-xs">~2.5 MB</p></div>
-                <div><p className="text-text-muted text-[10px] uppercase">{t('status')}</p><p className="font-medium text-green-600 text-xs flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> {t('ready')}</p></div>
+                <div><p className="text-text-muted text-[10px] uppercase">Last Generated</p><p className="font-medium text-text-primary text-xs">Today, 10:45 AM</p></div>
+                <div><p className="text-text-muted text-[10px] uppercase">Generated By</p><p className="font-medium text-text-primary text-xs">System Admin</p></div>
+                <div><p className="text-text-muted text-[10px] uppercase">Est. Size</p><p className="font-medium text-text-primary text-xs">~2.5 MB</p></div>
+                <div><p className="text-text-muted text-[10px] uppercase">Status</p><p className="font-medium text-green-600 text-xs flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Ready</p></div>
               </div>
             </div>
           </div>
@@ -1602,27 +1385,18 @@ function AdminReports() {
         {/* Recent Reports Panel */}
         <div className="lg:col-span-2 bg-surface rounded-2xl shadow-card border border-border p-5 flex flex-col min-h-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 flex-shrink-0">
-            <h3 className="font-bold text-text-primary">{t('recentReports')}</h3>
+            <h3 className="font-bold text-text-primary">Recent Reports</h3>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted" />
-                <input 
-                  placeholder={t('searchReports')} 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-xs focus:border-green-500 outline-none w-full sm:w-48" 
-                />
+                <input placeholder="Search reports..." className="pl-8 pr-3 py-1.5 rounded-lg border border-border bg-background text-xs focus:border-green-500 outline-none w-full sm:w-48" />
               </div>
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-surface text-xs font-medium text-text-secondary"><Filter size={14}/> {t('filter')}</button>
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-background hover:bg-surface text-xs font-medium text-text-secondary"><Filter size={14}/> Filter</button>
             </div>
           </div>
           
           <div className="space-y-3 overflow-y-auto pr-2 flex-1 custom-scrollbar">
-            {loadingList ? (
-              <div className="flex justify-center py-10">
-                <LineSpinner size={20} color="green" />
-              </div>
-            ) : filteredReports.map((r, i) => (
+            {reportsList.map((r, i) => (
               <div key={i} className="bg-background rounded-xl p-4 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:shadow-soft transition-all-smooth group">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${r.type === 'Security' ? 'bg-red-100 text-red-600' : r.type === 'AI/ML' ? 'bg-purple-100 text-purple-600' : r.type === 'Custom' ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'}`}>
@@ -1631,22 +1405,20 @@ function AdminReports() {
                   <div className="min-w-0">
                     <p className="font-semibold text-text-primary text-sm truncate">{r.title}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${r.type === 'Security' ? 'bg-red-50 text-red-700' : r.type === 'AI/ML' ? 'bg-purple-50 text-purple-700' : r.type === 'Custom' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{t(r.type) || r.type}</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${r.type === 'Security' ? 'bg-red-50 text-red-700' : r.type === 'AI/ML' ? 'bg-purple-50 text-purple-700' : r.type === 'Custom' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>{r.type}</span>
                       <span className="text-xs text-text-muted">• {r.date} • {r.size}</span>
                     </div>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-2 self-start sm:self-auto ml-13 sm:ml-0 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button className="p-1.5 text-text-muted hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Download" onClick={() => handleDownloadHistorical(r.id, r.title)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                  <button className="p-1.5 text-text-muted hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View"><Eye size={14}/></button>
+                  <button className="p-1.5 text-text-muted hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Download"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                  <button className="p-1.5 text-text-muted hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors" title="Regenerate"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+                  <button className="p-1.5 text-text-muted hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete"><X size={14}/></button>
                 </div>
               </div>
             ))}
-            {!loadingList && filteredReports.length === 0 && (
-              <div className="text-center py-10">
-                <p className="text-text-muted text-xs">{t('noReportsGenerated')}</p>
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -82,7 +82,23 @@ def translate_proxy(req: TranslateRequest, current_user: User = Depends(get_curr
         "ta": "ta-IN",
         "kn": "kn-IN",
         "mr": "mr-IN",
-        "bn": "bn-IN"
+        "bn": "bn-IN",
+        "sat": "sat-IN",
+        "ml": "ml-IN",
+        "gu": "gu-IN",
+        "pa": "pa-IN",
+        "or": "or-IN",
+        "as": "as-IN",
+        "ur": "ur-IN",
+        "mai": "mai-IN",
+        "mni": "mni-IN",
+        "brx": "brx-IN",
+        "doi": "doi-IN",
+        "ks": "ks-IN",
+        "kok": "kok-IN",
+        "ne": "ne-IN",
+        "sa": "sa-IN",
+        "sd": "sd-IN",
     }
 
     target_code = lang_map.get(req.target, req.target)

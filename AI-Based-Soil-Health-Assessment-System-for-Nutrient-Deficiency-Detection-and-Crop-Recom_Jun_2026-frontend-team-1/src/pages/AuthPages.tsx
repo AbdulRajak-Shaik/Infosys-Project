@@ -5,6 +5,7 @@ import FloatingChatbot from '../components/FloatingChatbot'
 import { loginUser, loginAdmin, getCurrentUser, registerUser, requestPasswordReset, verifyPasswordReset, forgotPassword as apiForgotPassword } from '../services/api'
 import { useTranslation } from '../i18n'
 import LanguageSelector from '../components/LanguageSelector'
+import { INITIAL_LANGUAGES } from '../components/Navbar'
 
 type AuthPage = 'login' | 'register' | 'forgot'
 
@@ -52,17 +53,17 @@ function LoginForm({ onLogin, onForgot, onRegister }: { onLogin: (role: 'farmer'
     setError('')
     try {
       if (loginRole === 'admin') {
-        try {
-          await loginAdmin({ email: email.trim(), password })
-        } catch {
-          await loginUser({ email: email.trim(), password })
-        }
+        await loginAdmin({ email: email.trim(), password, role: 'admin' })
       } else {
-        await loginUser({ email: email.trim(), password })
+        await loginUser({ email: email.trim(), password, role: 'farmer' })
       }
       onLogin(loginRole)
     } catch (err: any) {
-      onLogin(loginRole)
+      let errMsg = err.message || 'Login failed. Please check your credentials and role selection.'
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
+        errMsg = 'Unable to connect to backend server. Please ensure python run_server.py is running on http://127.0.0.1:8000.'
+      }
+      setError(errMsg)
     } finally {
       setLoading(false)
     }
@@ -170,14 +171,14 @@ function LoginForm({ onLogin, onForgot, onRegister }: { onLogin: (role: 'farmer'
 function RegisterForm({ onLogin }: { onSuccess?: () => void; onLogin: () => void }) {
   const { t } = useTranslation()
   const [step, setStep] = useState(1)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', confirm: '', country: 'India', state: '', district: '', language: 'English', terms: false, privacy: false })
+  const [form, setForm] = useState<{ name: string; email: string; phone: string; password: string; confirm: string; country: string; state: string; district: string; language: string; role: 'farmer' | 'admin'; terms: boolean; privacy: boolean }>({ name: '', email: '', phone: '', password: '', confirm: '', country: 'India', state: '', district: '', language: 'English', role: 'farmer', terms: false, privacy: false })
   const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [step1Attempted, setStep1Attempted] = useState(false)
   const [step2Attempted, setStep2Attempted] = useState(false)
 
-  const set = (k: string, v: string | boolean) => setForm(f => ({ ...f, [k]: v }))
+  const set = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -228,16 +229,22 @@ function RegisterForm({ onLogin }: { onSuccess?: () => void; onLogin: () => void
     setRegError('')
     try {
       await registerUser({
-        username: form.name || 'Farmer',
+        username: form.name || (form.role === 'admin' ? 'System Admin' : 'Farmer'),
         email: form.email,
         password: form.password,
         confirm_password: form.confirm,
         language_id: 1,
         region: form.state ? `${form.state}, ${form.district}` : 'Telangana',
+        role: form.role,
       })
       setDone(true)
     } catch (err: any) {
-      setRegError(err.message ? (t('registrationFailed') || err.message) : t('registrationFailed'))
+      const msg = err.message || ''
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setRegError('Failed to connect to backend server. Please verify python run_server.py is running on port 8000.')
+      } else {
+        setRegError(msg ? (t('registrationFailed') || msg) : t('registrationFailed'))
+      }
     } finally {
       setLoading(false)
     }
@@ -313,15 +320,35 @@ function RegisterForm({ onLogin }: { onSuccess?: () => void; onLogin: () => void
             label={t('preferredLanguage')} 
             value={form.language} 
             onChange={e => set('language', e.target.value)} 
-            options={['English', 'Hindi', 'Arabic', 'Tamil', 'Telugu', 'Marathi', 'Punjabi', 'Bengali', 'Urdu', 'Kannada'].map(l => ({ value: l, label: l }))} 
+            options={INITIAL_LANGUAGES.map(l => ({ value: l.name, label: `${l.name} (${l.native})` }))} 
           />
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-text-secondary">{t('userRole')}<span className="text-error ml-1">*</span></label>
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-xl border-2 border-green-500 bg-green-50">
-               <p className="text-sm font-semibold text-green-700">{t('roleFarmer')}</p>
-               <p className="text-[11px] text-text-muted mt-0.5">{t('roleDescription')}</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => set('role', 'farmer')}
+                className={`p-3 rounded-xl border-2 text-left transition-all ${
+                  form.role === 'farmer'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-border bg-surface hover:border-gray-300'
+                }`}
+              >
+                <p className={`text-sm font-semibold ${form.role === 'farmer' ? 'text-green-700' : 'text-text-primary'}`}>{t('roleFarmer') || 'Farmer / Producer'}</p>
+                <p className="text-[11px] text-text-muted mt-0.5">{t('roleDescription') || 'Access soil analysis, crop recommendations, and weather alerts.'}</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => set('role', 'admin')}
+                className={`p-3 rounded-xl border-2 text-left transition-all ${
+                  form.role === 'admin'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-border bg-surface hover:border-gray-300'
+                }`}
+              >
+                <p className={`text-sm font-semibold ${form.role === 'admin' ? 'text-blue-700' : 'text-text-primary'}`}>{t('systemAdmin') || 'System Administrator'}</p>
+                <p className="text-[11px] text-text-muted mt-0.5">{t('adminRoleDescription') || 'Access system administration, user management, and AI analytics.'}</p>
+              </button>
             </div>
           </div>
           <div className="flex gap-3">

@@ -60,6 +60,33 @@ def seed_users():
             db.add(admin)
             print("Admin user password hash and role updated in-place!")
             
+        # Seed admin tester account
+        admin_test = db.query(User).filter(User.email == "admin_role_test@example.com").first()
+        if not admin_test:
+            admin_test = User(
+                username="Admin Tester",
+                email="admin_role_test@example.com",
+                hashed_password=get_password_hash("AdminPass123!"),
+                role="admin",
+                status="active",
+                language_id=en.id
+            )
+            db.add(admin_test)
+
+        # Seed test farmer account
+        farmer_test = db.query(User).filter(User.email == "testfarmer1@example.com").first()
+        if not farmer_test:
+            farmer_test = User(
+                username="testfarmer1",
+                email="testfarmer1@example.com",
+                hashed_password=get_password_hash("Password123!"),
+                role="farmer",
+                status="active",
+                region="Punjab",
+                language_id=en.id
+            )
+            db.add(farmer_test)
+
         db.commit()
         print("[OK] Default test users successfully verified and seeded!")
     except Exception as e:

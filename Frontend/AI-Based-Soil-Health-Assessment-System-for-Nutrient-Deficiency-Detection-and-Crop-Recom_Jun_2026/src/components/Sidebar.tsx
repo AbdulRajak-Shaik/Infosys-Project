@@ -2,10 +2,13 @@ import { type ReactNode } from 'react'
 import {
   LayoutDashboard, Leaf, Sprout, FlaskConical, Bug, Bot, Cloud,
   Bell, History, MessageSquare, User, Settings, LogOut, ChevronRight,
-  Users, BarChart3, ShieldAlert, Activity, FileText, X, Info
+  Users, BarChart3, FileText, X, Info
 } from 'lucide-react'
 import { FEATURES } from '../config'
-import { useTranslate } from '../contexts/TranslationContext'
+import { useTranslation } from '../i18n'
+import { useLanguage } from '../contexts/LanguageContext'
+import { getLocalizedPersonName } from '../services/api'
+import { useSarvamUsername } from '../services/sarvamClient'
 
 type Role = 'farmer' | 'admin'
 type Page = string
@@ -19,6 +22,7 @@ interface NavItem {
 
 interface SidebarProps {
   role: Role
+  user?: any
   currentPage: Page
   onNavigate: (page: Page) => void
   onLogout: () => void
@@ -74,9 +78,43 @@ const roleSubtitles: Record<Role, string> = {
   admin:      'System Administration',
 }
 
-export default function Sidebar({ role, currentPage, onNavigate, onLogout, onClose, notifBadge = 0 }: SidebarProps) {
-  const { t } = useTranslate()
-  const nav = role === 'admin' ? adminNav : farmerNav
+export default function Sidebar({ role, user, currentPage, onNavigate, onLogout, onClose, notifBadge = 0 }: SidebarProps) {
+  const { t } = useTranslation()
+  const farmerNavTranslated: NavItem[] = [
+    { id: 'dashboard', label: t('dashboard'), icon: <LayoutDashboard size={18} /> },
+    { id: 'soil', label: t('soil'), icon: <Leaf size={18} /> },
+    { id: 'crop', label: t('crop'), icon: <Sprout size={18} /> },
+    { id: 'fertilizer', label: t('fertilizer'), icon: <FlaskConical size={18} /> },
+    ...(FEATURES.DISEASE_DETECTION ? [{ id: 'disease', label: t('disease'), icon: <Bug size={18} /> }] : []),
+    { id: 'chatbot', label: t('chatbot'), icon: <Bot size={18} /> },
+    { id: 'weather', label: t('weather'), icon: <Cloud size={18} /> },
+    { id: 'community', label: t('community'), icon: <Users size={18} /> },
+    { id: 'history', label: t('history'), icon: <History size={18} /> },
+    { id: 'notifications', label: t('notifications'), icon: <Bell size={18} /> },
+    { id: 'feedback', label: t('feedback'), icon: <MessageSquare size={18} /> },
+    { id: 'profile', label: t('profile'), icon: <User size={18} /> },
+    { id: 'about', label: t('about'), icon: <Info size={18} /> },
+    { id: 'settings', label: t('settings'), icon: <Settings size={18} /> },
+  ]
+  const adminNavTranslated: NavItem[] = [
+    { id: 'dashboard', label: t('dashboard'), icon: <LayoutDashboard size={18} /> },
+    { id: 'chatbot-monitoring', label: t('chatbotMonitoring'), icon: <Bot size={18} /> },
+    { id: 'users', label: t('userManagement'), icon: <Users size={18} /> },
+    { id: 'analytics', label: t('analytics'), icon: <BarChart3 size={18} /> },
+    { id: 'notifications', label: t('notifications'), icon: <Bell size={18} /> },
+    { id: 'feedback', label: t('feedback'), icon: <MessageSquare size={18} /> },
+    { id: 'reports', label: t('reports'), icon: <FileText size={18} /> },
+    { id: 'settings', label: t('settings'), icon: <Settings size={18} /> },
+  ]
+  const { currentLanguage: currentLang } = useLanguage()
+  const nav = role === 'admin' ? adminNavTranslated : farmerNavTranslated
+  const rawName = user?.username || (role === 'admin' ? t('systemAdmin') : t('farmer'))
+  const sarvamName = useSarvamUsername(rawName)
+  const displayName = sarvamName || getLocalizedPersonName(rawName, currentLang)
+  const displayEmail = user?.email || (role === 'admin' ? 'admin@agroai.com' : 'farmer@agroai.com')
+  const initials = user?.username
+    ? user.username.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
+    : (role === 'admin' ? 'SA' : (currentLang === 'te' ? 'రా' : currentLang === 'ta' ? 'ரா' : currentLang === 'hi' ? 'रा' : 'RF'))
 
   return (
     <aside className="w-64 h-full flex flex-col bg-surface border-r border-border shadow-soft">
@@ -162,13 +200,13 @@ export default function Sidebar({ role, currentPage, onNavigate, onLogout, onClo
                 className="text-white font-bold leading-tight"
                 style={{ fontSize: 16, letterSpacing: '-0.02em', textShadow: '0 1px 4px rgba(0,0,0,0.25)' }}
               >
-                AgroAI
+                {t('AgroAI')}
               </p>
               <p
                 className="font-medium mt-0.5"
                 style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', letterSpacing: '0.04em' }}
               >
-                {role === 'farmer' ? t('aiFarmingPlatform') : t('systemAdministration')}
+                {t('aiFarmingPlatform')}
               </p>
             </div>
           </div>
@@ -188,7 +226,7 @@ export default function Sidebar({ role, currentPage, onNavigate, onLogout, onClo
                 cursor: 'pointer',
                 flexShrink: 0,
               }}
-              aria-label="Close navigation menu"
+              aria-label={t('closeNavigationMenu')}
             >
               <X size={15} />
             </button>
@@ -229,14 +267,12 @@ export default function Sidebar({ role, currentPage, onNavigate, onLogout, onClo
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-3">
           <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white font-bold text-sm`}>
-            {role === 'farmer' ? 'RF' : 'SA'}
+            {initials}
           </div>
-          <div>
-            <p className="text-sm font-semibold text-text-primary">
-              {role === 'farmer' ? t('farmerRole') || 'Rajesh Farmer' : t('systemAdmin') || 'System Admin'}
-            </p>
-            <p className="text-xs text-text-muted">{role}@agroai.com</p>
-          </div>
+            <div>
+              <p className="font-bold text-text-primary text-sm truncate">{displayName}</p>
+              <p className="text-xs text-text-muted">{displayEmail}</p>
+            </div>
         </div>
       </div>
 
@@ -255,11 +291,9 @@ export default function Sidebar({ role, currentPage, onNavigate, onLogout, onClo
                 }`}
             >
               <span className={`transition-colors duration-200 ${active ? 'text-primary-600' : 'text-text-muted group-hover:text-primary-500'}`}>{item.icon}</span>
-              <span className="flex-1">{t(item.id)}</span>
+              <span className="flex-1">{item.label}</span>
               {item.id === 'notifications' && notifBadge > 0 ? (
-                <span className="bg-error text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center animate-pulse">
-                  {notifBadge > 99 ? '99+' : notifBadge}
-                </span>
+                <span className="w-2.5 h-2.5 rounded-full bg-error animate-pulse mr-2" />
               ) : item.badge ? (
                 <span className="bg-error text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
                   {item.badge}

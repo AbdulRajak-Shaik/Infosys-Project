@@ -1,1 +1,1 @@
-export const FEATURES = { DISEASE_DETECTION: false };
+export const FEATURES = { DISEASE_DETECTION: true };

@@ -61,14 +61,23 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
       .catch(err => console.warn('Recent history fetch note:', err))
   }, [currentLanguage, t])
 
+  const [progress, setProgress] = useState(0)
+
   const handleFile = async (file: File) => {
     const url = URL.createObjectURL(file)
     setPreview(url)
     setStage('processing')
+    setProgress(15)
+
+    const interval = setInterval(() => {
+      setProgress(prev => (prev < 90 ? prev + 15 : prev))
+    }, 150)
+
     try {
       const res = await predictSoil({ image: file })
+      setProgress(100)
       setApiResult(res)
-      const detectedSoil = res?.soil_type || 'Alluvial Soil'
+      const detectedSoil = res?.soil_type || 'Unknown Soil'
       const confidence = res?.confidence || 96.2
       if (detectedSoil) {
         setHistoryItems(prev => [`${detectedSoil} - Today`, ...prev.slice(0, 2)])
@@ -82,7 +91,8 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
     } catch (e) {
       console.warn('Backend predict note:', e)
     } finally {
-      setStage('result')
+      clearInterval(interval)
+      setTimeout(() => setStage('result'), 200)
     }
   }
 
@@ -90,14 +100,14 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
   const mainProb = Math.round(rawConf > 1 ? rawConf : rawConf * 100)
 
   const soilProbs = [
-    { soil: apiResult?.soil_type || 'Alluvial Soil', prob: mainProb },
+    { soil: apiResult?.soil_type || 'Unknown Soil', prob: mainProb },
     { soil: 'Clay Loam', prob: Math.max(1, Math.round((100 - mainProb) * 0.7)) },
     { soil: 'Silt Loam', prob: Math.max(1, Math.round((100 - mainProb) * 0.3)) },
   ]
 
   const handleDownloadReport = () => {
     generatePdfReport({
-      soilType: apiResult?.soil_type || 'Alluvial Soil',
+      soilType: apiResult?.soil_type || 'Unknown Soil',
       confidence: mainProb,
       soilHealthScore: 61.2,
       soilHealthStatus: 'Moderate',
@@ -186,10 +196,18 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
                 <LineSpinner size={20} color="#2E7D32" strokeWidth={2} />
                 <span className="font-semibold">{t('aiAnalyzingSoil')}</span>
               </div>
-              <div className="w-48">
-                <ProgressBar value={75} color="#2E7D32" />
+              <div className="w-64 space-y-2 text-center">
+                <ProgressBar value={progress} color="#2E7D32" />
+                <p className="text-xs font-semibold text-green-800">
+                  {progress < 35
+                    ? 'Preprocessing soil image...'
+                    : progress < 75
+                    ? 'Computing Softmax Probability Distribution...'
+                    : progress < 100
+                    ? 'Classifying soil type...'
+                    : 'Analysis complete!'}
+                </p>
               </div>
-              <p className="text-xs text-text-muted">{t('runningCnnInference')}</p>
             </div>
           )}
 
@@ -231,7 +249,7 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="text-xs text-text-muted font-medium">{t('predictedSoilType')}</p>
-                  <h3 className="text-2xl font-bold text-text-primary">{apiResult?.soil_type || 'Black Soil'}</h3>
+                  <h3 className="text-2xl font-bold text-text-primary">{apiResult?.soil_type || 'Unknown Soil'}</h3>
                 </div>
                 <div className="flex items-center gap-2 bg-green-100 px-3 py-1.5 rounded-full">
                   <CheckCircle2 size={14} className="text-green-600" />
@@ -247,21 +265,41 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
                   ? 'Clay soil with dense texture and high water-holding capacity. Rich in plant nutrients, ideal for paddy, sugarcane, and wheat. pH range: 6.5–7.5.'
                   : (apiResult?.soil_type?.toLowerCase().includes('alluvial'))
                   ? 'Alluvial soil rich in potash and organic matter. Highly fertile, ideal for rice, sugarcane, wheat, and oilseeds. pH range: 6.0–7.8.'
-                  : 'Sandy loam soil with good drainage properties. Ideal for root vegetables, cereals, and groundnut. pH range: 6.0–7.0'}
+                  : apiResult?.soil_type
+                  ? 'Sandy loam soil with good drainage properties. Ideal for root vegetables, cereals, and groundnut. pH range: 6.0–7.0'
+                  : 'Soil type could not be classified from this sample. Please try a different image or check input values.'}
               </p>
             </Card>
 
             <Card className="p-5">
               <h4 className="font-semibold text-text-primary mb-3">{t('probabilityDistribution')}</h4>
-              <ResponsiveContainer width="100%" height={160}>
-                <BarChart data={soilProbs} layout="vertical" margin={{ left: 10, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
-                  <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} unit="%" />
-                  <YAxis type="category" dataKey="soil" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={80} />
-                  <Tooltip contentStyle={{ borderRadius: 10, border: 'none' }} formatter={(v) => [`${v}%`]} />
-                  <Bar dataKey="prob" fill="#2E7D32" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="space-y-3 mb-4">
+                {soilProbs.map((item, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <div className="flex justify-between text-xs font-semibold text-text-primary">
+                      <span>{item.soil}</span>
+                      <span className="text-green-700 font-bold">{item.prob}%</span>
+                    </div>
+                    <div className="w-full h-3 bg-background rounded-full overflow-hidden border border-border">
+                      <div
+                        className="h-full bg-gradient-to-r from-green-600 to-green-500 rounded-full transition-all duration-300 ease-out shadow-sm"
+                        style={{ width: `${Math.min(100, Math.max(0, item.prob))}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="w-full h-36">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={soilProbs} layout="vertical" margin={{ left: 10, right: 20, top: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f0f0f0" />
+                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} unit="%" />
+                    <YAxis type="category" dataKey="soil" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={110} />
+                    <Tooltip contentStyle={{ borderRadius: 10, border: 'none' }} formatter={(v) => [`${v}%`]} />
+                    <Bar dataKey="prob" fill="#2E7D32" radius={[0, 4, 4, 0]} isAnimationActive={false} animationDuration={0} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </Card>
 
             <Card className="p-5">
@@ -539,7 +577,7 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
     filename.includes('silt') ? 'Silt Soil' :
     filename.includes('loam') ? 'Loamy Soil' :
     filename.includes('black') || filename.includes('regur') ? 'Black Soil' :
-    'Clay Soil'
+    'Unknown Soil'
   )
 
   const cards = [

@@ -10,5 +10,5 @@ from app.main import app
 import uvicorn
 
 if __name__ == "__main__":
-    print("[OK] Starting FastAPI server with TensorFlow 2.21.0 and Keras 3.15.0")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    print("[OK] Starting FastAPI server with reload support")
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8000, reload=True)

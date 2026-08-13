@@ -34,6 +34,12 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     summary="Create a user",
     description="Creates a user with an administrator-selected role and account status.",
 )
+@router.post(
+    "/",
+    response_model=AdminUserResponse,
+    status_code=status.HTTP_201_CREATED,
+    include_in_schema=False,
+)
 def create_admin_user(
     user_data: AdminCreateUserRequest,
     db: Session = Depends(get_db),
@@ -48,6 +54,11 @@ def create_admin_user(
     response_model=AdminUserResponse,
     summary="Update a user's role or status",
     description="Updates only role and status. Username and email cannot be changed through this endpoint.",
+)
+@router.put(
+    "/{user_id}/",
+    response_model=AdminUserResponse,
+    include_in_schema=False,
 )
 def update_admin_user(
     user_id: int,
@@ -65,6 +76,11 @@ def update_admin_user(
     summary="Delete a user",
     description="Permanently removes a user account when it exists.",
 )
+@router.delete(
+    "/{user_id}/",
+    response_model=MessageResponse,
+    include_in_schema=False,
+)
 def delete_admin_user(
     user_id: int,
     db: Session = Depends(get_db),
@@ -81,9 +97,25 @@ def delete_admin_user(
     summary="Get all users",
     description="Retrieve all user accounts.",
 )
+@router.get(
+    "/",
+    response_model=list[AdminUserResponse],
+    include_in_schema=False,
+)
 def list_admin_users(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
-) -> list[User]:
-    """Retrieve all users."""
-    return db.query(User).all()
+) -> list[AdminUserResponse]:
+    """Retrieve all users with real prediction and chatbot inquiry counts."""
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    from app.models import PredictionHistory, ChatHistory
+    from sqlalchemy import func
+    result = []
+    for user in users:
+        prediction_count = db.query(func.count(PredictionHistory.id)).filter(PredictionHistory.user_id == user.id).scalar() or 0
+        chatbot_count = db.query(func.count(ChatHistory.id)).filter(ChatHistory.user_id == user.id).scalar() or 0
+        res = AdminUserResponse.model_validate(user)
+        res.analyses = prediction_count
+        res.chatbot = chatbot_count
+        result.append(res)
+    return result

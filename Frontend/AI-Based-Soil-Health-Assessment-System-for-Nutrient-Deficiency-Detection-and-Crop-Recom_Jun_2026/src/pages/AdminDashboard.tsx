@@ -1,24 +1,23 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from 'react-i18next'
-import { useTranslate } from '../contexts/TranslationContext'
-import api from "../services/api";
+import { useEffect, useState } from "react"
+import { useTranslation } from '../i18n'
 import { Users, Activity, BarChart3, MessageSquare, HelpCircle } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import { Card, Badge, StatusDot, SearchInput } from '../components/ui'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts'
+import { getAdminStats } from '../services/api'
+import api from '../services/api'
 
 const COLORS = ['#2E7D32', '#1565C0', '#FB8C00', '#7B1FA2', '#D32F2F', '#0288D1']
 
-export default function AdminDashboard() {
-  const { t: i18nT } = useTranslation()
-  const { t: tx, translateText } = useTranslate()
-  const t = tx || i18nT
+interface AdminDashboardProps { onNavigate?: (page: string) => void }
+
+export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+  const { t } = useTranslation()
 
   const [botSearch, setBotSearch] = useState('')
   const [summary, setSummary] = useState<any>(null)
   const [insights, setInsights] = useState<any>(null)
   const [growth, setGrowth] = useState<any[]>([])
-  const [recentUsers, setRecentUsers] = useState<any[]>([])
   const [activity, setActivity] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -28,12 +27,11 @@ export default function AdminDashboard() {
   const nutrientData = insights?.nutrient_deficiency_stats ?? []
   const langData = insights?.language_usage ?? []
   const chatbotMetrics = insights?.chatbot_metrics
-  // activity state holds the dynamic chatbot activity rows
-  // structure: { id, timestamp, userName, userRole, language, question, topic, status }
+
   const filteredBotActivity = activity.filter((a: any) =>
-    (a.userName || '').toLowerCase().includes(botSearch.toLowerCase()) ||
-    (a.question || '').toLowerCase().includes(botSearch.toLowerCase()) ||
-    (a.topic || '').toLowerCase().includes(botSearch.toLowerCase())
+    (a.user || '').toLowerCase().includes(botSearch.toLowerCase()) ||
+    (a.topic || '').toLowerCase().includes(botSearch.toLowerCase()) ||
+    (a.lang || '').toLowerCase().includes(botSearch.toLowerCase())
   )
 
   useEffect(() => {
@@ -42,52 +40,39 @@ export default function AdminDashboard() {
       setLoading(true)
       setError('')
       try {
-        // Hits the new endpoints
-        const [sumRes, insightsRes, growthRes, usersRes, activityRes] = await Promise.all([
-          api.get('/api/dashboard/stats'),
-          api.get('/api/dashboard/insights'),
-          api.get('/api/dashboard/user-growth'),
-          api.get('/api/users'),
-          api.get('/api/chatbot/recent-activity'),
+        const [sumRes, insightsRes, growthRes, activityRes] = await Promise.all([
+          api.get('/api/dashboard/stats').catch(() => ({ data: null })),
+          api.get('/api/dashboard/insights').catch(() => ({ data: null })),
+          api.get('/api/dashboard/user-growth').catch(() => ({ data: [] })),
+          api.get('/api/chatbot/recent-activity').catch(() => ({ data: [] })),
         ])
 
         if (!active) return
 
-        setSummary(sumRes.data ?? null)
+        if (!sumRes.data) {
+          const directStats = await getAdminStats().catch(() => null)
+          setSummary(directStats)
+        } else {
+          setSummary(sumRes.data)
+        }
+
         setInsights(insightsRes.data ?? null)
         setGrowth(growthRes.data ?? [])
-        setRecentUsers(usersRes.data ?? [])
 
-        // Map activity to internally expected shape
         const mapped = (activityRes.data || []).map((it: any) => ({
-          id: it.id,
-          timestamp: it.timestamp || it.created_at || it.time,
-          userName: it.userName || it.user_name || it.user || 'Unknown',
-          userRole: it.userRole || it.role || 'Farmer',
-          language: it.language || it.lang || 'en',
-          question: it.question || it.user_message || it.q || '',
-          topic: it.topic || it.subject || 'General',
-          status: it.status || (it.resolved ? 'Resolved' : 'Pending')
+          id: it.id ? String(it.id) : `conv-${it.time || Math.random()}`,
+          time: it.timestamp || it.created_at || it.time || 'Recent',
+          user: it.userName || it.user_name || it.user || 'Farmer',
+          topic: it.topic || it.subject || it.question || 'General Query',
+          lang: it.language || it.lang || 'English',
+          status: it.status || 'Resolved'
         }))
 
-        // Set activity immediately and end blocking spinner
         setActivity(mapped)
         setLoading(false)
-
-        // Translate the questions/topics in the background
-        Promise.all(mapped.map(async (m: any) => {
-          const q = await translateText(m.question || '')
-          const top = await translateText(m.topic || '')
-          return { ...m, question: q, topic: top }
-        })).then(translated => {
-          if (active) setActivity(translated)
-        }).catch(err => {
-          console.warn('Background translation error:', err)
-        })
-
       } catch (err: any) {
         console.error('AdminDashboard fetch error', err)
-        setError('Failed to load dashboard data. Please verify backend status.')
+        setError('Failed to load dashboard metrics. Please verify backend server status.')
         if (active) setLoading(false)
       }
     }
@@ -96,13 +81,11 @@ export default function AdminDashboard() {
     return () => { active = false }
   }, [])
 
-  console.log("Recent users loaded from backend:", recentUsers.length)
-
   if (loading) {
     return (
       <div className="p-4 md:p-6 flex flex-col items-center justify-center min-h-[400px] text-text-muted gap-2 animate-fade-in">
         <div className="w-8 h-8 rounded-full border-4 border-t-green-600 border-green-100 animate-spin" />
-        <span className="text-sm font-medium">{t('loadingMetrics')}</span>
+        <span className="text-sm font-medium">{t('loadingMetrics') || 'Loading metrics...'}</span>
       </div>
     )
   }
@@ -115,33 +98,34 @@ export default function AdminDashboard() {
     )
   }
 
-  const chartData = growth.length > 0 ? growth.map(g => ({
-    month: g.month.substring(0, 3),
-    farmers: g.users,
-    total: g.users
-  })) : [{ month: 'N/A', farmers: 0, total: 0 }]
+  const chartData = growth.map(g => ({
+    month: g.month ? g.month.substring(0, 3) : '',
+    users: g.users || 0,
+    farmers: g.farmers || 0
+  }))
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">{t('dashboard')}</h2>
-          <p className="text-sm text-text-muted">{t('platformOverview')}</p>
+          <h2 className="text-2xl font-bold text-text-primary">{t('enterpriseDashboard') || 'Enterprise dashboard'}</h2>
+          <p className="text-sm text-text-muted">Platform overview and system health — 2026</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
             <StatusDot status="green" />
-            <span className="text-xs font-semibold text-green-700">{t('allSystemsOperational')}</span>
+            <span className="text-xs font-semibold text-green-700">{t('allSystemsOperational') || 'All systems operational'}</span>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <StatCard title={t('totalUsers')} value={summary?.total_users?.toLocaleString() ?? "0"} change="+19%" trend="up" icon={<Users size={20} className="text-white" />} gradient color="linear-gradient(135deg, #2E7D32, #43A047)" />
-        <StatCard title={t('activeToday')} value={summary?.active_today?.toLocaleString() ?? "0"} change="+8%" trend="up" icon={<Activity size={20} className="text-white" />} gradient color="linear-gradient(135deg, #1565C0, #1976D2)" />
-        <StatCard title={t('totalPredictions')} value={summary?.total_predictions?.toLocaleString() ?? "0"} change="+31%" trend="up" icon={<BarChart3 size={20} className="text-white" />} gradient color="linear-gradient(135deg, #7B1FA2, #9C27B0)" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title={t('totalUsers') || "Total Users"} value={summary?.total_users != null ? summary.total_users.toLocaleString() : "0"} icon={<Users size={20} className="text-white" />} gradient color="linear-gradient(135deg, #2E7D32, #43A047)" />
+        <StatCard title={t('activeToday') || "Active Today"} value={summary?.active_today != null ? summary.active_today.toLocaleString() : "0"} icon={<Activity size={20} className="text-white" />} gradient color="linear-gradient(135deg, #1565C0, #1976D2)" />
+        <StatCard title={t('farmerAccounts') || "Farmer Accounts"} value={summary?.farmer_count != null ? summary.farmer_count.toLocaleString() : "0"} icon={<Users size={20} className="text-white" />} gradient color="linear-gradient(135deg, #2E7D32, #43A047)" />
+        <StatCard title={t('totalPredictions') || "Total Predictions"} value={summary?.total_predictions != null ? summary.total_predictions.toLocaleString() : "0"} icon={<BarChart3 size={20} className="text-white" />} gradient color="linear-gradient(135deg, #7B1FA2, #9C27B0)" />
       </div>
 
       {/* Analytics Row */}
@@ -149,30 +133,36 @@ export default function AdminDashboard() {
         {/* User Growth */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-text-primary">{t('userGrowth')}</h3>
-            <Badge color="blue">{t('ytd')}</Badge>
+            <h3 className="font-bold text-text-primary">{t('predictionTrends') || 'User Growth'}</h3>
+            <Badge color="blue">2026 YTD</Badge>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-              <defs>
-                <linearGradient id="colorFarmers" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2E7D32" stopOpacity={0.25} /><stop offset="95%" stopColor="#2E7D32" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-              <Legend />
-              <Area type="monotone" dataKey="farmers" stroke="#2E7D32" strokeWidth={2} fill="url(#colorFarmers)" name={t('farmers')} />
-            </AreaChart>
-          </ResponsiveContainer>
+          {chartData.length === 0 ? (
+            <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
+              {t('noDataAvailable') || 'No data available'}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+                <defs>
+                  <linearGradient id="colorFarmers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2E7D32" stopOpacity={0.25} /><stop offset="95%" stopColor="#2E7D32" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
+                <Legend />
+                <Area type="monotone" dataKey="users" stroke="#2E7D32" strokeWidth={2} fill="url(#colorFarmers)" name={t('totalUsers') || 'Total Users'} />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </Card>
 
         {/* Most Recommended Crops */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-text-primary">{t('mostRecommendedCrops')}</h3>
+            <h3 className="font-bold text-text-primary">{t('suitableCrops') || 'Suitable Crops'}</h3>
           </div>
           {cropData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
@@ -180,12 +170,12 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={cropData} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+              <BarChart data={cropData.map((c: any) => ({ ...c, name: t(c.name) || c.name }))} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: '#f5f5f5' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="value" fill="#4CAF50" radius={[4, 4, 0, 0]} name={t('recommendations')} />
+                <Bar dataKey="value" fill="#4CAF50" radius={[4, 4, 0, 0]} name={t('recommendations') || 'Recommendations'} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -195,7 +185,7 @@ export default function AdminDashboard() {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Soil Type Distribution */}
         <Card className="p-5">
-          <h3 className="font-bold text-text-primary mb-5">{t('soilTypeDistribution')}</h3>
+          <h3 className="font-bold text-text-primary mb-5">{t('soil') || 'Soil Classification'}</h3>
           {soilData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
               {t('noPredictionsMadeYet') || 'No predictions made yet'}
@@ -203,10 +193,10 @@ export default function AdminDashboard() {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={soilData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                <Pie data={soilData.map((s: any) => ({ ...s, name: t(s.name) || s.name }))} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" nameKey="name">
                   {soilData.map((entry: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
                 <Legend verticalAlign="bottom" height={36} />
@@ -217,19 +207,19 @@ export default function AdminDashboard() {
 
         {/* Nutrient Deficiencies */}
         <Card className="p-5">
-          <h3 className="font-bold text-text-primary mb-5">{t('nutrientDeficiencyIncidents')}</h3>
+          <h3 className="font-bold text-text-primary mb-5">{t('nutrientAlert') || 'Nutrient Alerts'}</h3>
           {nutrientData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
               {t('noPredictionsMadeYet') || 'No predictions made yet'}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={nutrientData} layout="vertical" margin={{ top: 5, right: 5, bottom: 0, left: 10 }}>
+              <BarChart data={nutrientData.map((n: any) => ({ ...n, name: t(n.name) || n.name }))} layout="vertical" margin={{ top: 5, right: 5, bottom: 0, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                 <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: '#f5f5f5' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="value" fill="#FB8C00" radius={[0, 4, 4, 0]} name={t('incidents')} />
+                <Bar dataKey="value" fill="#FB8C00" radius={[0, 4, 4, 0]} name={t('incidents') || 'Incidents'} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -237,76 +227,87 @@ export default function AdminDashboard() {
       </div>
 
       {/* Chatbot Monitoring Module */}
-      <h3 className="text-xl font-bold text-text-primary mt-8 mb-2">{t('chatbotMonitoring')}</h3>
+      <h3 className="text-xl font-bold text-text-primary mt-8 mb-2">{t('chatbotMonitoring') || 'Chatbot Monitoring'}</h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600"><MessageSquare size={24} /></div>
-          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.total_conversations?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted">{t('totalConversations')}</p></div>
+          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.total_conversations?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted">{t('totalConversations') || 'Total Conversations'}</p></div>
         </Card>
         <Card className="p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600"><HelpCircle size={24} /></div>
-          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.avg_questions_per_session?.toFixed(1) ?? '0.0'}</p><p className="text-sm font-medium text-text-muted">{t('avgQuestionsSession')}</p></div>
+          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.avg_questions_per_session ?? '0.0'}</p><p className="text-sm font-medium text-text-muted">{t('avgQuestionsPerSession') || 'Avg Questions/Session'}</p></div>
         </Card>
         <Card className="p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-green-600"><Users size={24} /></div>
-          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.active_users_today?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted">{t('activeUsersToday')}</p></div>
+          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.active_users_today?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted">{t('activeUsersToday') || 'Active Users Today'}</p></div>
         </Card>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-text-primary">{t('recentBotActivity')}</h3>
+            <h3 className="font-bold text-text-primary">{t('recentBotActivity') || 'Recent Bot Activity'}</h3>
             <div className="w-64">
-              <SearchInput value={botSearch} onChange={setBotSearch} placeholder={t('searchActivity')} />
+              <SearchInput value={botSearch} onChange={setBotSearch} placeholder={t('searchActivity') || "Search activity..."} />
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('time')}</th>
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('user')}</th>
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('topic')}</th>
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('language')}</th>
-                  <th className="text-left py-2 text-xs font-semibold text-text-muted">{t('status')}</th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('time') || 'Time'}</th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('user') || 'User'}</th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('topic') || 'Topic'}</th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('language') || 'Language'}</th>
+                  <th className="text-left py-2 text-xs font-semibold text-text-muted">{t('status') || 'Status'}</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredBotActivity.map((a: any, i: number) => (
-                  <tr key={i} className="border-b border-border hover:bg-background transition-colors">
-                    <td className="py-2.5 pr-3 text-xs text-text-muted">{a.timestamp || a.time}</td>
-                    <td className="py-2.5 pr-3 font-medium text-text-primary text-xs">{a.userName || a.user}</td>
-                    <td className="py-2.5 pr-3 text-xs">{a.topic}</td>
-                    <td className="py-2.5 pr-3 text-xs">{a.language || a.preferredLanguage}</td>
-                    <td className="py-2.5">
-                      <Badge color={a.status === 'Resolved' ? 'green' : 'orange'}>
-                        {a.status === 'Resolved' ? t('resolved') : t('pending')}
-                      </Badge>
+                {filteredBotActivity.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center py-6 text-text-muted text-xs font-medium">
+                      {t('noDataAvailable') || 'No recent activity'}
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredBotActivity.map((a: any, i: number) => (
+                    <tr key={a.id || i} className="border-b border-border hover:bg-background transition-colors">
+                      <td className="py-2.5 pr-3 text-xs text-text-muted">{a.time}</td>
+                      <td className="py-2.5 pr-3 font-medium text-text-primary text-xs">{a.user}</td>
+                      <td className="py-2.5 pr-3 text-xs">{t(a.topic) || a.topic}</td>
+                      <td className="py-2.5 pr-3 text-xs">{t(a.lang) || a.lang}</td>
+                      <td className="py-2.5">
+                        <Badge color={a.status === 'Resolved' ? 'green' : 'orange'}>{t(a.status) || a.status}</Badge>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </Card>
 
         <Card className="p-5">
-          <h3 className="font-bold text-text-primary mb-5">{t('languagesUsed')}</h3>
-          <ResponsiveContainer width="100%" height={220}>
-            <PieChart>
-              <Pie data={langData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
-                {langData.map((entry: any, index: number) => (
+          <h3 className="font-bold text-text-primary mb-5">{t('languagesUsed') || 'Languages Used'}</h3>
+          {langData.length === 0 ? (
+            <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
+              {t('noDataAvailable') || 'No data available'}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={langData.map((l: any) => ({ ...l, name: t(l.name) || l.name }))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
+                  {langData.map((entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-              <Legend verticalAlign="bottom" height={36} />
-            </PieChart>
-          </ResponsiveContainer>
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
+                <Legend verticalAlign="bottom" height={36} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
         </Card>
       </div>
-
     </div>
   )
 }

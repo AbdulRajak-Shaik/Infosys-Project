@@ -45,7 +45,7 @@ export function generatePdfReport(data: ReportData) {
   })()
   const userName = data.userName || savedUserName || 'Valued Farmer'
   
-  const soilType = data.soilType || 'Black Soil'
+  const soilType = data.soilType || 'Unknown Soil'
   const confidence = data.confidence ? (data.confidence > 1 ? data.confidence.toFixed(1) : (data.confidence * 100).toFixed(1)) : '93.2'
   const healthScore = data.soilHealthScore ?? 61.2
   const healthStatus = data.soilHealthStatus || (healthScore >= 75 ? 'Optimal' : healthScore >= 50 ? 'Moderate' : 'Low')

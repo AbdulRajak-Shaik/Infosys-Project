@@ -145,6 +145,7 @@ export function getMultilingualPdfUrl(languageCode: string, farmerName = 'Rahul 
 export interface LoginPayload {
   email: string;
   password: string;
+  role?: string;
 }
 
 export interface RegisterPayload {
@@ -154,6 +155,7 @@ export interface RegisterPayload {
   confirm_password: string;
   language_id: number;
   region: string;
+  role?: 'farmer' | 'admin';
 }
 
 export interface TokenResponse {
@@ -1058,6 +1060,14 @@ export async function getAdminUsers(): Promise<any[]> {
   return request<any[]>('/admin/users', { method: 'GET' });
 }
 
+export async function updateAdminUser(userId: number, data: { role?: string; status?: string }): Promise<any> {
+  return request<any>(`/admin/users/${userId}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+
+export async function deleteAdminUser(userId: number): Promise<any> {
+  return request<any>(`/admin/users/${userId}`, { method: 'DELETE' });
+}
+
 export async function getUserAnalytics(): Promise<any> {
   return request<any>('/analytics/dashboard', { method: 'GET' });
 }
@@ -1083,3 +1093,13 @@ export async function markNotificationRead(id: string): Promise<any> {
 export async function markAllNotificationsRead(): Promise<any> {
   return request<any>('/notifications/read-all', { method: 'POST' });
 }
+
+export const api = {
+  get: <T = any>(url: string, config?: any) => request<T>(url, { method: 'GET', ...(config || {}) }).then(data => ({ data })),
+  post: <T = any>(url: string, body?: any, config?: any) => request<T>(url, { method: 'POST', body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined), ...(config || {}) }).then(data => ({ data })),
+  put: <T = any>(url: string, body?: any, config?: any) => request<T>(url, { method: 'PUT', body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined), ...(config || {}) }).then(data => ({ data })),
+  patch: <T = any>(url: string, body?: any, config?: any) => request<T>(url, { method: 'PATCH', body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined), ...(config || {}) }).then(data => ({ data })),
+  delete: <T = any>(url: string, config?: any) => request<T>(url, { method: 'DELETE', ...(config || {}) }).then(data => ({ data })),
+};
+
+export default api;

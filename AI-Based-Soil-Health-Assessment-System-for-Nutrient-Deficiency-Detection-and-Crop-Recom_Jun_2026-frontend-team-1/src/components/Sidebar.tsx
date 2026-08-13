@@ -206,7 +206,7 @@ export default function Sidebar({ role, user, currentPage, onNavigate, onLogout,
                 className="font-medium mt-0.5"
                 style={{ fontSize: 11, color: 'rgba(255,255,255,0.58)', letterSpacing: '0.04em' }}
               >
-                {t('aiFarmingPlatform')}
+                {role === 'admin' ? t('systemAdmin') : t('aiFarmingPlatform')}
               </p>
             </div>
           </div>

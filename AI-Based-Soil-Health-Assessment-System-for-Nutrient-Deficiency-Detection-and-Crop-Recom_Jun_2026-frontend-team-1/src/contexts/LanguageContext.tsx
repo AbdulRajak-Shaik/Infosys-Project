@@ -48,6 +48,17 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     } catch {}
     setCurrentLanguage(lang)
     window.dispatchEvent(new Event('languageChange'))
+    
+    // Sync preferred language to backend if logged in
+    import('../services/api')
+      .then(({ updateUserLanguage }) => {
+        updateUserLanguage(lang).catch(err => {
+          console.warn('Failed to sync language to database:', err)
+        })
+      })
+      .catch(err => {
+        console.warn('Could not load API helper for language sync:', err)
+      })
   }
 
   return (

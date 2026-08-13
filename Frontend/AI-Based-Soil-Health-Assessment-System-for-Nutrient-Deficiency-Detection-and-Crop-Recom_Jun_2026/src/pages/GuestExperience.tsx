@@ -1,3 +1,4 @@
+import { useTranslation } from '../i18n'
 import { useState, type ReactNode } from 'react'
 import {
   Leaf, Sprout, CheckCircle2, Lock, Zap, Camera, FlaskConical,
@@ -10,9 +11,11 @@ import { FEATURES } from '../config'
 const TRIAL_KEY = 'agroai_guest_trial_used'
 
 // ── Guest Navbar ──────────────────────────────────────────
-function GuestNavbar({ trialExhausted, onLogin, onRegister }: {
+function GuestNavbar({
+  trialExhausted, onLogin, onRegister }: {
   trialExhausted: boolean; onLogin: () => void; onRegister: () => void
 }) {
+  const { t } = useTranslation()
   return (
     <header className="h-16 bg-surface border-b border-border shadow-soft sticky top-0 z-30 flex items-center justify-between px-4 lg:px-6">
       <div className="flex items-center gap-3">
@@ -20,7 +23,7 @@ function GuestNavbar({ trialExhausted, onLogin, onRegister }: {
           <Leaf size={18} className="text-white" />
         </div>
         <div className="flex items-center gap-2">
-          <span className="font-bold text-text-primary text-base">AgroAI</span>
+          <span className="font-bold text-text-primary text-base">{t('agroAi')}</span>
           <span className="px-2 py-0.5 text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full tracking-wide">
             GUEST USER
           </span>
@@ -42,13 +45,13 @@ function GuestNavbar({ trialExhausted, onLogin, onRegister }: {
           onClick={onLogin}
           className="px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-background rounded-xl transition-all-smooth"
         >
-          Sign In
+          {t('signIn')}
         </button>
         <button
           onClick={onRegister}
           className="flex items-center gap-1.5 px-4 py-2 gradient-primary text-white text-sm font-semibold rounded-xl shadow-soft hover:opacity-90 transition-opacity"
         >
-          Create Account <ArrowRight size={13} />
+          {t('createAccount')} <ArrowRight size={13} />
         </button>
       </div>
     </header>
@@ -56,12 +59,14 @@ function GuestNavbar({ trialExhausted, onLogin, onRegister }: {
 }
 
 // ── Welcome Page ──────────────────────────────────────────
-function GuestWelcomePage({ onStart, onLogin }: {
+function GuestWelcomePage({
+  onStart, onLogin }: {
   onStart: () => void; onLogin: () => void
 }) {
+  const { t } = useTranslation()
   const trialFeatures = [
     { icon: <Camera size={15} />, label: 'Upload Soil Image' },
-    { icon: <FlaskConical size={15} />, label: 'Enter NPK Values' },
+    { icon: <FlaskConical size={15} />, label: t('npk') },
     { icon: <MapPin size={15} />, label: 'GPS Location Detection' },
     { icon: <CloudRain size={15} />, label: 'Auto Weather Fetch' },
     { icon: <Sparkles size={15} />, label: 'AI Crop Prediction' },
@@ -83,20 +88,19 @@ function GuestWelcomePage({ onStart, onLogin }: {
                 <Sparkles size={15} className="text-white" />
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-white mb-3">Try AgroAI for Free</h1>
+            <h1 className="text-3xl font-bold text-white mb-3">{t('tryAgroAiFree')}</h1>
             <p className="text-green-100 text-base leading-relaxed max-w-md mx-auto">
-              Experience our AI-powered crop recommendation with one complimentary analysis.
-              No registration required.
+              {t('guestWelcomeDesc')}
             </p>
           </div>
 
           {/* Info banner */}
           <div className="bg-amber-50 border-b border-amber-100 px-6 py-3.5">
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2">
-              {['One free analysis', 'No credit card required', 'Registration required for additional analyses'].map(item => (
+              {['oneFreeAnalysis', 'noCreditCardRequired', 'registrationRequiredAdditional'].map(item => (
                 <div key={item} className="flex items-center gap-2 text-sm font-medium text-amber-700">
                   <CheckCircle2 size={12} className="text-amber-600 flex-shrink-0" />
-                  {item}
+                  {t(item) || item}
                 </div>
               ))}
             </div>
@@ -145,7 +149,7 @@ function GuestWelcomePage({ onStart, onLogin }: {
 
             <div className="flex items-center gap-4 mt-6">
               <div className="flex-1 h-px bg-background" />
-              <span className="text-xs text-text-muted font-medium whitespace-nowrap">Already have an account?</span>
+              <span className="text-xs text-text-muted font-medium whitespace-nowrap">{t('alreadyHaveAccount')}</span>
               <div className="flex-1 h-px bg-background" />
             </div>
             <button
@@ -162,7 +166,9 @@ function GuestWelcomePage({ onStart, onLogin }: {
 }
 
 // ── Locked State ──────────────────────────────────────────
-function LockedState({ onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
+function LockedState({
+  onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
+  const { t } = useTranslation()
   const premiumFeatures = [
     'Unlimited Crop Recommendations',
     'Soil Classification',
@@ -191,7 +197,7 @@ function LockedState({ onLogin, onRegister }: { onLogin: () => void; onRegister:
               </div>
               <div className="absolute inset-0 rounded-full border-2 border-white/30 border-dashed animate-spin-slow" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Your Free Trial Has Been Used</h2>
+            <h2 className="text-2xl font-bold text-white mb-2">{t('freeTrialUsed')}</h2>
             <p className="text-amber-100 text-sm leading-relaxed">
               You've already completed your complimentary AI crop analysis.
             </p>
@@ -238,9 +244,10 @@ function LockedState({ onLogin, onRegister }: { onLogin: () => void; onRegister:
 }
 
 // ── Premium Feature Modal ─────────────────────────────────
-function PremiumModal({ onClose, onLogin, onRegister }: {
-  onClose: () => void; onLogin: () => void; onRegister: () => void
+function PremiumModal({
+  onClose, onLogin, onRegister }: {onClose: () => void; onLogin: () => void; onRegister: () => void
 }) {
+  const { t } = useTranslation()
   const benefits: { icon: ReactNode; label: string }[] = [
     { icon: <Sparkles size={13} />, label: 'Unlimited AI Predictions' },
     { icon: <History size={13} />, label: 'Save Prediction History' },
@@ -291,7 +298,7 @@ function PremiumModal({ onClose, onLogin, onRegister }: {
             onClick={onLogin}
             className="w-full py-2.5 text-sm text-text-muted hover:text-text-secondary transition-colors font-medium text-center"
           >
-            Already have an account?{' '}
+            {t('alreadyHaveAccount')}{' '}
             <span className="text-green-600 font-semibold">Sign In</span>
           </button>
         </div>
@@ -301,8 +308,8 @@ function PremiumModal({ onClose, onLogin, onRegister }: {
 }
 
 // ── Post-Prediction Sticky Banner ─────────────────────────
-function PostPredictionBanner({ onRegister, onLogin }: { onRegister: () => void; onLogin: () => void }) {
-  return (
+function PostPredictionBanner({
+  onRegister, onLogin }: { onRegister: () => void; onLogin: () => void }) {return (
     <div className="fixed bottom-0 inset-x-0 z-40 p-4 animate-slide-in-up pointer-events-none">
       <div className="max-w-3xl mx-auto bg-gradient-to-r from-green-600 to-green-700 rounded-2xl shadow-elevated p-4 md:p-5 pointer-events-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -338,10 +345,11 @@ function PostPredictionBanner({ onRegister, onLogin }: { onRegister: () => void;
 }
 
 // ── Main Guest Experience Orchestrator ────────────────────
-export default function GuestExperience({ onLogin, onRegister }: {
-  onLogin: () => void
+export default function GuestExperience({
+  onLogin, onRegister }: {onLogin: () => void
   onRegister: () => void
 }) {
+  const { t } = useTranslation()
   // Read localStorage once on mount — did a previous session use the trial?
   const [isLocked] = useState(() => localStorage.getItem(TRIAL_KEY) === 'true')
   const [page, setPage] = useState<'welcome' | 'crop'>('welcome')
@@ -369,13 +377,13 @@ export default function GuestExperience({ onLogin, onRegister }: {
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold gradient-secondary text-white shadow-soft hover:opacity-90 transition-opacity"
       >
         <ArrowRight size={15} />
-        Sign Up to Unlock Unlimited AI Predictions
+        {t('signUpUnlockUnlimited')}
       </button>
       <button
         onClick={onLogin}
         className="w-full py-2 text-xs text-text-muted hover:text-text-secondary font-medium transition-colors"
       >
-        Already have an account?{' '}
+        {t('alreadyHaveAccount')}{' '}
         <span className="text-green-600 font-semibold">Sign In</span>
       </button>
     </div>
@@ -427,7 +435,7 @@ export default function GuestExperience({ onLogin, onRegister }: {
                 onClick={onRegister}
                 className="text-xs font-bold text-green-600 hover:text-green-700 whitespace-nowrap hidden sm:block transition-colors"
               >
-                Create Account →
+                {t('createAccount')} →
               </button>
             </div>
 

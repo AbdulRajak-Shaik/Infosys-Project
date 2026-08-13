@@ -53,15 +53,25 @@ def public_recent_chat_activity(db: Session = Depends(get_db), current_user: Use
         )
         result = []
         from app.services.chatbot_service import classify_topic
+        lang_display_map = {
+            "en": "English", "te": "Telugu", "hi": "Hindi", "ta": "Tamil",
+            "kn": "Kannada", "ml": "Malayalam", "mr": "Marathi", "gu": "Gujarati",
+            "bn": "Bengali", "pa": "Punjabi", "or": "Odia", "as": "Assamese",
+            "ur": "Urdu", "mai": "Maithili", "mni": "Manipuri", "sat": "Santali",
+            "brx": "Bodo", "doi": "Dogri", "ks": "Kashmiri", "kok": "Konkani",
+            "ne": "Nepali", "sa": "Sanskrit", "sd": "Sindhi"
+        }
         for r in records:
             user = r.user
+            raw_lang = r.question_language or r.preferred_language or (user.language.language_name if user and user.language else "English")
+            lang_name = lang_display_map.get(raw_lang.strip().lower() if raw_lang else "", raw_lang or "English")
             result.append(
                 {
                     "id": f"conv-{r.id}",
                     "timestamp": r.created_at.isoformat(),
                     "userName": user.username if user and user.username else f"User {r.user_id}",
                     "userRole": user.role.title() if user and user.role else "Farmer",
-                    "language": r.question_language or r.preferred_language or (user.language.language_name if user and user.language else "English"),
+                    "language": lang_name,
                     "question": r.user_message,
                     "assistant_response": r.assistant_response,
                     "topic": classify_topic(r.user_message, r.prediction_history_id),

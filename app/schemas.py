@@ -14,6 +14,7 @@ class UserRegisterRequest(BaseModel):
     confirm_password: str = Field(..., description="Confirm password. Must be identical to password.")
     language_id: int = Field(..., description="ID of the predefined language from the languages table.")
     region: str = Field(..., min_length=2, max_length=100, description="State, district, or region of the user.")
+    role: Literal["farmer", "admin"] = Field(default="farmer", description="User role (farmer or admin).")
 
     @field_validator("password")
     @classmethod
@@ -86,6 +87,8 @@ class AdminUserResponse(BaseModel):
     language_id: int | None
     created_at: datetime
     updated_at: datetime
+    analyses: int = 0
+    chatbot: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -392,14 +395,15 @@ class FeedbackResponse(BaseModel):
 
     id: int
     user_id: int
+    user_name: str | None = None
+    user_email: str | None = None
     rating: int
     comment: str
     admin_response: str | None = None
     is_resolved: bool = False
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CurrentWeatherResponse(BaseModel):

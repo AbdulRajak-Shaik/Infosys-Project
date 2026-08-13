@@ -144,17 +144,15 @@ def api_user_growth(db: Session = Depends(get_db)):
     summary="Compatibility: recent users",
     responses={500: {"description": "Users could not be retrieved."}},
 )
-def api_recent_users(limit: int = 5, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Return a small set of recent users for dashboard compatibility.
-
-    Requires an authenticated administrator.
-    """
+def api_recent_users(limit: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Return recent or all users for admin consumption."""
     try:
-        # require admin privileges
         if current_user.role != UserRole.ADMIN.value:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access is required.")
         users = get_recent_users(db)
-        return users[:max(0, int(limit))]
+        if limit and limit > 0:
+            return users[:limit]
+        return users
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -202,12 +200,14 @@ def api_user_growth_root(db: Session = Depends(get_db)):
 
 
 @api_router.get("/users", summary="Compatibility: recent users")
-def api_recent_users_root(limit: int = 5, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def api_recent_users_root(limit: int | None = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
         if current_user.role != UserRole.ADMIN.value:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access is required.")
         users = get_recent_users(db)
-        return users[:max(0, int(limit))]
+        if limit and limit > 0:
+            return users[:limit]
+        return users
     except HTTPException:
         raise
     except SQLAlchemyError as exc:
@@ -215,6 +215,7 @@ def api_recent_users_root(limit: int = 5, db: Session = Depends(get_db), current
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to retrieve users.",
         ) from exc
+
 
 
 @api_router.get("/analytics/summary", summary="Get platform analytics summary")

@@ -1,5 +1,6 @@
 import { type ReactNode, type ButtonHTMLAttributes } from 'react'
 import { Search, X } from 'lucide-react'
+import { useTranslation } from '../i18n'
 
 export interface SearchInputProps {
   value: string
@@ -53,7 +54,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ variant = 'primary', size = 'md', loading, icon, children, className = '', disabled, ...props }: ButtonProps) {
-  const base = 'relative inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-200 overflow-hidden cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500'
+  const { t } = useTranslation()
+const base = 'relative inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-200 overflow-hidden cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500'
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-6 py-3 text-base' }
   const variants = {
     primary: 'gradient-primary text-white shadow-sm hover:opacity-90 hover:shadow-md active:scale-[0.98]',
@@ -86,7 +88,8 @@ export function Card({ children, className = '', onClick }: CardProps) {
 
 interface BadgeProps { children: ReactNode; color?: 'green' | 'blue' | 'orange' | 'red' | 'gray' | 'purple' }
 export function Badge({ children, color = 'green' }: BadgeProps) {
-  const colors = {
+  const { t } = useTranslation()
+const colors = {
     green: 'bg-primary-50 text-primary-700 border border-primary-100',
     blue: 'bg-blue-50 text-blue-700 border border-blue-100',
     orange: 'bg-orange-50 text-orange-700 border border-orange-100',
@@ -98,7 +101,8 @@ export function Badge({ children, color = 'green' }: BadgeProps) {
 }
 
 export function Skeleton({ className = '', variant = 'text' }: { className?: string, variant?: 'text' | 'circular' | 'rectangular' }) {
-  const base = "skeleton relative overflow-hidden bg-background"
+  const { t } = useTranslation()
+const base = "skeleton relative overflow-hidden bg-background"
   const variants = {
     text: "h-4 w-full rounded",
     circular: "rounded-full",
@@ -167,12 +171,12 @@ export function ProgressBar({ value, color = '#2E7D32', label }: { value: number
 }
 
 export function StatusDot({ status }: { status: 'green' | 'yellow' | 'red' }) {
-  const colors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' }
+  const { t } = useTranslation()
+const colors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' }
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${colors[status]}`} />
 }
 
-export function Breadcrumb({ items, onNavigate }: {
-  items: { label: string; page?: string }[]
+export function Breadcrumb({ items, onNavigate }: {items: { label: string; page?: string }[]
   onNavigate?: (page: string) => void
 }) {
   return (
@@ -196,8 +200,7 @@ export function Breadcrumb({ items, onNavigate }: {
   )
 }
 
-export function Toast({ message, type = 'success', onClose }: { message: string; type?: 'success' | 'error' | 'warning'; onClose: () => void }) {
-  const wrapperStyles = {
+export function Toast({ message, type = 'success', onClose }: { message: string; type?: 'success' | 'error' | 'warning'; onClose: () => void }) {const wrapperStyles = {
     success: 'bg-surface border-green-200 text-green-800',
     error:   'bg-surface border-red-200   text-red-700',
     warning: 'bg-surface border-amber-200 text-amber-700',

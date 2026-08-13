@@ -5,12 +5,32 @@ from collections import Counter
 
 LANGUAGE_BY_ID = {
     1: "English",
-    2: "Telugu",
-    3: "Hindi",
+    2: "Hindi",
+    3: "Telugu",
     4: "Tamil",
+    5: "Kannada",
+    6: "Malayalam",
+    7: "Marathi",
+    8: "Gujarati",
+    9: "Bengali",
+    10: "Punjabi",
+    11: "Odia",
+    12: "Assamese",
+    13: "Urdu",
+    14: "Maithili",
+    15: "Manipuri",
+    16: "Santali",
+    17: "Bodo",
+    18: "Dogri",
+    19: "Kashmiri",
+    20: "Konkani",
+    21: "Nepali",
+    22: "Sanskrit",
+    23: "Sindhi",
 }
 
 LANGUAGE_RESPONSE_KEYS = {
+
     "English": "english_response",
     "Telugu": "telugu_response",
     "Hindi": "hindi_response",

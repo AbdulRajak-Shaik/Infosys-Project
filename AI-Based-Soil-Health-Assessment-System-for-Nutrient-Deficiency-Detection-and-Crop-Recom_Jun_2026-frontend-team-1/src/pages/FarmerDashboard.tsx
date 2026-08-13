@@ -67,7 +67,7 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
       userName: rawUsername,
       location: sarvamLocation || rawLocation,
       topCrop: 'Cotton',
-      soilType: 'Black Soil',
+      soilType: 'Unknown Soil',
       confidence: 96.2,
       recommendations: [
         'Apply NPK 120:60:60 kg/ha in 3 split doses.',

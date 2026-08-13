@@ -5,7 +5,10 @@ Sets up an SQLite test database, seeds deterministic data, and exposes
 model-loading tests during local runs.
 """
 import os
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.resolve()))
 
 import pytest
 
@@ -57,21 +60,35 @@ def client(app):
 			db.commit()
 			db.refresh(lang)
 
+		from app.security import get_password_hash
+
 		admin = db.query(User).filter_by(email="admin@example.com").first()
 		if not admin:
 			admin = User(username="admin", email="admin@example.com", hashed_password="x", role="admin", language_id=lang.id)
 			db.add(admin)
+
+		admin_role_test = db.query(User).filter_by(email="admin_role_test@example.com").first()
+		if not admin_role_test:
+			admin_role_test = User(username="Admin Tester", email="admin_role_test@example.com", hashed_password=get_password_hash("AdminPass123!"), role="admin", status="active", language_id=lang.id)
+			db.add(admin_role_test)
 
 		farmer = db.query(User).filter_by(email="farmer@example.com").first()
 		if not farmer:
 			farmer = User(username="farmer1", email="farmer@example.com", hashed_password="x", role="farmer", language_id=lang.id)
 			db.add(farmer)
 
+		testfarmer1 = db.query(User).filter_by(email="testfarmer1@example.com").first()
+		if not testfarmer1:
+			testfarmer1 = User(username="testfarmer1", email="testfarmer1@example.com", hashed_password=get_password_hash("Password123!"), role="farmer", status="active", region="Punjab", language_id=lang.id)
+			db.add(testfarmer1)
+
 		db.commit()
 
 		# ensure we have fresh user ids
 		db.refresh(admin)
+		db.refresh(admin_role_test)
 		db.refresh(farmer)
+		db.refresh(testfarmer1)
 
 		# Insert chat history only if not already present
 		existing = db.query(ChatHistory).filter_by(user_id=farmer.id, user_message="How much nitrogen?").first()

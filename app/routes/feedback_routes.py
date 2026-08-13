@@ -40,7 +40,22 @@ def submit_feedback(
 def view_feedback(
     db: Session = Depends(get_db),
 ):
-    return get_all_feedback(db)
+    items = get_all_feedback(db)
+    result = []
+    for item in items:
+        user = item.user
+        result.append(FeedbackResponse(
+            id=item.id,
+            user_id=item.user_id,
+            user_name=user.username if user and user.username else f"Farmer #{item.user_id}",
+            user_email=user.email if user else None,
+            rating=item.rating,
+            comment=item.comment,
+            admin_response=item.admin_response,
+            is_resolved=bool(item.is_resolved),
+            created_at=item.created_at
+        ))
+    return result
 
 
 @router.get(

@@ -6,7 +6,7 @@ from datetime import date
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models import ChatHistory, Feedback, PredictionHistory, User, UserRole
+from app.models import ChatHistory, Feedback, PredictionHistory, User, UserRole, Language
 
 
 def _normalize_chart_value(value: object) -> str:
@@ -42,51 +42,107 @@ def get_dashboard_summary(db: Session) -> dict[str, int]:
 
 def get_user_growth(db: Session) -> list[dict[str, int | str]]:
     """Return monthly user registration totals in chronological order, grouped by role."""
-    month_start = func.date_trunc("month", User.created_at).label("month_start")
-    results = (
-        db.query(month_start, User.role, func.count(User.id).label("count"))
-        .group_by(month_start, User.role)
-        .order_by(month_start)
-        .all()
-    )
-
-    months_list = []
-    months_seen = {}
-    for r in results:
-        m_name = r.month_start.strftime("%B")
-        if m_name not in months_seen:
-            item = {"month": m_name, "farmers": 0, "admins": 0, "users": 0}
-            months_seen[m_name] = item
-            months_list.append(item)
-        
-        role_str = str(r.role).lower()
-        if role_str == "farmer":
-            months_seen[m_name]["farmers"] += r.count
-        elif role_str == "admin":
-            months_seen[m_name]["admins"] += r.count
-        months_seen[m_name]["users"] += r.count
-
-    return months_list
+    try:
+        bind = db.get_bind()
+        if bind and bind.dialect.name == "sqlite":
+            month_str = func.strftime("%Y-%m", User.created_at).label("month_str")
+            results = (
+                db.query(month_str, User.role, func.count(User.id).label("count"))
+                .group_by(month_str, User.role)
+                .order_by(month_str)
+                .all()
+            )
+            months_list = []
+            months_seen = {}
+            for r in results:
+                m_key = r.month_str or "2026-01"
+                try:
+                    from datetime import datetime
+                    m_name = datetime.strptime(m_key, "%Y-%m").strftime("%B")
+                except Exception:
+                    m_name = m_key
+                if m_name not in months_seen:
+                    item = {"month": m_name, "farmers": 0, "admins": 0, "users": 0}
+                    months_seen[m_name] = item
+                    months_list.append(item)
+                role_str = str(r.role).lower()
+                if role_str == "farmer":
+                    months_seen[m_name]["farmers"] += r.count
+                elif role_str == "admin":
+                    months_seen[m_name]["admins"] += r.count
+                months_seen[m_name]["users"] += r.count
+            return months_list
+        else:
+            month_start = func.date_trunc("month", User.created_at).label("month_start")
+            results = (
+                db.query(month_start, User.role, func.count(User.id).label("count"))
+                .group_by(month_start, User.role)
+                .order_by(month_start)
+                .all()
+            )
+            months_list = []
+            months_seen = {}
+            for r in results:
+                m_name = r.month_start.strftime("%B") if hasattr(r.month_start, "strftime") else str(r.month_start)
+                if m_name not in months_seen:
+                    item = {"month": m_name, "farmers": 0, "admins": 0, "users": 0}
+                    months_seen[m_name] = item
+                    months_list.append(item)
+                role_str = str(r.role).lower()
+                if role_str == "farmer":
+                    months_seen[m_name]["farmers"] += r.count
+                elif role_str == "admin":
+                    months_seen[m_name]["admins"] += r.count
+                months_seen[m_name]["users"] += r.count
+            return months_list
+    except Exception as err:
+        print(f"Error calculating user growth: {err}")
+        return []
 
 
 def get_recent_users(db: Session) -> list[dict[str, object]]:
-    """Return the five most recently registered users for the dashboard."""
-    recent_users = (
-        db.query(
-            User.id,
-            User.username,
-            User.email,
-            User.role,
-            User.region,
-            User.status,
-            User.created_at,
-        )
+    """Return recently registered users for the dashboard with real usage statistics."""
+    users = (
+        db.query(User)
         .order_by(User.created_at.desc())
-        .limit(5)
         .all()
     )
 
-    return [dict(user._mapping) for user in recent_users]
+    result = []
+    for user in users:
+        prediction_count = db.query(func.count(PredictionHistory.id)).filter(PredictionHistory.user_id == user.id).scalar() or 0
+        chatbot_count = db.query(func.count(ChatHistory.id)).filter(ChatHistory.user_id == user.id).scalar() or 0
+        result.append({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "region": user.region or "N/A",
+            "status": user.status,
+            "phone": getattr(user, "phone", None) or "N/A",
+            "created_at": user.created_at,
+            "last_login_at": getattr(user, "last_login_at", None),
+            "language_id": user.language_id,
+            "analyses": prediction_count,
+            "chatbot": chatbot_count,
+        })
+    return result
+
+
+import json
+
+
+def _parse_json_list(val: object) -> list:
+    if isinstance(val, list):
+        return val
+    if isinstance(val, str):
+        try:
+            parsed = json.loads(val)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            pass
+    return []
 
 
 def get_dashboard_insights(db: Session) -> dict[str, object]:
@@ -100,10 +156,12 @@ def get_dashboard_insights(db: Session) -> dict[str, object]:
         if record.soil_type:
             soil_counts[record.soil_type] += 1
 
-        for crop in record.recommended_crops or []:
+        crops = _parse_json_list(record.recommended_crops)
+        for crop in crops:
             crop_counts[_normalize_chart_value(crop)] += 1
 
-        for deficiency in record.nutrient_deficiencies or []:
+        deficiencies = _parse_json_list(record.nutrient_deficiencies)
+        for deficiency in deficiencies:
             nutrient_counts[_normalize_chart_value(deficiency)] += 1
 
     soil_type_distribution = [
@@ -119,26 +177,34 @@ def get_dashboard_insights(db: Session) -> dict[str, object]:
         for name, count in nutrient_counts.most_common()
     ]
 
-    language_counts = Counter()
+    # Load all languages from languages table to ensure we include supported ones with 0 users
+    languages_list = db.query(Language).filter(Language.is_active == True).all()
+    user_lang_counts = Counter()
     for user in db.query(User).all():
-        if user.language and user.language.language_name:
-            language_counts[user.language.language_name] += 1
+        if user.language:
+            user_lang_counts[user.language.language_name] += 1
         else:
-            language_counts["Unknown"] += 1
+            user_lang_counts["English"] += 1
+            
+    language_usage = []
+    for lang in languages_list:
+        language_usage.append({
+            "name": lang.language_name,
+            "value": user_lang_counts[lang.language_name]
+        })
+    # Sort language_usage by value descending, and then by name
+    language_usage.sort(key=lambda x: (-x["value"], x["name"]))
 
-    language_usage = [
-        {"name": name, "value": count}
-        for name, count in language_counts.most_common()
-    ]
 
-    chat_records = db.query(ChatHistory).order_by(ChatHistory.created_at.desc()).limit(6).all()
+    chat_records = db.query(ChatHistory).order_by(ChatHistory.created_at.desc()).limit(10).all()
     recent_chat_activity = [
         {
             "id": chat.id,
             "user_name": chat.user.username if chat.user and chat.user.username else f"User {chat.user_id}",
             "user_message": chat.user_message,
+            "assistant_response": chat.assistant_response or "Response generated.",
             "question_language": chat.question_language,
-            "preferred_language": chat.preferred_language,
+            "preferred_language": chat.preferred_language or chat.question_language or "en",
             "created_at": chat.created_at,
         }
         for chat in chat_records
@@ -147,7 +213,8 @@ def get_dashboard_insights(db: Session) -> dict[str, object]:
     total_conversations = db.query(func.count(ChatHistory.id)).scalar() or 0
     user_sessions = set()
     for chat in db.query(ChatHistory.user_id, ChatHistory.created_at).all():
-        user_sessions.add((chat.user_id, chat.created_at.date()))
+        if chat.created_at:
+            user_sessions.add((chat.user_id, chat.created_at.date()))
 
     avg_questions_per_session = round(total_conversations / max(len(user_sessions), 1), 1)
     active_users_today = (
@@ -169,3 +236,4 @@ def get_dashboard_insights(db: Session) -> dict[str, object]:
         },
         "recent_chat_activity": recent_chat_activity,
     }
+

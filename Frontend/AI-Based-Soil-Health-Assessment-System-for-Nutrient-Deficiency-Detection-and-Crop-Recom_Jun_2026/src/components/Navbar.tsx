@@ -1,12 +1,15 @@
-import { Bell, Search, Menu, Sun, Moon, ChevronDown, Globe } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { Bell, Menu, Sun, Moon } from 'lucide-react'
 import { SearchInput } from './ui'
-import { useTranslate } from '../contexts/TranslationContext'
+import { useTranslation } from '../i18n'
+import { getLocalizedPersonName } from '../services/api'
+import { useLanguage } from '../contexts/LanguageContext'
+import LanguageSelector from './LanguageSelector'
 
 type Role = 'farmer' | 'admin'
 
 interface NavbarProps {
   role: Role
+  user?: any
   page: string
   darkMode: boolean
   onToggleDark: () => void
@@ -15,61 +18,100 @@ interface NavbarProps {
   unreadNotifs?: number
 }
 
+export const INITIAL_LANGUAGES = [
+  { code: 'en', name: 'English', native: 'English', flag: '🌐' },
+  { code: 'hi', name: 'Hindi', native: 'हिंदी', flag: '🇮🇳' },
+  { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'kn', name: 'Kannada', native: 'ಕನ್ನಡ', flag: '🇮🇳' },
+  { code: 'ml', name: 'Malayalam', native: 'മലയാളം', flag: '🇮🇳' },
+  { code: 'mr', name: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা', flag: '🇮🇳' },
+  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', flag: '🇮🇳' },
+  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+  { code: 'or', name: 'Odia', native: 'ଓଡ଼ିଆ', flag: '🇮🇳' },
+  { code: 'as', name: 'Assamese', native: 'অসমীয়া', flag: '🇮🇳' },
+  { code: 'ur', name: 'Urdu', native: 'اردو', flag: '🇮🇳' },
+  { code: 'mai', name: 'Maithili', native: 'मैथिली', flag: '🇮🇳' },
+  { code: 'mni', name: 'Manipuri / Meitei', native: 'মৈতৈলোন্', flag: '🇮🇳' },
+  { code: 'sat', name: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ', flag: '🇮🇳' },
+  { code: 'brx', name: 'Bodo', native: 'बर\'', flag: '🇮🇳' },
+  { code: 'doi', name: 'Dogri', native: 'डोगरी', flag: '🇮🇳' },
+  { code: 'ks', name: 'Kashmiri', native: 'कॉशुर', flag: '🇮🇳' },
+  { code: 'kok', name: 'Konkani', native: 'कोंकणी', flag: '🇮🇳' },
+  { code: 'ne', name: 'Nepali', native: 'नेपाली', flag: '🇮🇳' },
+  { code: 'sa', name: 'Sanskrit', native: 'संस्कृतम्', flag: '🇮🇳' },
+  { code: 'sd', name: 'Sindhi', native: 'سنڌي / सिन्धी', flag: '🇮🇳' },
+]
+
 const pageTitles: Record<string, string> = {
-  dashboard: 'Dashboard',
-  soil: 'Soil Classification',
-  crop: 'Crop Recommendation',
-  fertilizer: 'Fertilizer Recommendation',
-  disease: 'Disease Detection',
-  chatbot: 'AI Chatbot',
-  weather: 'Weather Dashboard',
-  history: 'Prediction History',
-  notifications: 'Notifications',
-  feedback: 'Feedback',
-  profile: 'Profile',
-  about: 'About AgroAI',
-  settings: 'Settings',
-  users: 'User Management',
-  analytics: 'Analytics & Reports',
-  security: 'Security Logs',
-  health: 'System Health',
-  reports: 'Reports',
+  dashboard: 'dashboard',
+  soil: 'soil',
+  crop: 'crop',
+  fertilizer: 'fertilizer',
+  disease: 'disease',
+  chatbot: 'chatbot',
+  weather: 'weather',
+  history: 'history',
+  notifications: 'notifications',
+  feedback: 'feedback',
+  profile: 'profile',
+  about: 'about',
+  settings: 'settings',
+  users: 'userManagement',
+  analytics: 'analytics',
+  security: 'security',
+  health: 'health',
+  reports: 'reports',
 }
 
 const roleColors: Record<Role, string> = {
   farmer: 'from-green-600 to-green-700',
-
-  admin: 'from-purple-600 to-purple-700',
+  admin: 'from-blue-600 to-blue-700',
 }
 
-export default function Navbar({ role, page, darkMode, onToggleDark, onMenuToggle, onNavigate, unreadNotifs = 0 }: NavbarProps) {
-  const { i18n } = useTranslation()
-  const { lang, setLang, t } = useTranslate()
-  const languages = [
-    { code: 'en', label: 'EN' },
-    { code: 'hi', label: 'HI' },
-    { code: 'te', label: 'TE' },
-    { code: 'ta', label: 'TA' },
-    { code: 'kn', label: 'KN' },
-    { code: 'mr', label: 'MR' },
-    { code: 'bn', label: 'BN' },
-  ]
+import { useSarvamUsername } from '../services/sarvamClient'
+
+export function Navbar({
+  role,
+  user,
+  page,
+  darkMode,
+  onToggleDark,
+  onMenuToggle,
+  onNavigate,
+  unreadNotifs = 0,
+}: NavbarProps) {
+  const { t } = useTranslation()
+  const { currentLanguage } = useLanguage()
+
+  const rawName = user?.username || (role === 'farmer' ? 'farmer' : 'admin')
+  const sarvamName = useSarvamUsername(rawName)
+  const displayName = sarvamName || getLocalizedPersonName(t(rawName), currentLanguage)
+  const initials = displayName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
 
   return (
-    <header className={`h-16 flex items-center justify-between px-4 lg:px-6 border-b ${darkMode ? 'bg-[#1E293B]/80 backdrop-blur-md border-gray-800' : 'bg-white/80 backdrop-blur-md border-border'} shadow-soft sticky top-0 z-30`}>
+    <header className="h-16 border-b border-border bg-surface shadow-subtle px-4 md:px-6 flex items-center justify-between sticky top-0 z-30">
       <div className="flex items-center gap-3">
         <button
           onClick={onMenuToggle}
-          className={`lg:hidden p-2 rounded-lg ${darkMode ? 'text-text-muted hover:bg-gray-800' : 'text-text-muted hover:bg-background'}`}
+          className="lg:hidden p-2 rounded-xl text-text-secondary hover:bg-background transition-colors"
+          aria-label={t('aria.openMenu')}
         >
           <Menu size={20} />
         </button>
+
         <div>
-          <h1 className={`font-bold text-base leading-tight ${darkMode ? 'text-white' : 'text-text-primary'}`}>
-            {t(page) || 'AgroAI'}
+          <h1 className="text-lg font-bold text-text-primary leading-tight">
+            {t(pageTitles[page] || 'dashboard')}
           </h1>
-          <p className={`text-xs ${darkMode ? 'text-text-muted' : 'text-text-muted'}`}>
-            {new Date().toLocaleDateString(lang === 'te' ? 'te-IN' : lang === 'hi' ? 'hi-IN' : lang === 'ta' ? 'ta-IN' : lang === 'kn' ? 'kn-IN' : lang === 'mr' ? 'mr-IN' : lang === 'bn' ? 'bn-IN' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          <p className="text-[11px] text-text-muted hidden sm:block">
+            {role === 'farmer' ? t('smartFarming') : t('systemAdmin')}
           </p>
         </div>
       </div>
@@ -77,67 +119,63 @@ export default function Navbar({ role, page, darkMode, onToggleDark, onMenuToggl
       <div className="flex items-center gap-2">
         {/* Search */}
         <div className="hidden md:block">
-          <SearchInput 
-            value="" 
-            onChange={() => {}} 
-            placeholder={t('searchPlaceholder') || 'Search...'} 
+          <SearchInput
+            value=""
+            onChange={() => {}}
+            placeholder={t('search')}
             containerClassName="w-44 lg:w-52 py-1.5"
+            aria-label={t('aria.search')}
           />
         </div>
+
+        {/* Centralized Multi-lingual Language Selector */}
+        <LanguageSelector />
 
         {/* Dark mode */}
         <button
           onClick={onToggleDark}
-          className={`p-2 rounded-xl transition-all-smooth ${darkMode ? 'bg-gray-800 text-yellow-400' : 'bg-background text-text-secondary hover:bg-background'}`}
+          className={`p-2 rounded-xl transition-all-smooth ${
+            darkMode ? 'bg-gray-800 text-yellow-400' : 'bg-background text-text-secondary hover:bg-background'
+          }`}
+          aria-label={t('aria.toggleTheme')}
+          title={t('aria.toggleTheme')}
         >
           {darkMode ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
-        {/* Language selector dropdown */}
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-1.5 shadow-sm transition-all hover:border-text-muted/30">
-          <Globe size={15} className="text-text-muted flex-shrink-0" />
-          <select
-            value={lang}
-            onChange={(e) => setLang(e.target.value)}
-            className="bg-transparent text-xs font-semibold text-text-secondary outline-none border-none cursor-pointer pr-1"
-          >
-            <option value="en">English</option>
-            <option value="hi">हिंदी (Hindi)</option>
-            <option value="te">తెలుగు (Telugu)</option>
-            <option value="ta">தமிழ் (Tamil)</option>
-            <option value="kn">ಕನ್ನಡ (Kannada)</option>
-            <option value="mr">मराठी (Marathi)</option>
-            <option value="bn">বাংলা (Bengali)</option>
-          </select>
-        </div>
-
         {/* Notifications */}
         <button
           onClick={() => onNavigate('notifications')}
-          className={`relative p-2 rounded-xl transition-all-smooth ${darkMode ? 'bg-gray-800 text-text-muted hover:bg-gray-700' : 'bg-background text-text-secondary hover:bg-background'}`}
+          className={`relative p-2 rounded-xl transition-all-smooth ${
+            darkMode ? 'bg-gray-800 text-text-muted hover:bg-gray-700' : 'bg-background text-text-secondary hover:bg-background'
+          }`}
+          aria-label={t('notifications')}
+          title={t('notifications')}
         >
           <Bell size={18} key={unreadNotifs > 0 ? 'has' : 'none'} className={unreadNotifs > 0 ? 'animate-bell-shake' : ''} />
           {unreadNotifs > 0 && (
-            <span key={unreadNotifs} className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold leading-none animate-badge-pop">
-              {unreadNotifs > 99 ? '99+' : unreadNotifs}
-            </span>
+            <span key={unreadNotifs} className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-background animate-badge-pop" />
           )}
         </button>
 
         {/* User */}
         <button
           onClick={() => onNavigate('profile')}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all-smooth ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-background hover:bg-background'}`}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all-smooth ${
+            darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-background hover:bg-background'
+          }`}
+          aria-label={t('profile')}
         >
           <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${roleColors[role]} flex items-center justify-center text-white text-xs font-bold`}>
-            {role === 'farmer' ? 'RF' : 'SA'}
+            {initials}
           </div>
           <span className={`hidden md:block text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-text-secondary'}`}>
-            {role === 'farmer' ? 'Rajesh' : 'Admin'}
+            {displayName}
           </span>
-          <ChevronDown size={14} className={darkMode ? 'text-text-muted' : 'text-text-muted'} />
         </button>
       </div>
     </header>
   )
 }
+
+export default Navbar

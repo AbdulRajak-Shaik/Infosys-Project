@@ -52,7 +52,7 @@ def register_user(db: Session, user_data: UserRegisterRequest) -> User:
         username=user_data.username,
         email=user_data.email,
         hashed_password=hashed_password,
-        role=UserRole.FARMER.value,
+        role=user_data.role if getattr(user_data, "role", None) else UserRole.FARMER.value,
         status=UserStatus.ACTIVE.value,
         region=user_data.region,
         language_id=user_data.language_id,
@@ -64,42 +64,30 @@ def register_user(db: Session, user_data: UserRegisterRequest) -> User:
     db.refresh(db_user)
     return db_user
 
-def authenticate_user(db: Session, login_data: UserLoginRequest) -> User:
+def authenticate_farmer_user(db: Session, login_data: UserLoginRequest) -> User:
     """
-    Authenticates a user with email and password.
-    Returns the user model if valid, raises HTTP 401 otherwise.
+    Authenticates a farmer user for the Farmer Portal.
+    Verifies credentials and strictly enforces role == 'farmer'.
+    Raises 401 for bad credentials and 403 Forbidden for non-farmer accounts.
     """
-    # 1. Fetch user by email
     user = db.query(User).filter(User.email == login_data.email).first()
-    if not user:
-        # Return 401 Unauthorized as requested
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
-    # 2. Verify hashed password matches
-    if not verify_password(login_data.password, user.hashed_password):
+    if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 2.5 Verify role matches if specified in request
-    if login_data.role and user.role != login_data.role:
+    if user.role != UserRole.FARMER.value:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email, password, or role selection.",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Login failed: This account is not registered as a Farmer. Please use the Admin login.",
         )
-    # 3. Track the current UTC login time and commit it before returning the user.
+
     user.last_login_at = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
     db.refresh(user)
-
     return user
 
 
@@ -109,13 +97,37 @@ def authenticate_admin_user(db: Session, login_data: UserLoginRequest) -> User:
     Verifies credentials and strictly enforces role == 'admin'.
     Raises 401 for bad credentials and 403 Forbidden for non-admin accounts.
     """
-    user = authenticate_user(db, login_data)
+    user = db.query(User).filter(User.email == login_data.email).first()
+    if not user or not verify_password(login_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     if user.role != UserRole.ADMIN.value:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access Denied: You do not have administrator privileges to access the Admin Portal.",
+            detail="Login failed: This account is not registered as an Admin.",
         )
+
+    user.last_login_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
     return user
+
+
+def authenticate_user(db: Session, login_data: UserLoginRequest) -> User:
+    """
+    Authenticates a user with email and password.
+    Enforces role checking based on specified role or defaults to farmer role validation.
+    """
+    if login_data.role == UserRole.ADMIN.value:
+        return authenticate_admin_user(db, login_data)
+    else:
+        return authenticate_farmer_user(db, login_data)
+
 
 
 def update_user_profile(

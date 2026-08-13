@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models import ChatHistory, PredictionHistory, User
+from app.models import ChatHistory, PredictionHistory, User, Language
 from app.schemas import ChatRequest
 from app.services.agriculture_validator import is_agriculture_question
 from app.services.gemini_service import gemini_service
@@ -221,12 +221,54 @@ def get_chatbot_monitoring_analytics(db: Session) -> dict:
         func.count(ChatHistory.id)
     ).group_by(ChatHistory.question_language).all()
     
-    languages = []
+    lang_display_map = {
+        "en": "English",
+        "te": "Telugu",
+        "hi": "Hindi",
+        "ta": "Tamil",
+        "kn": "Kannada",
+        "ml": "Malayalam",
+        "mr": "Marathi",
+        "gu": "Gujarati",
+        "bn": "Bengali",
+        "pa": "Punjabi",
+        "or": "Odia",
+        "as": "Assamese",
+        "ur": "Urdu",
+        "mai": "Maithili",
+        "mni": "Manipuri",
+        "sat": "Santali",
+        "brx": "Bodo",
+        "doi": "Dogri",
+        "ks": "Kashmiri",
+        "kok": "Konkani",
+        "ne": "Nepali",
+        "sa": "Sanskrit",
+        "sd": "Sindhi"
+    }
+    
+    # Initialize all 23 languages from database to 0 to show inactive ones too
+    languages_list = db.query(Language).filter(Language.is_active == True).all()
+    merged_counts = {lang.language_name: 0 for lang in languages_list}
+    merged_counts["English"] = 0
+    
     for lang, count in lang_query:
+        standard_name = "English"
+        if lang:
+            cleaned_lang = lang.strip().lower()
+            standard_name = lang_display_map.get(cleaned_lang, lang)
+        
+        merged_counts[standard_name] = merged_counts.get(standard_name, 0) + count
+        
+    languages = []
+    for name, count in merged_counts.items():
         languages.append({
-            "name": lang or "English",
+            "name": name,
             "value": count
         })
+    languages.sort(key=lambda x: (-x["value"], x["name"]))
+
+
         
     # 4. Most Common Topics
     chats = db.query(ChatHistory.user_message, ChatHistory.prediction_history_id).all()
