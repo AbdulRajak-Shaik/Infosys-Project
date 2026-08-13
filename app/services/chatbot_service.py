@@ -237,7 +237,6 @@ def get_chatbot_monitoring_analytics(db: Session) -> dict:
         "ur": "Urdu",
         "mai": "Maithili",
         "mni": "Manipuri",
-        "sat": "Santali",
         "brx": "Bodo",
         "doi": "Dogri",
         "ks": "Kashmiri",

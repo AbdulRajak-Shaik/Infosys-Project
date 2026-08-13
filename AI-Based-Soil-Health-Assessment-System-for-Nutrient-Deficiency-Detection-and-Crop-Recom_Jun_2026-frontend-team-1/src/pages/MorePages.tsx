@@ -8,6 +8,7 @@ import { FEATURES } from '../config'
 import api, { getCurrentWeather, getWeatherForecast, getPredictionHistory, saveLocalPrediction, getHistoryDetail, submitFeedback, getCurrentUser, getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/api'
 import { useSarvamUsername, useSarvamLocation } from '../services/sarvamClient'
 import { INITIAL_LANGUAGES } from '../components/Navbar'
+import { getOrRequestLocation, getStoredCoords, setLocation as setStoredLocation } from '../services/locationService'
 
 // ---- Weather location dataset ----
 interface WeatherLocation {
@@ -18,6 +19,8 @@ interface WeatherLocation {
   wind: number
   condition: string
   feelsLike: number
+  lat?: number
+  lon?: number
 }
 
 const WEATHER_LOCATIONS: WeatherLocation[] = [
@@ -333,6 +336,8 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                 wind: Math.floor(Math.random() * 10) + 10,
                 condition: 'Partly Sunny',
                 feelsLike: Math.floor(Math.random() * 6) + 34,
+                lat: item.lat ? parseFloat(item.lat) : undefined,
+                lon: item.lon ? parseFloat(item.lon) : undefined,
               }
             })
             setApiSuggestions(parsed)
@@ -420,6 +425,8 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
             wind: 14,
             condition: 'Partly Sunny',
             feelsLike: 38,
+            lat: latitude,
+            lon: longitude,
           }
           setGpsStatus('success')
           onSelect(gpsLocation)
@@ -445,6 +452,8 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                 wind: 14,
                 condition: 'Partly Sunny',
                 feelsLike: 38,
+                lat: latitude,
+                lon: longitude,
               }
               setGpsStatus('success')
               onSelect(gpsLocation)
@@ -783,8 +792,9 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
   const getInitialLocation = (): WeatherLocation => {
     try {
       const saved = localStorage.getItem('selected_location')
-      if (saved) {
+      if (saved && saved.trim()) {
         const corrected = correctLocationLabel(saved)
+        const storedCoords = getStoredCoords()
         return {
           label: corrected,
           state: corrected.split(',')[2]?.trim() || 'India',
@@ -793,6 +803,8 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
           wind: 14,
           condition: 'Partly Sunny',
           feelsLike: 38,
+          lat: storedCoords?.lat,
+          lon: storedCoords?.lon,
         }
       }
       const userStr = localStorage.getItem('user') || localStorage.getItem('user_profile')
@@ -812,14 +824,15 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
         }
       }
     } catch {}
+    // No location yet — return empty placeholder; geolocation will fill it
     return {
-      label: 'Srikalahasthi, Tirupati District, Andhra Pradesh, India',
-      state: 'Andhra Pradesh',
-      temp: 32,
-      humidity: 68,
-      wind: 14,
-      condition: 'Partly Sunny',
-      feelsLike: 38,
+      label: '',
+      state: 'India',
+      temp: 0,
+      humidity: 0,
+      wind: 0,
+      condition: '',
+      feelsLike: 0,
     }
   }
 
@@ -828,41 +841,98 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('Fetching weather...')
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
+  const [apiWeather, setApiWeather] = useState<any>(null)
+  const [apiForecast, setApiForecast] = useState<any>(null)
+
+  // Fetch real weather data from backend using coordinates or location name
+  const fetchRealWeather = async (loc: WeatherLocation) => {
+    try {
+      const [weatherRes, forecastRes] = await Promise.all([
+        getCurrentWeather(loc.label, loc.lat, loc.lon),
+        getWeatherForecast(loc.label, loc.lat, loc.lon),
+      ])
+      setApiWeather(weatherRes)
+      setApiForecast(forecastRes)
+      // Update location state with real values from API
+      setLocation(prev => ({
+        ...prev,
+        temp: Math.round(weatherRes.current_temperature),
+        humidity: weatherRes.humidity,
+        wind: Math.round(weatherRes.wind_speed * 3.6), // m/s → km/h
+        condition: weatherRes.condition,
+        feelsLike: Math.round(weatherRes.feels_like),
+        label: weatherRes.location || prev.label,
+      }))
+      // Update prediction history with real API data
+      saveLocalPrediction({
+        type: 'Weather',
+        prediction_type: 'weather',
+        result: `Weather Track: ${(weatherRes.location || loc.label).split(',')[0]}`,
+        input: `Location: ${weatherRes.location || loc.label} | Temp: ${Math.round(weatherRes.current_temperature)}°C | Condition: ${weatherRes.condition} | Humidity: ${weatherRes.humidity}%`,
+        confidence: 100,
+        status: 'success',
+      }).catch(() => {})
+      window.dispatchEvent(new Event('predictionCreated'))
+    } catch (err) {
+      console.warn('[WeatherDashboard] API fetch failed, using local data:', err)
+    }
+  }
 
   useEffect(() => {
-    // If no custom location saved, attempt live GPS reverse-geocoding
-    if (!localStorage.getItem('selected_location') && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords
-          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&accept-language=en`)
-            .then(res => res.json())
-            .then(data => {
-              const addr = data.address || {}
-              const placeName = addr.village || addr.suburb || addr.town || addr.city || addr.hamlet || 'Your Village'
-              const mapped = resolveAccurateDistrict(placeName)
-              const rawDist = mapped.district || addr.county || addr.state_district || addr.district || 'Unknown District'
-              const cleanDist = rawDist.toLowerCase().includes('district') ? rawDist : `${rawDist} District`
-              const stateName = addr.state || mapped.state || 'India'
-              
-              const realLoc: WeatherLocation = {
-                label: `${placeName}, ${cleanDist}, ${stateName}, India`,
-                state: stateName,
-                temp: 32,
-                humidity: 68,
-                wind: 14,
-                condition: 'Partly Sunny',
-                feelsLike: 38,
-              }
-              setLocation(realLoc)
-              localStorage.setItem('selected_location', realLoc.label)
-            })
-            .catch(() => {})
-        },
-        () => {},
-        { timeout: 8000, enableHighAccuracy: true }
-      )
+    // On mount: if we already have a saved location with coords, fetch real weather immediately
+    const initial = getInitialLocation()
+    if (initial.label && initial.lat && initial.lon) {
+      fetchRealWeather(initial)
+    } else if (initial.label) {
+      fetchRealWeather(initial)
+    } else {
+      // No saved location — trigger geolocation
+      setLoading(true)
+      setLoadingMsg('Detecting your location...')
+      getOrRequestLocation().then(result => {
+        if (result?.label) {
+          const newLoc: WeatherLocation = {
+            label: result.label,
+            state: result.label.split(',')[2]?.trim() || 'India',
+            temp: 0,
+            humidity: 0,
+            wind: 0,
+            condition: '',
+            feelsLike: 0,
+            lat: result.coords?.lat,
+            lon: result.coords?.lon,
+          }
+          setLocation(newLoc)
+          setStoredLocation(result.label, result.coords)
+          fetchRealWeather(newLoc)
+        }
+        setLoading(false)
+      })
     }
+
+    // Listen for external location updates (from other pages)
+    const onLocUpdate = (e: Event) => {
+      const label = (e as CustomEvent).detail?.label || localStorage.getItem('selected_location') || ''
+      if (label && label !== location.label) {
+        const storedCoords = getStoredCoords()
+        const updatedLoc: WeatherLocation = {
+          label,
+          state: label.split(',')[2]?.trim() || 'India',
+          temp: 0,
+          humidity: 0,
+          wind: 0,
+          condition: '',
+          feelsLike: 0,
+          lat: storedCoords?.lat,
+          lon: storedCoords?.lon,
+        }
+        setLocation(updatedLoc)
+        fetchRealWeather(updatedLoc)
+      }
+    }
+    window.addEventListener('locationUpdated', onLocUpdate)
+    return () => window.removeEventListener('locationUpdated', onLocUpdate)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // History replay: load location from history page navigation
@@ -895,32 +965,19 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
   const handleLocationSelect = (loc: WeatherLocation) => {
     setShowModal(false)
     setLoading(true)
-    try { 
-      localStorage.setItem('selected_location', loc.label)
-      saveLocalPrediction({
-        type: 'Weather',
-        prediction_type: 'weather',
-        result: `Weather Track: ${loc.label.split(',')[0]}`,
-        input: `Location: ${loc.label} | Temp: ${loc.temp}°C | Condition: ${loc.condition} | Humidity: ${loc.humidity}%`,
-        confidence: 100,
-        status: 'success',
-      })
-      window.dispatchEvent(new Event('storage'))
-      window.dispatchEvent(new Event('predictionCreated'))
-    } catch {}
+    // Save location and broadcast update
+    setStoredLocation(loc.label, loc.lat !== undefined && loc.lon !== undefined ? { lat: loc.lat, lon: loc.lon } : undefined)
+    window.dispatchEvent(new Event('storage'))
     const msgs = ['Fetching weather...', 'Retrieving forecast...', 'Updating weather data...']
     setLoadingMsg(msgs[Math.floor(Math.random() * msgs.length)])
-    setTimeout(() => {
-      setLocation(loc)
-      setHourlyData(generateHourly(loc.temp))
-      setForecast(generateForecast(loc.temp, loc.condition))
-      setLoading(false)
-    }, 1500)
+    setLocation(loc)
+    // Fetch real weather from API for the selected location
+    fetchRealWeather(loc).finally(() => setLoading(false))
   }
 
-  const [hourlyData, setHourlyData] = useState(() => generateHourly(location.temp))
-  const [forecast, setForecast] = useState(() => generateForecast(location.temp, location.condition))
-  const sarvamWeatherLocation = useSarvamLocation(location.label)
+  const [hourlyData, setHourlyData] = useState(() => generateHourly(location.temp || 30))
+  const [forecast, setForecast] = useState(() => generateForecast(location.temp || 30, location.condition || 'Partly Sunny'))
+  const sarvamWeatherLocation = useSarvamLocation(apiWeather?.location || location.label)
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
@@ -1014,23 +1071,23 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
           <div>
             <p className="text-white/70 text-sm mb-2">{t('currentConditions')} — {sarvamWeatherLocation || location.label}</p>
             <div className="flex items-end gap-4 mb-3">
-              <WeatherConditionIcon condition={location.condition} />
-              <span className="text-7xl font-bold">{location.temp}°</span>
+              <WeatherConditionIcon condition={location.condition || 'Partly Sunny'} />
+              <span className="text-7xl font-bold">{location.temp ? `${location.temp}°` : '—'}</span>
               <div>
-                <p className="text-xl font-semibold">{t(location.condition) || location.condition}</p>
-                <p className="text-white/70 text-sm">{t('feelsLike')} {location.feelsLike}°C</p>
+                <p className="text-xl font-semibold">{location.condition || '—'}</p>
+                <p className="text-white/70 text-sm">{t('feelsLike')} {location.feelsLike ? `${location.feelsLike}°C` : '—'}</p>
               </div>
             </div>
             <p className="text-white/80 text-sm">🌾 {t('goodFieldPrep')}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { icon: <Droplets size={16} />, label: t('humidity'), value: `${location.humidity}%` },
-              { icon: <Wind size={16} />, label: t('windSpeed'), value: `${location.wind} km/h` },
-              { icon: <Thermometer size={16} />, label: t('dewPoint'), value: `${Math.round(location.temp - 8)}°C` },
-              { icon: <Cloud size={16} />, label: t('cloudCover'), value: `${Math.round(location.humidity / 2)}%` },
-              { icon: <Sunrise size={16} />, label: t('sunrise'), value: '05:42 AM' },
-              { icon: <Sunset size={16} />, label: t('sunset'), value: '07:18 PM' },
+              { icon: <Droplets size={16} />, label: t('humidity'), value: apiWeather ? `${apiWeather.humidity}%` : (location.humidity ? `${location.humidity}%` : '—') },
+              { icon: <Wind size={16} />, label: t('windSpeed'), value: apiWeather ? `${Math.round(apiWeather.wind_speed * 3.6)} km/h` : (location.wind ? `${location.wind} km/h` : '—') },
+              { icon: <Thermometer size={16} />, label: t('precipitation'), value: apiWeather ? `${apiWeather.precipitation} mm` : '—' },
+              { icon: <Cloud size={16} />, label: t('uvIndex'), value: apiWeather ? `${apiWeather.uv_index}` : '—' },
+              { icon: <Sunrise size={16} />, label: t('visibility'), value: apiWeather ? `${apiWeather.visibility} km` : '—' },
+              { icon: <Sunset size={16} />, label: t('condition'), value: apiWeather ? (apiWeather.condition || location.condition) : (location.condition || '—') },
             ].map(m => (
               <div key={m.label} className="flex items-center gap-2 bg-surface/10 rounded-xl px-3 py-2 backdrop-blur border border-white/10">
                 <span className="text-white/70">{m.icon}</span>

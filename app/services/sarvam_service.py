@@ -29,7 +29,6 @@ _LANGUAGE_CODES = {
     13: "ur-IN",
     14: "mai-IN",
     15: "mni-IN",
-    16: "sat-IN",
     17: "brx-IN",
     18: "doi-IN",
     19: "ks-IN",

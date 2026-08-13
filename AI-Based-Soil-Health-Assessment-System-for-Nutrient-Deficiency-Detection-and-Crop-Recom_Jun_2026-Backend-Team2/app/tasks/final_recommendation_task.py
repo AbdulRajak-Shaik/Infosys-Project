@@ -85,6 +85,8 @@ def generate_final_recommendation(
             "deficiencies": nutrient_analysis["deficiencies"],
             "recommended_crops": crop_recommendation["recommended_crops"],
             "recommended_fertilizers": nutrient_analysis["recommended_fertilizers"],
+            "probabilities": soil_prediction.get("probabilities", {}),
         }
     finally:
         db.close()
+

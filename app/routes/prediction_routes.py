@@ -30,27 +30,7 @@ async def predict_image(
 ) -> Dict[str, Any]:
     """Accept an uploaded soil image and return a prediction payload."""
     if not file or not file.filename:
-        soil_type = "Black Soil"
-        if current_user and getattr(current_user, "id", None):
-            try:
-                create_prediction_history(
-                    db,
-                    {
-                        "user_id": current_user.id,
-                        "soil_image_path": "default_soil.jpg",
-                        "soil_type": soil_type,
-                        "soil_confidence": 96.5,
-                        "recommended_crops": ["Wheat", "Cotton", "Maize"],
-                        "nutrient_deficiencies": ["Nitrogen", "Potassium"],
-                    }
-                )
-            except Exception as e:
-                print("Error saving prediction history:", e)
-        return {
-            "soil_type": soil_type,
-            "confidence": 96.5,
-            "message": "Soil analyzed successfully"
-        }
+        raise HTTPException(status_code=400, detail="No image file provided. Please upload a soil image.")
 
     temp_file_path = None
     try:
@@ -82,6 +62,7 @@ async def predict_image(
             "soil_type": result["soil_type"],
             "confidence": result["confidence"],
             "canonical_soil_type": result.get("canonical_soil_type", result["soil_type"]),
+            "probabilities": result.get("probabilities", {}),
         }
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Image file not found.") from exc

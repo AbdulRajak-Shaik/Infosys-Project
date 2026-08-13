@@ -19,7 +19,6 @@ LANGUAGE_BY_ID = {
     13: "Urdu",
     14: "Maithili",
     15: "Manipuri",
-    16: "Santali",
     17: "Bodo",
     18: "Dogri",
     19: "Kashmiri",

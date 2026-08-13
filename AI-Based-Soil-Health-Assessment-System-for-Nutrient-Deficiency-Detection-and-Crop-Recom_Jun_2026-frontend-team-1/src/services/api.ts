@@ -864,12 +864,30 @@ export interface WeatherForecast {
   }>;
 }
 
-export async function getCurrentWeather(location = 'Telangana'): Promise<WeatherCurrent> {
-  return request<WeatherCurrent>(`/weather?location=${encodeURIComponent(location)}`, { method: 'GET' });
+export async function getCurrentWeather(location?: string, lat?: number, lon?: number): Promise<WeatherCurrent> {
+  let url = '/weather?';
+  if (lat !== undefined && lon !== undefined) {
+    url += `lat=${lat}&lon=${lon}`;
+    if (location) url += `&location=${encodeURIComponent(location)}`;
+  } else {
+    url += `location=${encodeURIComponent(location || 'Telangana')}`;
+  }
+  return request<WeatherCurrent>(url, { method: 'GET' });
 }
 
-export async function getWeatherForecast(location = 'Telangana'): Promise<WeatherForecast> {
-  return request<WeatherForecast>(`/weather/forecast?location=${encodeURIComponent(location)}`, { method: 'GET' });
+export async function getWeatherForecast(location?: string, lat?: number, lon?: number): Promise<WeatherForecast> {
+  let url = '/weather/forecast?';
+  if (lat !== undefined && lon !== undefined) {
+    url += `lat=${lat}&lon=${lon}`;
+    if (location) url += `&location=${encodeURIComponent(location)}`;
+  } else {
+    url += `location=${encodeURIComponent(location || 'Telangana')}`;
+  }
+  return request<WeatherForecast>(url, { method: 'GET' });
+}
+
+export async function reverseGeocodeApi(lat: number, lon: number): Promise<{ label: string }> {
+  return request<{ label: string }>(`/weather/reverse-geocode?lat=${lat}&lon=${lon}`, { method: 'GET' });
 }
 
 // ── Prediction History API ──────────────────────────────────

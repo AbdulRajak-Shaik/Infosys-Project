@@ -77,8 +77,8 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
       const res = await predictSoil({ image: file })
       setProgress(100)
       setApiResult(res)
-      const detectedSoil = res?.soil_type || 'Unknown Soil'
-      const confidence = res?.confidence || 96.2
+      const detectedSoil = res?.soil_type || t('analysisNotAvailable') || 'Analysis Unavailable'
+      const confidence = res?.confidence ?? 0
       if (detectedSoil) {
         setHistoryItems(prev => [`${detectedSoil} - Today`, ...prev.slice(0, 2)])
       }
@@ -96,35 +96,38 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
     }
   }
 
-  const rawConf = apiResult?.confidence ?? 0.9621
+  const rawConf = apiResult?.confidence ?? 0
   const mainProb = Math.round(rawConf > 1 ? rawConf : rawConf * 100)
 
-  const soilProbs = [
-    { soil: apiResult?.soil_type || 'Unknown Soil', prob: mainProb },
-    { soil: 'Clay Loam', prob: Math.max(1, Math.round((100 - mainProb) * 0.7)) },
-    { soil: 'Silt Loam', prob: Math.max(1, Math.round((100 - mainProb) * 0.3)) },
-  ]
+  // Build probability distribution from real API probabilities if available
+  const soilProbs: { soil: string; prob: number }[] = apiResult?.probabilities && Object.keys(apiResult.probabilities).length > 0
+    ? Object.entries(apiResult.probabilities as Record<string, number>)
+        .map(([soil, prob]) => ({ soil, prob: Math.round(prob) }))
+        .sort((a, b) => b.prob - a.prob)
+    : apiResult?.soil_type
+      ? [{ soil: apiResult.soil_type, prob: mainProb }]
+      : []
 
   const handleDownloadReport = () => {
     generatePdfReport({
-      soilType: apiResult?.soil_type || 'Unknown Soil',
+      soilType: apiResult?.soil_type || '—',
       confidence: mainProb,
-      soilHealthScore: 61.2,
-      soilHealthStatus: 'Moderate',
-      topCrop: 'Cotton',
-      topCropScore: 96,
-      location: 'Srikalahasti, Andhra Pradesh',
-      temperature: '33 deg C',
-      humidity: '67 %',
-      rainfall: '0.0 mm',
-      windSpeed: '12 km/h',
-      weatherCondition: 'Clear',
-      N: 90,
-      P: 42,
-      K: 43,
-      ph: 6.8,
-      oc: 0.62,
-      ec: 0.41,
+      soilHealthScore: apiResult?.soil_health_score ?? undefined,
+      soilHealthStatus: apiResult?.soil_health || undefined,
+      topCrop: apiResult?.recommended_crops?.[0]?.crop || apiResult?.recommended_crops?.[0] || '—',
+      topCropScore: undefined,
+      location: apiResult?.weather?.location || undefined,
+      temperature: apiResult?.weather?.temperature ? `${apiResult.weather.temperature}°C` : undefined,
+      humidity: apiResult?.weather?.humidity ? `${apiResult.weather.humidity}%` : undefined,
+      rainfall: apiResult?.weather?.rainfall ? `${apiResult.weather.rainfall} mm` : undefined,
+      windSpeed: undefined,
+      weatherCondition: undefined,
+      N: apiResult?.nitrogen ?? undefined,
+      P: apiResult?.phosphorus ?? undefined,
+      K: apiResult?.potassium ?? undefined,
+      ph: apiResult?.ph ?? undefined,
+      oc: apiResult?.organic_carbon ?? undefined,
+      ec: apiResult?.electrical_conductivity ?? undefined,
     })
   }
 
@@ -249,14 +252,16 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <p className="text-xs text-text-muted font-medium">{t('predictedSoilType')}</p>
-                  <h3 className="text-2xl font-bold text-text-primary">{apiResult?.soil_type || 'Unknown Soil'}</h3>
+                  <h3 className="text-2xl font-bold text-text-primary">{apiResult?.soil_type || t('analysisNotAvailable') || '—'}</h3>
                 </div>
+                {apiResult?.confidence != null && (
                 <div className="flex items-center gap-2 bg-green-100 px-3 py-1.5 rounded-full">
                   <CheckCircle2 size={14} className="text-green-600" />
                   <span className="text-sm font-bold text-green-700">
-                    {apiResult?.confidence ? (apiResult.confidence > 1 ? `${apiResult.confidence}%` : `${Math.round(apiResult.confidence * 100)}%`) : '96.5%'} confidence
+                    {apiResult.confidence > 1 ? `${Math.round(apiResult.confidence)}%` : `${Math.round(apiResult.confidence * 100)}%`} {t('confidence') || 'confidence'}
                   </span>
                 </div>
+                )}
               </div>
               <p className="text-sm text-text-secondary">
                 {(apiResult?.soil_type?.toLowerCase().includes('black')) || (!apiResult && preview?.toLowerCase().includes('black'))
@@ -302,14 +307,16 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
               </div>
             </Card>
 
+            {(apiResult?.recommended_crops?.length > 0) && (
             <Card className="p-5">
               <h4 className="font-semibold text-text-primary mb-3">{t('suitableCrops')}</h4>
               <div className="flex flex-wrap gap-2">
-                {['Wheat', 'Maize', 'Groundnut', 'Carrot', 'Potato', 'Barley', 'Oats'].map(c => (
-                  <Badge key={c} color="green">{c}</Badge>
+                {(apiResult.recommended_crops as any[]).slice(0, 7).map((c: any, i: number) => (
+                  <Badge key={i} color="green">{typeof c === 'string' ? c : (c.crop || c.name || JSON.stringify(c))}</Badge>
                 ))}
               </div>
             </Card>
+            )}
 
             <Button variant="primary" icon={<Download size={14} />} onClick={handleDownloadReport} className="w-full justify-center">{t('downloadPdfReport')}</Button>
           </div>
@@ -581,19 +588,33 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
   )
 
   const cards = [
-    // Card 0 — Executive Summary (Matching PDF Sample Page 1)
+    // Card 0 — Executive Summary (dynamic from API result)
     <div key="exec" className="bg-green-50 border-2 border-green-300 rounded-2xl p-5 shadow-card animate-fade-in">
       <div className="flex items-center justify-between border-b border-green-200 pb-3 mb-3">
         <h4 className="text-sm font-extrabold text-green-900 uppercase tracking-wide">{t('execSummary')}</h4>
         <span className="text-xs font-bold bg-green-200 text-green-800 px-2.5 py-0.5 rounded-full">{t('reportReady')}</span>
       </div>
       <div className="space-y-2 text-xs text-green-950">
-        <p>[+] <strong>{t('soilClassified')}:</strong> {t(detectedSoil)} (AI Confidence: <span className="font-bold text-green-700">93.2%</span>)</p>
-        <p>[+] <strong>{t('soilHealth')}:</strong> <span className="font-bold text-amber-700">Moderate (61.2 / 100)</span></p>
-        <p>[+] <strong>{t('topCrop')}:</strong> {t('Cotton')} — <span className="font-bold text-green-700">{t('excellentMatch')} (96/100)</span></p>
-        <p>[+] <strong>{t('fieldLocation')}:</strong> Srikalahasti, Andhra Pradesh | 33°C, 67% Humidity, Clear</p>
-        <p>[+] <strong>{t('nutrientAlert')}:</strong> <span className="font-bold text-amber-700">Phosphorus, Potassium</span></p>
-        <p>[+] <strong>{t('immediateAction')}:</strong> Apply MOP (50 kg/acre) and DAP (40 kg/acre) as basal dose before sowing.</p>
+        <p>[+] <strong>{t('soilClassified')}:</strong> {detectedSoil}
+          {apiResult?.confidence != null && (
+            <> (AI Confidence: <span className="font-bold text-green-700">{Math.round(apiResult.confidence > 1 ? apiResult.confidence : apiResult.confidence * 100)}%</span>)</>
+          )}
+        </p>
+        {apiResult?.soil_health && (
+          <p>[+] <strong>{t('soilHealth')}:</strong> <span className="font-bold text-amber-700">{apiResult.soil_health}{apiResult.soil_health_score != null ? ` (${apiResult.soil_health_score} / 100)` : ''}</span></p>
+        )}
+        {(apiResult?.recommended_crops?.length > 0) && (
+          <p>[+] <strong>{t('topCrop')}:</strong> {(() => { const c = apiResult.recommended_crops[0]; return typeof c === 'string' ? c : (c?.crop || c?.name || JSON.stringify(c)) })()} — <span className="font-bold text-green-700">{t('excellentMatch')}</span></p>
+        )}
+        {apiResult?.weather?.location && (
+          <p>[+] <strong>{t('fieldLocation')}:</strong> {apiResult.weather.location}{apiResult.weather.temperature != null ? ` | ${apiResult.weather.temperature}°C` : ''}{apiResult.weather.humidity != null ? `, ${apiResult.weather.humidity}% Humidity` : ''}</p>
+        )}
+        {(apiResult?.deficiencies?.length > 0) && (
+          <p>[+] <strong>{t('nutrientAlert')}:</strong> <span className="font-bold text-amber-700">{(apiResult.deficiencies as any[]).map((d: any) => typeof d === 'string' ? d : (d?.nutrient || d?.name || JSON.stringify(d))).join(', ')}</span></p>
+        )}
+        {(apiResult?.recommended_fertilizers?.length > 0) && (
+          <p>[+] <strong>{t('immediateAction')}:</strong> {(() => { const f = apiResult.recommended_fertilizers[0]; return typeof f === 'string' ? f : (f?.fertilizer || f?.name || f?.description || JSON.stringify(f)) })()} </p>
+        )}
       </div>
     </div>,
 
@@ -622,19 +643,23 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className="bg-background rounded-lg px-2 py-1.5">
               <p className="text-text-muted">{t('confidence')}</p>
-              <p className="font-bold text-green-700">93.2%</p>
+              <p className="font-bold text-green-700">
+                {apiResult?.confidence != null
+                  ? `${Math.round(apiResult.confidence > 1 ? apiResult.confidence : apiResult.confidence * 100)}%`
+                  : '—'}
+              </p>
             </div>
             <div className="bg-background rounded-lg px-2 py-1.5">
               <p className="text-text-muted">{t('predTime')}</p>
               <p className="font-bold text-text-secondary">0.34s</p>
             </div>
           </div>
-          <p className="text-[10px] text-text-muted">Model: ResNet-50 v3.0</p>
+          <p className="text-[10px] text-text-muted">Model: EfficientNetB0</p>
         </div>
       </div>
     </div>,
 
-    // Card 2 — Recommended Crop
+    // Card 2 — Recommended Crop (from API)
     <div key="crop" className="bg-surface rounded-2xl shadow-card border border-l-4 border-green-500 p-5 animate-fade-in" style={{ borderLeftWidth: 4 }}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
@@ -643,50 +668,59 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
           </div>
           <h4 className="font-bold text-text-primary">{t('recommendedCrop')}</h4>
         </div>
-        <div className="flex items-center gap-1.5 bg-green-100 px-3 py-1 rounded-full">
-          <CheckCircle2 size={12} className="text-green-600" />
-          <span className="text-xs font-bold text-green-700">96 / 100 Match</span>
-        </div>
+        {apiResult?.recommended_crops?.length > 0 && (
+          <div className="flex items-center gap-1.5 bg-green-100 px-3 py-1 rounded-full">
+            <CheckCircle2 size={12} className="text-green-600" />
+            <span className="text-xs font-bold text-green-700">{t('excellentMatch')}</span>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-4 mb-4">
         <div className="w-16 h-16 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-4xl">
           🌱
         </div>
         <div>
-          <h3 className="text-2xl font-bold text-text-primary">{t(apiResult?.recommended_crop || 'Cotton')}</h3>
-          <p className="text-sm text-text-muted">Gossypium hirsutum</p>
+          {apiResult?.recommended_crops?.length > 0 ? (
+            <h3 className="text-2xl font-bold text-text-primary">
+              {(() => { const c = apiResult.recommended_crops[0]; return typeof c === 'string' ? c : (c?.crop || c?.name || JSON.stringify(c)) })()}
+            </h3>
+          ) : (
+            <h3 className="text-2xl font-bold text-text-muted">—</h3>
+          )}
           <Badge color="green">{t('excellentMatch')}</Badge>
         </div>
       </div>
 
+      {apiResult?.recommended_crops?.length > 0 && (
       <div className="mt-5 border-t border-border pt-4">
         <h4 className="text-xs font-bold text-text-primary uppercase tracking-wide mb-3">{t("top5RecommendedCrops")}</h4>
         <div className="space-y-2">
-          {[
-            { rank: '#1', name: t('Cotton'), score: 100, match: t('excellentMatch'), color: 'bg-green-600' },
-            { rank: '#2', name: t('Soybean'), score: 94, match: 'Very Good Match', color: 'bg-green-500' },
-            { rank: '#3', name: t('Wheat'), score: 79, match: 'Good Match', color: 'bg-emerald-500' },
-            { rank: '#4', name: t('Sugarcane'), score: 73, match: 'Moderate Match', color: 'bg-amber-500' },
-            { rank: '#5', name: t('Maize'), score: 55, match: 'Suitable Match', color: 'bg-orange-500' },
-          ].map(c => (
-            <div key={c.rank} className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border text-xs">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-green-700 w-8">{c.rank}</span>
-                <span className="font-semibold text-text-primary">{c.name}</span>
-              </div>
-              <div className="flex items-center gap-3 w-36">
-                <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${c.color}`} style={{ width: `${c.score}%` }} />
+          {(apiResult.recommended_crops as any[]).slice(0, 5).map((c: any, i: number) => {
+            const cropName = typeof c === 'string' ? c : (c?.crop || c?.name || JSON.stringify(c))
+            const score = c?.score ?? c?.confidence ?? Math.max(40, 100 - i * 15)
+            const matchLabel = score >= 90 ? t('excellentMatch') : score >= 75 ? 'Very Good Match' : score >= 60 ? 'Good Match' : 'Suitable Match'
+            const barColor = score >= 90 ? 'bg-green-600' : score >= 75 ? 'bg-green-500' : score >= 60 ? 'bg-emerald-500' : 'bg-amber-500'
+            return (
+              <div key={i} className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="font-bold text-green-700 w-8">#{i + 1}</span>
+                  <span className="font-semibold text-text-primary">{cropName}</span>
                 </div>
-                <span className="font-bold text-text-secondary w-12 text-right">{c.score}/100</span>
+                <div className="flex items-center gap-3 w-36">
+                  <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(100, score)}%` }} />
+                  </div>
+                  <span className="font-bold text-text-secondary w-12 text-right">{Math.round(score)}/100</span>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
+      )}
     </div>,
 
-    // Card 3 — Fertilizer Advisory Schedule
+    // Card 3 — Fertilizer Advisory Schedule (from API)
     <div key="fert" className="bg-surface rounded-2xl shadow-card border border-border p-5 animate-fade-in">
       <div className="flex items-center gap-2 mb-4">
         <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
@@ -694,6 +728,7 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
         </div>
         <h4 className="font-bold text-text-primary">{t('fertSchedule')}</h4>
       </div>
+      {apiResult?.recommended_fertilizers?.length > 0 ? (
       <div className="overflow-x-auto mb-4">
         <table className="w-full text-xs text-left">
           <thead className="bg-green-800 text-white">
@@ -705,22 +740,20 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {[
-              { cat: 'Potassium Supplement', prod: 'MOP (Muriate of Potash)', dose: '50 kg / acre', method: 'Basal — at sowing' },
-              { cat: 'Phosphorus Supplement', prod: 'DAP (Di-ammonium Phosphate)', dose: '40 kg / acre', method: 'Basal — at sowing' },
-              { cat: 'Nitrogen Supplement', prod: 'Urea (46% N)', dose: '25 kg / acre', method: 'Top dressing — 2 split doses' },
-              { cat: 'Organic Manure', prod: 'Farm Yard Manure / Compost', dose: '3 Tons / acre', method: 'Incorporate 15 days before sowing' },
-            ].map(f => (
-              <tr key={f.cat} className="hover:bg-background">
-                <td className="p-2.5 font-semibold text-text-primary">{f.cat}</td>
-                <td className="p-2.5 text-text-secondary">{f.prod}</td>
-                <td className="p-2.5 font-bold text-green-700">{f.dose}</td>
-                <td className="p-2.5 text-text-muted">{f.method}</td>
+            {(apiResult.recommended_fertilizers as any[]).slice(0, 4).map((f: any, i: number) => (
+              <tr key={i} className="hover:bg-background">
+                <td className="p-2.5 font-semibold text-text-primary">{f?.category || f?.type || '—'}</td>
+                <td className="p-2.5 text-text-secondary">{typeof f === 'string' ? f : (f?.fertilizer || f?.name || f?.product || JSON.stringify(f))}</td>
+                <td className="p-2.5 font-bold text-green-700">{f?.dosage || f?.dose || f?.quantity || '—'}</td>
+                <td className="p-2.5 text-text-muted">{f?.method || f?.application || '—'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      ) : (
+        <p className="text-xs text-text-muted mb-4">{t('noFertilizerData') || 'Fertilizer recommendations will appear after a full soil analysis.'}</p>
+      )}
       <div className="bg-background rounded-xl p-3 border border-border text-xs text-text-secondary space-y-1">
         <p className="font-bold text-text-primary">{t("geminiAdvisoryNotes")}:</p>
         <p>- {t("applyNitrogenSplit")}.</p>
@@ -731,11 +764,13 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
   ]
 
   const handleSave = () => {
+    const topCrop = apiResult?.recommended_crops?.[0]
+    const cropName = typeof topCrop === 'string' ? topCrop : (topCrop?.crop || topCrop?.name || undefined)
     saveLocalPrediction({
       prediction_type: 'crop',
       soil_type: detectedSoil,
-      predicted_crop: apiResult?.recommended_crop || 'Cotton',
-      confidence: apiResult?.confidence || 0.96,
+      predicted_crop: cropName,
+      confidence: apiResult?.confidence ?? 0,
       input_data: imageFile ? `Image: ${imageFile.name}` : 'Parameters analyzed',
       created_at: new Date().toISOString(),
     })
@@ -745,7 +780,12 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
   }
 
   const handleShare = async () => {
-    const shareText = `🌾 AgroAI Soil & Crop Analysis Report:\n- Soil Classified: ${detectedSoil}\n- Recommended Crop: ${apiResult?.recommended_crop || 'Cotton'}\n- Confidence: 96.2%\nAnalyzed via AgroAI System`
+    const topCrop = apiResult?.recommended_crops?.[0]
+    const cropDisplay = typeof topCrop === 'string' ? topCrop : (topCrop?.crop || topCrop?.name || '—')
+    const confDisplay = apiResult?.confidence != null
+      ? `${Math.round(apiResult.confidence > 1 ? apiResult.confidence : apiResult.confidence * 100)}%`
+      : '—'
+    const shareText = `🌾 AgroAI Soil & Crop Analysis Report:\n- Soil Classified: ${detectedSoil}\n- Recommended Crop: ${cropDisplay}\n- Confidence: ${confDisplay}\nAnalyzed via AgroAI System`
     if (navigator.share) {
       try {
         await navigator.share({

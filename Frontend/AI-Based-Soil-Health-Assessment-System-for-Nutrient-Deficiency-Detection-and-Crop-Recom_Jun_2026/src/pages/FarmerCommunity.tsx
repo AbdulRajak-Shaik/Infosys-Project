@@ -20,8 +20,8 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
       const userStr = localStorage.getItem('user') || localStorage.getItem('user_profile')
       if (userStr && userStr.startsWith('{')) {
         const u = JSON.parse(userStr)
-        const displayName = u.username || u.name || 'Farmer'
-        const loc = u.region || localStorage.getItem('selected_location') || 'India'
+        const displayName = u.username || u.name || t('farmer')
+        const loc = u.region || localStorage.getItem('selected_location') || t('india') || 'India'
         return {
           name: displayName,
           avatar: displayName.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase(),
@@ -31,7 +31,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
         }
       }
     } catch {}
-    return { name: 'Farmer', avatar: 'F', location: 'India', followers: 0, following: 0 }
+    return { name: t('farmer'), avatar: 'F', location: t('india') || 'India', followers: 0, following: 0 }
   })
 
   const BASE_CATEGORIES = [
@@ -58,9 +58,9 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
       const userStr = localStorage.getItem('user') || localStorage.getItem('user_profile')
       if (userStr && userStr.startsWith('{')) {
         const u = JSON.parse(userStr)
-        const displayName = u.username || u.name || 'Farmer'
+        const displayName = u.username || u.name || t('farmer')
         if (displayName) {
-          const loc = u.region || localStorage.getItem('selected_location') || 'India'
+          const loc = u.region || localStorage.getItem('selected_location') || t('india') || 'India'
           setUserProfile({
             name: displayName,
             avatar: displayName.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase(),
@@ -100,7 +100,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
     input.type = 'file'
     input.accept = 'image/*'
     input.onchange = () => {
-      setPostText(prev => prev + (prev.trim() ? '\n' : '') + '[Image Attached] ')
+      setPostText(prev => prev + (prev.trim() ? '\n' : '') + t('imageAttached') + ' ')
     }
     input.click()
   }
@@ -143,7 +143,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
   const TOP_CONTRIBUTORS = Object.entries(authorPoints)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
-    .map(([name, points]) => ({ name, role: 'Community Member', points }))
+    .map(([name, points]) => ({ name, role: t('communityMember'), points }))
 
 
   return (
@@ -267,7 +267,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
                         <MessageCircle size={16} /> {post.comments}
                       </button>
                       <button className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary hover:bg-background px-3 py-1.5 rounded-lg transition-colors">
-                        <Share2 size={16} /> Share
+                        <Share2 size={16} /> {t('share')}
                       </button>
                     </div>
                     <button onClick={() => toggleSave(post.id)} className={`p-2 rounded-lg transition-colors ${post.isSaved ? 'text-yellow-500 bg-yellow-50' : 'text-text-secondary hover:bg-background'}`}>

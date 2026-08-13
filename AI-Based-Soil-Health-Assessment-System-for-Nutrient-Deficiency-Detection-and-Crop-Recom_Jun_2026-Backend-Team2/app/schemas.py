@@ -377,6 +377,7 @@ class FinalRecommendationResponse(BaseModel):
     recommended_crops: list[Any]
     recommended_fertilizers: list[Any]
     weather: WeatherResponse
+    probabilities: dict[str, float] | None = None
 
 
 class FeedbackCreate(BaseModel):

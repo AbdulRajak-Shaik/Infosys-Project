@@ -30,12 +30,10 @@ async def predict_image(
 ) -> Dict[str, Any]:
     """Accept an uploaded soil image and return a prediction payload."""
     if not file or not file.filename:
-        # If no file provided, return default prediction payload
-        return {
-            "soil_type": "Black Soil",
-            "confidence": 96.5,
-            "message": "Soil analyzed successfully"
-        }
+        raise HTTPException(
+            status_code=400,
+            detail="No image file provided. Please upload a soil image to get a prediction.",
+        )
 
     temp_file_path = None
     try:
@@ -55,7 +53,7 @@ async def predict_image(
                         "user_id": current_user.id,
                         "soil_image_path": str(temp_file_path),
                         "soil_type": result.get("canonical_soil_type", result["soil_type"]),
-                        "soil_confidence": result.get("confidence", 95.0),
+                        "soil_confidence": result.get("confidence", 0.0),
                     }
                 )
             except Exception:
@@ -65,6 +63,7 @@ async def predict_image(
             "soil_type": result["soil_type"],
             "confidence": result["confidence"],
             "canonical_soil_type": result.get("canonical_soil_type", result["soil_type"]),
+            "probabilities": result.get("probabilities", {}),
         }
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Image file not found.") from exc

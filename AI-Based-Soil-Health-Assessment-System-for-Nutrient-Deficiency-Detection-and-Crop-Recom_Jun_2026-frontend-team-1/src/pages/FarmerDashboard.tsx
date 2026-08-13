@@ -8,6 +8,7 @@ import { getCurrentUser, getPredictionHistory, transliterateTextApi, type UserPr
 import { useSarvamUsername, useSarvamLocation } from '../services/sarvamClient'
 import { useTranslation } from '../i18n'
 import { generatePdfReport } from '../utils/pdfReportGenerator'
+import { getStoredLocation, getOrRequestLocation } from '../services/locationService'
 import { formatLocalizedMonth, formatLocalizedDate, formatRelativeTime } from '../utils/dateUtils'
 
 interface AlertItem {
@@ -34,7 +35,7 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
   const rawUsername = user?.username || 'Valued Farmer'
   const displayName = useSarvamUsername(rawUsername)
 
-  const rawLocation = user?.region || localStorage.getItem('selected_location') || 'Srikalahasthi, Tirupati District, Andhra Pradesh, India'
+  const rawLocation = user?.region || getStoredLocation() || ''
   const sarvamLocation = useSarvamLocation(rawLocation)
 
   const reloadData = () => {
@@ -55,29 +56,46 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
     reloadData()
     window.addEventListener('predictionCreated', reloadData)
     window.addEventListener('storage', reloadData)
+    window.addEventListener('locationUpdated', reloadData)
+    // Trigger geolocation silently if no location saved
+    if (!getStoredLocation()) {
+      getOrRequestLocation().catch(() => {})
+    }
     return () => {
       window.removeEventListener('predictionCreated', reloadData)
       window.removeEventListener('storage', reloadData)
+      window.removeEventListener('locationUpdated', reloadData)
     }
   }, [currentLanguage])
 
   const handleDownloadCropReport = (e: React.MouseEvent) => {
     e.preventDefault()
+    // Use data from the most recent prediction history entry
+    const lastSoilPrediction = history
+      .filter((h: any) => h.soil_type || h.prediction_type === 'soil')
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
+    
+    const lastCropPrediction = history
+      .filter((h: any) => h.predicted_crop || h.prediction_type === 'crop')
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
+
+    const soilTypeValue = lastSoilPrediction?.soil_type || t('notAvailable') || '—'
+    const topCropValue = lastCropPrediction?.predicted_crop || t('notAvailable') || '—'
+    const confidenceValue = lastSoilPrediction?.confidence
+      ? (lastSoilPrediction.confidence > 1 ? lastSoilPrediction.confidence : lastSoilPrediction.confidence * 100)
+      : 0
+    
     generatePdfReport({
       userName: rawUsername,
       location: sarvamLocation || rawLocation,
-      topCrop: 'Cotton',
-      soilType: 'Unknown Soil',
-      confidence: 96.2,
-      recommendations: [
-        'Apply NPK 120:60:60 kg/ha in 3 split doses.',
-        'Maintain soil moisture at field capacity during flowering.',
-        'Spray Neem Oil (5ml/L) as a preventive measure against sucking pests.',
-      ],
-      nValue: '120 mg/kg',
-      pValue: '45 mg/kg',
-      kValue: '180 mg/kg',
-      phValue: '6.8',
+      topCrop: topCropValue,
+      soilType: soilTypeValue,
+      confidence: confidenceValue,
+      recommendations: lastCropPrediction?.recommendations || [],
+      nValue: lastSoilPrediction?.nitrogen ? `${lastSoilPrediction.nitrogen} mg/kg` : '—',
+      pValue: lastSoilPrediction?.phosphorus ? `${lastSoilPrediction.phosphorus} mg/kg` : '—',
+      kValue: lastSoilPrediction?.potassium ? `${lastSoilPrediction.potassium} mg/kg` : '—',
+      phValue: lastSoilPrediction?.ph ? String(lastSoilPrediction.ph) : '—',
     })
   }
 

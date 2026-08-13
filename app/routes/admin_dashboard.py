@@ -1,6 +1,6 @@
 """Admin dashboard API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -31,8 +31,10 @@ router = APIRouter(prefix="/admin/dashboard", tags=["Admin Dashboard"])
     summary="Get admin dashboard summary",
     responses={500: {"description": "Dashboard summary could not be retrieved."}},
 )
-def dashboard_summary(db: Session = Depends(get_db)) -> DashboardSummaryResponse:
+def dashboard_summary(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> DashboardSummaryResponse:
     """Return aggregate user and prediction metrics for the admin dashboard."""
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access is required.")
     try:
         return DashboardSummaryResponse(**get_dashboard_summary(db))
     except SQLAlchemyError as exc:
@@ -48,8 +50,10 @@ def dashboard_summary(db: Session = Depends(get_db)) -> DashboardSummaryResponse
     summary="Get monthly user growth",
     responses={500: {"description": "User growth data could not be retrieved."}},
 )
-def user_growth(db: Session = Depends(get_db)) -> list[UserGrowthResponse]:
+def user_growth(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[UserGrowthResponse]:
     """Return chronological monthly registration totals for dashboard charts."""
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access is required.")
     try:
         return [UserGrowthResponse(**item) for item in get_user_growth(db)]
     except SQLAlchemyError as exc:
@@ -82,8 +86,10 @@ def recent_users(db: Session = Depends(get_db)) -> list[RecentUserResponse]:
     summary="Get dashboard insights for charts and chatbot monitoring",
     responses={500: {"description": "Dashboard insights could not be retrieved."}},
 )
-def dashboard_insights(db: Session = Depends(get_db)) -> DashboardInsightsResponse:
+def dashboard_insights(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> DashboardInsightsResponse:
     """Return aggregated chart and chatbot metrics for the admin dashboard."""
+    if current_user.role != UserRole.ADMIN.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access is required.")
     try:
         return DashboardInsightsResponse(**get_dashboard_insights(db))
     except SQLAlchemyError as exc:
@@ -424,31 +430,7 @@ def get_user_notifications(
     
     notifs = db.query(Notification).filter(Notification.user_id == current_user.id).order_by(Notification.created_at.desc()).all()
     if not notifs:
-        # Seed initial high-quality notifications to avoid a blank display
-        n1 = Notification(
-            user_id=current_user.id,
-            title="System Alert: Database Backup Completed",
-            message="Platform database backed up successfully. All integrity checks passed.",
-            category="system",
-            is_read=False
-        )
-        n2 = Notification(
-            user_id=current_user.id,
-            title="New Community Post Alert",
-            message="A farmer posted a new query about organic pesticides in the community forum.",
-            category="community",
-            is_read=False
-        )
-        n3 = Notification(
-            user_id=current_user.id,
-            title="Crop Prediction Completed",
-            message="Model inference completed for Faraday's soil test ID #108.",
-            category="crop",
-            is_read=True
-        )
-        db.add_all([n1, n2, n3])
-        db.commit()
-        notifs = db.query(Notification).filter(Notification.user_id == current_user.id).order_by(Notification.created_at.desc()).all()
+        return []
         
     return [
         {
@@ -494,12 +476,16 @@ def read_all_notifications_endpoint(
 
 @api_router.get("/settings/config", summary="Get settings Gemini AI configuration and sessions")
 def get_settings_config(
+    request: Request,
     current_user: User = Depends(get_current_user)
 ):
     from app.config import settings
     
     api_key = settings.GEMINI_API_KEY_1 or settings.GEMINI_API_KEY_2 or settings.GEMINI_API_KEY_3 or "AIzaSyBw-xxx-xxxxxxxxxxxxxxxxxxxx"
     masked_key = api_key[:12] + "..." if len(api_key) > 12 else "AIzaSyBw-xxx..."
+    
+    user_agent = request.headers.get("user-agent", "Unknown Device")
+    client_ip = request.client.host if request.client else "Unknown Location"
     
     return {
         "gemini": {
@@ -510,8 +496,7 @@ def get_settings_config(
             "system_prompt": "You are an expert AI agricultural assistant named AgroAI. You provide accurate, helpful, and concise advice to farmers."
         },
         "active_sessions": [
-            { "device": "Chrome on Windows", "location": "Ludhiana, IN", "current": True },
-            { "device": "AgroAI Mobile App", "location": "Punjab, IN", "current": False }
+            { "device": user_agent, "location": client_ip, "current": True }
         ]
     }
 

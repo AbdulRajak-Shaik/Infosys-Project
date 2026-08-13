@@ -25,7 +25,7 @@ function GuestNavbar({
         <div className="flex items-center gap-2">
           <span className="font-bold text-text-primary text-base">{t('agroAi')}</span>
           <span className="px-2 py-0.5 text-[9px] font-bold text-amber-700 bg-amber-100 border border-amber-200 rounded-full tracking-wide">
-            GUEST USER
+            {t('guestUser')}
           </span>
         </div>
       </div>
@@ -37,7 +37,7 @@ function GuestNavbar({
           : 'bg-amber-50 border-amber-200 text-amber-700'
       }`}>
         <Zap size={12} className={trialExhausted ? 'text-red-500' : 'text-amber-600'} />
-        Free Trial · {trialExhausted ? '0' : '1'} / 1 Analysis Remaining
+        {t('freeTrial')} · {trialExhausted ? '0' : '1'} / 1 Analysis Remaining
       </div>
 
       <div className="flex items-center gap-2">
@@ -65,12 +65,12 @@ function GuestWelcomePage({
 }) {
   const { t } = useTranslation()
   const trialFeatures = [
-    { icon: <Camera size={15} />, label: 'Upload Soil Image' },
+    { icon: <Camera size={15} />, label: t('uploadSoilImage') },
     { icon: <FlaskConical size={15} />, label: t('npk') },
-    { icon: <MapPin size={15} />, label: 'GPS Location Detection' },
-    { icon: <CloudRain size={15} />, label: 'Auto Weather Fetch' },
-    { icon: <Sparkles size={15} />, label: 'AI Crop Prediction' },
-    { icon: <Download size={15} />, label: 'Preview Report' },
+    { icon: <MapPin size={15} />, label: t('gpsLocationDetection') },
+    { icon: <CloudRain size={15} />, label: t('autoWeatherFetch') },
+    { icon: <Sparkles size={15} />, label: t('aiCropPrediction') },
+    { icon: <Download size={15} />, label: t('previewReport') },
   ]
 
   return (
@@ -109,7 +109,7 @@ function GuestWelcomePage({
           {/* Body */}
           <div className="p-6 md:p-8">
             <h2 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">
-              In your free trial you can:
+              {t('inYourFreeTrial') || 'In your free trial you can:'}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-7">
               {trialFeatures.map(f => (
@@ -130,8 +130,8 @@ function GuestWelcomePage({
                 </div>
               </div>
               <div className="flex-1">
-                <p className="font-bold text-text-primary text-sm">1 Free Analysis Available</p>
-                <p className="text-xs text-text-muted mt-0.5">1 of 1 crop recommendation remaining in your trial</p>
+                <p className="font-bold text-text-primary text-sm">{t('oneFreeAnalysisAvailable') || '1 Free Analysis Available'}</p>
+                <p className="text-xs text-text-muted mt-0.5">{t('trialRemainingDesc') || '1 of 1 crop recommendation remaining in your trial'}</p>
               </div>
               <div className="flex gap-1 flex-shrink-0">
                 <div className="w-3 h-3 rounded-full bg-green-500" />
@@ -143,7 +143,7 @@ function GuestWelcomePage({
               className="w-full py-4 gradient-primary text-white font-bold rounded-2xl text-base shadow-card hover:opacity-90 active:scale-[0.99] transition-all-smooth flex items-center justify-center gap-2"
             >
               <Sprout size={20} />
-              Start Free Crop Analysis
+              {t('startFreeCropAnalysis') || 'Start Free Crop Analysis'}
               <ArrowRight size={18} />
             </button>
 
@@ -156,7 +156,7 @@ function GuestWelcomePage({
               onClick={onLogin}
               className="w-full mt-4 py-3 border-2 border-border text-text-secondary font-semibold rounded-xl hover:bg-background hover:border-border transition-all-smooth text-sm"
             >
-              Sign In to Full Account
+              {t('signInToFullAccount') || 'Sign In to Full Account'}
             </button>
           </div>
         </div>
@@ -170,14 +170,14 @@ function LockedState({
   onLogin, onRegister }: { onLogin: () => void; onRegister: () => void }) {
   const { t } = useTranslation()
   const premiumFeatures = [
-    'Unlimited Crop Recommendations',
-    'Soil Classification',
-    ...(FEATURES.DISEASE_DETECTION ? ['Disease Detection'] : []),
-    'Fertilizer Recommendations',
-    'AI Chatbot',
-    'Prediction History',
-    'Weather Insights',
-    'Profile Management',
+    t('unlimitedCropRecommendations') || 'Unlimited Crop Recommendations',
+    t('soilClassification'),
+    ...(FEATURES.DISEASE_DETECTION ? [t('diseaseDetection')] : []),
+    t('fertilizerRecommendations') || 'Fertilizer Recommendations',
+    t('aiChatbot') || 'AI Chatbot',
+    t('predictionHistory') || 'Prediction History',
+    t('weatherInsights') || 'Weather Insights',
+    t('profileManagement') || 'Profile Management',
   ]
 
   return (
@@ -199,20 +199,20 @@ function LockedState({
             </div>
             <h2 className="text-2xl font-bold text-white mb-2">{t('freeTrialUsed')}</h2>
             <p className="text-amber-100 text-sm leading-relaxed">
-              You've already completed your complimentary AI crop analysis.
+              {t('trialExhaustedDesc') || "You've already completed your complimentary AI crop analysis."}
             </p>
           </div>
 
           {/* Counter */}
           <div className="bg-orange-50 border-b border-orange-100 px-6 py-3 flex items-center justify-center gap-3">
             <Zap size={14} className="text-orange-500" />
-            <span className="text-sm font-bold text-orange-700">0 / 1 Analyses Remaining · Trial Complete</span>
+            <span className="text-sm font-bold text-orange-700">{t('trialCompleteDesc') || '0 / 1 Analyses Remaining · Trial Complete'}</span>
           </div>
 
           {/* Features */}
           <div className="p-6 md:p-8">
             <p className="text-sm font-semibold text-text-secondary mb-4">
-              Create a free AgroAI account to continue using:
+              {t('createAccountToContinue') || 'Create a free AgroAI account to continue using:'}
             </p>
             <div className="space-y-2 mb-6">
               {premiumFeatures.map(f => (
@@ -228,13 +228,13 @@ function LockedState({
               className="w-full py-3.5 gradient-primary text-white font-bold rounded-xl shadow-soft hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mb-3"
             >
               <ArrowRight size={16} />
-              Create Free Account
+              {t('createFreeAccount') || 'Create Free Account'}
             </button>
             <button
               onClick={onLogin}
               className="w-full py-3 border-2 border-border text-text-secondary font-semibold rounded-xl hover:bg-background transition-all-smooth text-sm"
             >
-              Sign In to Existing Account
+              {t('signInToExistingAccount') || 'Sign In to Existing Account'}
             </button>
           </div>
         </div>
@@ -249,14 +249,14 @@ function PremiumModal({
 }) {
   const { t } = useTranslation()
   const benefits: { icon: ReactNode; label: string }[] = [
-    { icon: <Sparkles size={13} />, label: 'Unlimited AI Predictions' },
-    { icon: <History size={13} />, label: 'Save Prediction History' },
-    { icon: <CloudRain size={13} />, label: 'Weather Integration' },
-    ...(FEATURES.DISEASE_DETECTION ? [{ icon: <Bug size={13} />, label: 'Disease Detection' }] : []),
-    { icon: <Leaf size={13} />, label: 'Soil Classification' },
-    { icon: <Bot size={13} />, label: 'AI Chatbot' },
-    { icon: <FlaskConical size={13} />, label: 'Fertilizer Recommendation' },
-    { icon: <BarChart3 size={13} />, label: 'Analytics & Reports' },
+    { icon: <Sparkles size={13} />, label: t('unlimitedPredictions') || 'Unlimited AI Predictions' },
+    { icon: <History size={13} />, label: t('saveHistory') || 'Save Prediction History' },
+    { icon: <CloudRain size={13} />, label: t('weatherIntegration') || 'Weather Integration' },
+    ...(FEATURES.DISEASE_DETECTION ? [{ icon: <Bug size={13} />, label: t('diseaseDetection') }] : []),
+    { icon: <Leaf size={13} />, label: t('soilClassification') },
+    { icon: <Bot size={13} />, label: t('aiChatbot') || 'AI Chatbot' },
+    { icon: <FlaskConical size={13} />, label: t('fertilizerRecommendation') || 'Fertilizer Recommendation' },
+    { icon: <BarChart3 size={13} />, label: t('analyticsReports') || 'Analytics & Reports' },
   ]
 
   return (
@@ -266,9 +266,9 @@ function PremiumModal({
         {/* Header */}
         <div className="gradient-primary p-6 flex items-start justify-between">
           <div>
-            <h3 className="text-xl font-bold text-white mb-1">Create Your Free AgroAI Account</h3>
+            <h3 className="text-xl font-bold text-white mb-1">{t('createFreeAccountTitle') || 'Create Your Free AgroAI Account'}</h3>
             <p className="text-green-100 text-sm leading-relaxed">
-              You've used your complimentary AI analysis. Register to continue using all farming tools.
+              {t('trialExhaustedRegisterDesc') || "You've used your complimentary AI analysis. Register to continue using all farming tools."}
             </p>
           </div>
           <button onClick={onClose} className="text-white/60 hover:text-white p-1.5 flex-shrink-0 ml-3 hover:bg-surface/10 rounded-lg transition-colors">
@@ -292,14 +292,14 @@ function PremiumModal({
             className="w-full py-3 gradient-primary text-white font-bold rounded-xl shadow-soft hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mb-3"
           >
             <ArrowRight size={15} />
-            Create Free Account
+            {t('createFreeAccount') || 'Create Free Account'}
           </button>
           <button
             onClick={onLogin}
             className="w-full py-2.5 text-sm text-text-muted hover:text-text-secondary transition-colors font-medium text-center"
           >
             {t('alreadyHaveAccount')}{' '}
-            <span className="text-green-600 font-semibold">Sign In</span>
+            <span className="text-green-600 font-semibold">{t('signIn')}</span>
           </button>
         </div>
       </div>
@@ -309,7 +309,9 @@ function PremiumModal({
 
 // ── Post-Prediction Sticky Banner ─────────────────────────
 function PostPredictionBanner({
-  onRegister, onLogin }: { onRegister: () => void; onLogin: () => void }) {return (
+  onRegister, onLogin }: { onRegister: () => void; onLogin: () => void }) {
+  const { t } = useTranslation()
+  return (
     <div className="fixed bottom-0 inset-x-0 z-40 p-4 animate-slide-in-up pointer-events-none">
       <div className="max-w-3xl mx-auto bg-gradient-to-r from-green-600 to-green-700 rounded-2xl shadow-elevated p-4 md:p-5 pointer-events-auto">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -318,9 +320,9 @@ function PostPredictionBanner({
               <Star size={20} className="text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-white font-bold text-sm">Analysis Complete! Enjoying AgroAI?</p>
+              <p className="text-white font-bold text-sm">{t('analysisCompleteTitle') || 'Analysis Complete! Enjoying AgroAI?'}</p>
               <p className="text-green-100 text-xs mt-0.5 leading-relaxed">
-                Create a free account to save your results and get unlimited AI crop analyses.
+                {t('analysisCompleteDesc') || 'Create a free account to save your results and get unlimited AI crop analyses.'}
               </p>
             </div>
           </div>
@@ -329,13 +331,13 @@ function PostPredictionBanner({
               onClick={onLogin}
               className="flex-1 sm:flex-none px-4 py-2 bg-surface/15 hover:bg-surface/25 text-white text-sm font-semibold rounded-xl transition-colors"
             >
-              Sign In
+              {t('signIn')}
             </button>
             <button
               onClick={onRegister}
               className="flex-1 sm:flex-none px-5 py-2 bg-surface text-green-700 text-sm font-bold rounded-xl hover:bg-green-50 transition-colors shadow-soft"
             >
-              Create Free Account →
+              {t('createFreeAccount') || 'Create Free Account'} →
             </button>
           </div>
         </div>
@@ -428,7 +430,7 @@ export default function GuestExperience({
               <div className="flex items-center gap-2 min-w-0">
                 <Zap size={13} className="text-amber-600 flex-shrink-0" />
                 <p className="text-xs font-medium text-amber-700 truncate">
-                  <span className="font-bold">Guest Mode</span> — Your results are not permanently saved. Create an account to save prediction history and unlock all AI features.
+                  <span className="font-bold">{t('guestMode')}</span> — Your results are not permanently saved. Create an account to save prediction history and unlock all AI features.
                 </p>
               </div>
               <button

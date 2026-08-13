@@ -83,7 +83,6 @@ def translate_proxy(req: TranslateRequest, current_user: User = Depends(get_curr
         "kn": "kn-IN",
         "mr": "mr-IN",
         "bn": "bn-IN",
-        "sat": "sat-IN",
         "ml": "ml-IN",
         "gu": "gu-IN",
         "pa": "pa-IN",

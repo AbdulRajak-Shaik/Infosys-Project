@@ -21,14 +21,14 @@ interface WeatherLocation {
 
 const WEATHER_LOCATIONS: WeatherLocation[] = [
   // Andhra Pradesh
-  { label: 'Srikalahasthi Town, Tirupati District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 33, humidity: 67, wind: 14, condition: 'Partly Sunny', feelsLike: 39 },
+  { label: 'Srikalahasthi Town, Tirupati District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 33, humidity: 67, wind: 14, condition: t('partlySunny'), feelsLike: 39 },
   { label: 'Tirupati City, Tirupati District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 34, humidity: 65, wind: 15, condition: 'Sunny', feelsLike: 40 },
-  { label: 'Chittoor Town, Chittoor District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 33, humidity: 66, wind: 13, condition: 'Partly Sunny', feelsLike: 38 },
+  { label: 'Chittoor Town, Chittoor District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 33, humidity: 66, wind: 13, condition: t('partlySunny'), feelsLike: 38 },
   { label: 'Madanapalle Town, Annamayya District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 31, humidity: 62, wind: 12, condition: 'Sunny', feelsLike: 35 },
-  { label: 'Guntur City, Guntur District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 35, humidity: 70, wind: 16, condition: 'Hot & Humid', feelsLike: 41 },
-  { label: 'Vijayawada City, NTR District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 35, humidity: 72, wind: 15, condition: 'Hot & Humid', feelsLike: 42 },
+  { label: 'Guntur City, Guntur District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 35, humidity: 70, wind: 16, condition: t('hotHumid'), feelsLike: 41 },
+  { label: 'Vijayawada City, NTR District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 35, humidity: 72, wind: 15, condition: t('hotHumid'), feelsLike: 42 },
   { label: 'Kakinada City, Kakinada District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 33, humidity: 78, wind: 17, condition: 'Humid', feelsLike: 40 },
-  { label: 'Rajahmundry City, East Godavari District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 34, humidity: 74, wind: 14, condition: 'Partly Sunny', feelsLike: 40 },
+  { label: 'Rajahmundry City, East Godavari District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 34, humidity: 74, wind: 14, condition: t('partlySunny'), feelsLike: 40 },
   { label: 'Nellore City, SPSR Nellore District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 34, humidity: 71, wind: 16, condition: 'Sunny', feelsLike: 40 },
   { label: 'Kurnool City, Kurnool District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 36, humidity: 55, wind: 14, condition: 'Sunny', feelsLike: 41 },
   { label: 'Visakhapatnam City, Visakhapatnam District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 32, humidity: 80, wind: 18, condition: 'Humid', feelsLike: 38 },
@@ -36,36 +36,36 @@ const WEATHER_LOCATIONS: WeatherLocation[] = [
   { label: 'Kadapa City, YSR Kadapa District, Andhra Pradesh, India', state: 'Andhra Pradesh', temp: 36, humidity: 54, wind: 13, condition: 'Hot & Sunny', feelsLike: 41 },
   
   // Telangana
-  { label: 'Khammam Town, Khammam District, Telangana, India', state: 'Telangana', temp: 33, humidity: 65, wind: 15, condition: 'Partly Sunny', feelsLike: 39 },
-  { label: 'Wyra Mandal, Khammam District, Telangana, India', state: 'Telangana', temp: 33, humidity: 66, wind: 14, condition: 'Partly Sunny', feelsLike: 38 },
+  { label: 'Khammam Town, Khammam District, Telangana, India', state: 'Telangana', temp: 33, humidity: 65, wind: 15, condition: t('partlySunny'), feelsLike: 39 },
+  { label: 'Wyra Mandal, Khammam District, Telangana, India', state: 'Telangana', temp: 33, humidity: 66, wind: 14, condition: t('partlySunny'), feelsLike: 38 },
   { label: 'Suryapet Village, Suryapet District, Telangana, India', state: 'Telangana', temp: 34, humidity: 63, wind: 14, condition: 'Sunny', feelsLike: 40 },
   { label: 'Nalgonda Village, Nalgonda District, Telangana, India', state: 'Telangana', temp: 34, humidity: 60, wind: 13, condition: 'Sunny', feelsLike: 40 },
   { label: 'Warangal Town, Warangal District, Telangana, India', state: 'Telangana', temp: 33, humidity: 64, wind: 12, condition: 'Partly Cloudy', feelsLike: 38 },
   { label: 'Hyderabad City, Hyderabad District, Telangana, India', state: 'Telangana', temp: 33, humidity: 62, wind: 16, condition: 'Partly Cloudy', feelsLike: 38 },
   { label: 'Karimnagar Town, Karimnagar District, Telangana, India', state: 'Telangana', temp: 34, humidity: 61, wind: 13, condition: 'Sunny', feelsLike: 39 },
-  { label: 'Nizamabad Town, Nizamabad District, Telangana, India', state: 'Telangana', temp: 33, humidity: 64, wind: 12, condition: 'Partly Sunny', feelsLike: 38 },
+  { label: 'Nizamabad Town, Nizamabad District, Telangana, India', state: 'Telangana', temp: 33, humidity: 64, wind: 12, condition: t('partlySunny'), feelsLike: 38 },
   
   // Punjab
-  { label: 'Ludhiana Town, Ludhiana District, Punjab, India', state: 'Punjab', temp: 32, humidity: 68, wind: 14, condition: 'Partly Sunny', feelsLike: 38 },
+  { label: 'Ludhiana Town, Ludhiana District, Punjab, India', state: 'Punjab', temp: 32, humidity: 68, wind: 14, condition: t('partlySunny'), feelsLike: 38 },
   { label: 'Amritsar City, Amritsar District, Punjab, India', state: 'Punjab', temp: 30, humidity: 72, wind: 12, condition: 'Hazy', feelsLike: 36 },
-  { label: 'Kotkapura Village, Faridkot District, Punjab, India', state: 'Punjab', temp: 31, humidity: 70, wind: 11, condition: 'Partly Sunny', feelsLike: 37 },
+  { label: 'Kotkapura Village, Faridkot District, Punjab, India', state: 'Punjab', temp: 31, humidity: 70, wind: 11, condition: t('partlySunny'), feelsLike: 37 },
   { label: 'Faridkot Town, Faridkot District, Punjab, India', state: 'Punjab', temp: 31, humidity: 69, wind: 12, condition: 'Sunny', feelsLike: 36 },
-  { label: 'Moga Village, Moga District, Punjab, India', state: 'Punjab', temp: 31, humidity: 69, wind: 12, condition: 'Partly Sunny', feelsLike: 36 },
+  { label: 'Moga Village, Moga District, Punjab, India', state: 'Punjab', temp: 31, humidity: 69, wind: 12, condition: t('partlySunny'), feelsLike: 36 },
   { label: 'Bathinda City, Bathinda District, Punjab, India', state: 'Punjab', temp: 33, humidity: 65, wind: 13, condition: 'Sunny', feelsLike: 38 },
-  { label: 'Patiala City, Patiala District, Punjab, India', state: 'Punjab', temp: 32, humidity: 66, wind: 11, condition: 'Partly Sunny', feelsLike: 37 },
+  { label: 'Patiala City, Patiala District, Punjab, India', state: 'Punjab', temp: 32, humidity: 66, wind: 11, condition: t('partlySunny'), feelsLike: 37 },
   { label: 'Jalandhar City, Jalandhar District, Punjab, India', state: 'Punjab', temp: 31, humidity: 68, wind: 12, condition: 'Partly Cloudy', feelsLike: 36 },
 
   // Tamil Nadu
-  { label: 'Thanjavur Village, Thanjavur District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 34, humidity: 75, wind: 18, condition: 'Hot & Humid', feelsLike: 41 },
-  { label: 'Chennai City, Chennai District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 35, humidity: 80, wind: 20, condition: 'Hot & Humid', feelsLike: 42 },
+  { label: 'Thanjavur Village, Thanjavur District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 34, humidity: 75, wind: 18, condition: t('hotHumid'), feelsLike: 41 },
+  { label: 'Chennai City, Chennai District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 35, humidity: 80, wind: 20, condition: t('hotHumid'), feelsLike: 42 },
   { label: 'Coimbatore City, Coimbatore District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 30, humidity: 70, wind: 12, condition: 'Partly Cloudy', feelsLike: 34 },
   { label: 'Madurai City, Madurai District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 35, humidity: 68, wind: 14, condition: 'Sunny', feelsLike: 41 },
-  { label: 'Salem City, Salem District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 33, humidity: 65, wind: 13, condition: 'Partly Sunny', feelsLike: 38 },
+  { label: 'Salem City, Salem District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 33, humidity: 65, wind: 13, condition: t('partlySunny'), feelsLike: 38 },
   { label: 'Tiruchirappalli City, Tiruchirappalli District, Tamil Nadu, India', state: 'Tamil Nadu', temp: 35, humidity: 70, wind: 15, condition: 'Hot & Sunny', feelsLike: 41 },
 
   // Karnataka & Kerala
   { label: 'Bengaluru City, Bengaluru District, Karnataka, India', state: 'Karnataka', temp: 28, humidity: 60, wind: 14, condition: 'Partly Cloudy', feelsLike: 30 },
-  { label: 'Mysuru City, Mysuru District, Karnataka, India', state: 'Karnataka', temp: 29, humidity: 65, wind: 12, condition: 'Partly Sunny', feelsLike: 31 },
+  { label: 'Mysuru City, Mysuru District, Karnataka, India', state: 'Karnataka', temp: 29, humidity: 65, wind: 12, condition: t('partlySunny'), feelsLike: 31 },
   { label: 'Thiruvananthapuram City, Thiruvananthapuram District, Kerala, India', state: 'Kerala', temp: 30, humidity: 80, wind: 14, condition: 'Humid', feelsLike: 36 },
   { label: 'Kochi City, Ernakulam District, Kerala, India', state: 'Kerala', temp: 30, humidity: 82, wind: 15, condition: 'Humid & Rain', feelsLike: 37 },
 
@@ -82,11 +82,11 @@ const WEATHER_LOCATIONS: WeatherLocation[] = [
   { label: 'Varanasi City, Varanasi District, Uttar Pradesh, India', state: 'Uttar Pradesh', temp: 36, humidity: 68, wind: 9, condition: 'Sunny', feelsLike: 42 },
   { label: 'Patna City, Patna District, Bihar, India', state: 'Bihar', temp: 35, humidity: 75, wind: 8, condition: 'Humid & Sunny', feelsLike: 42 },
   { label: 'Kolkata City, Kolkata District, West Bengal, India', state: 'West Bengal', temp: 31, humidity: 82, wind: 12, condition: 'Humid', feelsLike: 38 },
-  { label: 'Bhubaneswar City, Khordha District, Odisha, India', state: 'Odisha', temp: 33, humidity: 78, wind: 15, condition: 'Hot & Humid', feelsLike: 40 },
+  { label: 'Bhubaneswar City, Khordha District, Odisha, India', state: 'Odisha', temp: 33, humidity: 78, wind: 15, condition: t('hotHumid'), feelsLike: 40 },
   { label: 'Bhopal City, Bhopal District, Madhya Pradesh, India', state: 'Madhya Pradesh', temp: 34, humidity: 58, wind: 12, condition: 'Sunny', feelsLike: 38 },
   { label: 'Guwahati City, Kamrup Metropolitan District, Assam, India', state: 'Assam', temp: 31, humidity: 80, wind: 10, condition: 'Humid', feelsLike: 37 },
   { label: 'Srinagar City, Srinagar District, Jammu and Kashmir, India', state: 'Jammu & Kashmir', temp: 25, humidity: 60, wind: 9, condition: 'Clear & Pleasant', feelsLike: 25 },
-  { label: 'Dehradun City, Dehradun District, Uttarakhand, India', state: 'Uttarakhand', temp: 31, humidity: 68, wind: 11, condition: 'Partly Sunny', feelsLike: 35 },
+  { label: 'Dehradun City, Dehradun District, Uttarakhand, India', state: 'Uttarakhand', temp: 31, humidity: 68, wind: 11, condition: t('partlySunny'), feelsLike: 35 },
   { label: 'Shimla Town, Shimla District, Himachal Pradesh, India', state: 'Himachal Pradesh', temp: 21, humidity: 65, wind: 10, condition: 'Cool & Clear', feelsLike: 21 },
 ]
 
@@ -330,7 +330,7 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                 temp: Math.floor(Math.random() * 6) + 29,
                 humidity: Math.floor(Math.random() * 20) + 55,
                 wind: Math.floor(Math.random() * 10) + 10,
-                condition: 'Partly Sunny',
+                condition: t('partlySunny'),
                 feelsLike: Math.floor(Math.random() * 6) + 34,
               }
             })
@@ -353,7 +353,7 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
     temp: 31,
     humidity: 65,
     wind: 12,
-    condition: 'Partly Sunny',
+    condition: t('partlySunny'),
     feelsLike: 37,
   } : null
 
@@ -417,7 +417,7 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
             temp: 32,
             humidity: 68,
             wind: 14,
-            condition: 'Partly Sunny',
+            condition: t('partlySunny'),
             feelsLike: 38,
           }
           setGpsStatus('success')
@@ -442,7 +442,7 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                 temp: 32,
                 humidity: 68,
                 wind: 14,
-                condition: 'Partly Sunny',
+                condition: t('partlySunny'),
                 feelsLike: 38,
               }
               setGpsStatus('success')
@@ -481,7 +481,7 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                   temp: 32,
                   humidity: 68,
                   wind: 14,
-                  condition: 'Partly Sunny',
+                  condition: t('partlySunny'),
                   feelsLike: 38,
                 }
                 setGpsStatus('success')
@@ -515,7 +515,7 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
       temp: 32,
       humidity: 66,
       wind: 13,
-      condition: 'Partly Sunny',
+      condition: t('partlySunny'),
       feelsLike: 38,
     }
     onSelect(customManualLoc)
@@ -569,10 +569,10 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                     <button 
                       onClick={handleGPS} 
                       className="text-white bg-green-600 hover:bg-green-700 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm whitespace-nowrap transition-colors"
-                      title="Detect Exact GPS Location"
+                      title={t('detectGPS')}
                     >
                       {gpsStatus === 'loading' ? <LineSpinner size={12} color="currentColor" strokeWidth={2} /> : <Navigation size={12} />}
-                      {gpsStatus === 'loading' ? (t('gpsDetecting') || 'Detecting...') : (t('gps') || 'GPS')}
+                      {gpsStatus === 'loading' ? (t('gpsDetecting') || t('detecting')) : (t('gps') || 'GPS')}
                     </button>
                   )
                 }
@@ -691,13 +691,13 @@ const generateHourly = (baseTemp: number) => [
 ]
 
 const generateForecast = (baseTemp: number, condition: string) => [
-  { day: 'Today', icon: condition.includes('Rain') ? '🌧️' : condition.includes('Cloud') ? '⛅' : '☀️', high: Math.round(baseTemp + 2), low: Math.round(baseTemp - 8), rain: condition.includes('Rain') ? '80%' : '0%', condition: condition.includes('Rain') ? 'Rain Showers' : 'Partly Cloudy', humidity: 65, wind: 12, dir: 'NE', uv: 6, sunrise: '05:42 AM', sunset: '07:18 PM', desc: 'Good conditions for field preparation.' },
+  { day: 'Today', icon: condition.includes('Rain') ? '🌧️' : condition.includes('Cloud') ? '⛅' : '☀️', high: Math.round(baseTemp + 2), low: Math.round(baseTemp - 8), rain: condition.includes('Rain') ? '80%' : '0%', condition: condition.includes('Rain') ? t('rainShowers') : 'Partly Cloudy', humidity: 65, wind: 12, dir: 'NE', uv: 6, sunrise: '05:42 AM', sunset: '07:18 PM', desc: 'Good conditions for field preparation.' },
   { day: 'Wed', icon: '⛅', high: Math.round(baseTemp), low: Math.round(baseTemp - 7), rain: '10%', condition: 'Partly Cloudy', humidity: 55, wind: 15, dir: 'N', uv: 7, sunrise: '05:43 AM', sunset: '07:17 PM', desc: 'Ideal for fertilization.' },
   { day: 'Thu', icon: '☀️', high: Math.round(baseTemp + 1), low: Math.round(baseTemp - 6), rain: '0%', condition: 'Sunny', humidity: 40, wind: 8, dir: 'E', uv: 9, sunrise: '05:43 AM', sunset: '07:16 PM', desc: 'High UV. Consider shading sensitive seedlings.' },
   { day: 'Fri', icon: '🌧️', high: Math.round(baseTemp - 3), low: Math.round(baseTemp - 9), rain: '70%', condition: 'Heavy Rain', humidity: 85, wind: 20, dir: 'SW', uv: 3, sunrise: '05:44 AM', sunset: '07:15 PM', desc: 'Delay pesticide application. Potential runoff.' },
-  { day: 'Sat', icon: '⛈️', high: Math.round(baseTemp - 4), low: Math.round(baseTemp - 10), rain: '90%', condition: 'Thunderstorms', humidity: 90, wind: 25, dir: 'SW', uv: 2, sunrise: '05:45 AM', sunset: '07:14 PM', desc: 'Secure loose equipment. Risk of waterlogging.' },
+  { day: 'Sat', icon: '⛈️', high: Math.round(baseTemp - 4), low: Math.round(baseTemp - 10), rain: '90%', condition: t('thunderstorms'), humidity: 90, wind: 25, dir: 'SW', uv: 2, sunrise: '05:45 AM', sunset: '07:14 PM', desc: 'Secure loose equipment. Risk of waterlogging.' },
   { day: 'Sun', icon: '⛅', high: Math.round(baseTemp - 1), low: Math.round(baseTemp - 8), rain: '20%', condition: 'Mostly Cloudy', humidity: 60, wind: 10, dir: 'S', uv: 5, sunrise: '05:46 AM', sunset: '07:12 PM', desc: 'Soil moisture returning to optimal levels.' },
-  { day: 'Mon', icon: '☀️', high: Math.round(baseTemp + 3), low: Math.round(baseTemp - 5), rain: '0%', condition: 'Clear Sky', humidity: 45, wind: 5, dir: 'SE', uv: 8, sunrise: '05:47 AM', sunset: '07:11 PM', desc: 'Perfect window for harvesting operations.' },
+  { day: 'Mon', icon: '☀️', high: Math.round(baseTemp + 3), low: Math.round(baseTemp - 5), rain: '0%', condition: t('clearSky'), humidity: 45, wind: 5, dir: 'SE', uv: 8, sunrise: '05:47 AM', sunset: '07:11 PM', desc: 'Perfect window for harvesting operations.' },
 ]
 
 function WeatherConditionIcon({ condition }: { condition: string }) {
@@ -790,7 +790,7 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
           temp: 32,
           humidity: 68,
           wind: 14,
-          condition: 'Partly Sunny',
+          condition: t('partlySunny'),
           feelsLike: 38,
         }
       }
@@ -805,7 +805,7 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
             temp: 32,
             humidity: 68,
             wind: 14,
-            condition: 'Partly Sunny',
+            condition: t('partlySunny'),
             feelsLike: 38,
           }
         }
@@ -817,7 +817,7 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
       temp: 32,
       humidity: 68,
       wind: 14,
-      condition: 'Partly Sunny',
+      condition: t('partlySunny'),
       feelsLike: 38,
     }
   }
@@ -850,7 +850,7 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
                 temp: 32,
                 humidity: 68,
                 wind: 14,
-                condition: 'Partly Sunny',
+                condition: t('partlySunny'),
                 feelsLike: 38,
               }
               setLocation(realLoc)
@@ -880,7 +880,7 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
               temp: 32,
               humidity: 68,
               wind: 14,
-              condition: 'Partly Sunny',
+              condition: t('partlySunny'),
               feelsLike: 38,
             }
             setLocation(replayLoc)
@@ -1175,7 +1175,7 @@ function escapePdfText(value: string) {
 function buildHistoryPdf(items: any[]) {
   const rows = items.map(historyExportRow)
   const lines = [
-    'AgroAI Prediction History Report',
+    t('predictionHistoryReport'),
     `Generated: ${new Date().toLocaleString()}`,
     `Records: ${rows.length}`,
     '',

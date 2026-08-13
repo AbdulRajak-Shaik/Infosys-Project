@@ -34,7 +34,7 @@ export const INITIAL_LANGUAGES = [
   { code: 'ur', name: 'Urdu', native: 'اردو', flag: '🇮🇳' },
   { code: 'mai', name: 'Maithili', native: 'मैथिली', flag: '🇮🇳' },
   { code: 'mni', name: 'Manipuri / Meitei', native: 'মৈতৈলোন্', flag: '🇮🇳' },
-  { code: 'sat', name: 'Santali', native: 'ᱥᱟᱱᱛᱟᱲᱤ', flag: '🇮🇳' },
+
   { code: 'brx', name: 'Bodo', native: 'बर\'', flag: '🇮🇳' },
   { code: 'doi', name: 'Dogri', native: 'डोगरी', flag: '🇮🇳' },
   { code: 'ks', name: 'Kashmiri', native: 'कॉशुर', flag: '🇮🇳' },

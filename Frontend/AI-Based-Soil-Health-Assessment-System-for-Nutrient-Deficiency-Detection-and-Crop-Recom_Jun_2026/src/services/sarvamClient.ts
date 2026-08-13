@@ -18,7 +18,6 @@ const SARVAM_LANG_MAP: Record<string, string> = {
   ur: 'ur-IN',
   mai: 'mai-IN',
   mni: 'mni-IN',
-  sat: 'sat-IN',
   brx: 'brx-IN',
   doi: 'doi-IN',
   ks: 'ks-IN',
