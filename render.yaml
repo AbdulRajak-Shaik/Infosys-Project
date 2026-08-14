@@ -3,6 +3,7 @@ services:
   - type: web
     name: agroai-backend
     env: python
+    plan: free
     region: singapore
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -18,6 +19,7 @@ services:
   - type: web
     name: agroai-frontend
     env: static
+    plan: free
     rootDir: AI-Based-Soil-Health-Assessment-System-for-Nutrient-Deficiency-Detection-and-Crop-Recom_Jun_2026-frontend-team-1
     buildCommand: npm install && npm run build
     staticPublishPath: dist
