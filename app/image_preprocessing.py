@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 try:
     import tensorflow as tf
     from tensorflow.keras.applications.efficientnet import preprocess_input
