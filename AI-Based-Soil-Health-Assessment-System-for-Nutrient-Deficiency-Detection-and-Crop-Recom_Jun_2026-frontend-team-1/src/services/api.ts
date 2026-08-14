@@ -3,11 +3,28 @@
  * Connects React UI to FastAPI Backend at http://127.0.0.1:8000
  */
 
-let rawUrl = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').trim();
-if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-  rawUrl = `https://${rawUrl}`;
+function getBaseUrl(): string {
+  let rawUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  
+  // If deployed on Render (.onrender.com) and env var is missing or localhost, fallback to live backend
+  if (typeof window !== 'undefined' && window.location.hostname.includes('.onrender.com')) {
+    if (!rawUrl || rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1')) {
+      rawUrl = 'https://agroai-backend-0egu.onrender.com';
+    }
+  }
+  
+  if (!rawUrl) {
+    rawUrl = 'http://127.0.0.1:8000';
+  }
+  
+  if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+    rawUrl = `https://${rawUrl}`;
+  }
+  
+  return rawUrl.replace(/\/$/, '');
 }
-const BASE_URL = rawUrl.replace(/\/$/, '');
+
+const BASE_URL = getBaseUrl();
 
 function getAuthHeaders(isFormData = false): Record<string, string> {
   const headers: Record<string, string> = {};
