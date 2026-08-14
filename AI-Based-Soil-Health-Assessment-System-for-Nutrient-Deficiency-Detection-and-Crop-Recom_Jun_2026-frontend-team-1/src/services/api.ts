@@ -3,7 +3,11 @@
  * Connects React UI to FastAPI Backend at http://127.0.0.1:8000
  */
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+let rawUrl = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').trim();
+if (rawUrl && !rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+  rawUrl = `https://${rawUrl}`;
+}
+const BASE_URL = rawUrl.replace(/\/$/, '');
 
 function getAuthHeaders(isFormData = false): Record<string, string> {
   const headers: Record<string, string> = {};

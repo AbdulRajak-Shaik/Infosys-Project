@@ -18,7 +18,6 @@ services:
   - type: web
     name: agroai-frontend
     env: static
-    region: singapore
     rootDir: AI-Based-Soil-Health-Assessment-System-for-Nutrient-Deficiency-Detection-and-Crop-Recom_Jun_2026-frontend-team-1
     buildCommand: npm install && npm run build
     staticPublishPath: dist
@@ -31,4 +30,4 @@ services:
         fromService:
           type: web
           name: agroai-backend
-          property: url
+          property: host
