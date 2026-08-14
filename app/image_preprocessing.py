@@ -40,16 +40,21 @@ def preprocess_image(image_path: str) -> np.ndarray:
     try:
         with Image.open(image_file) as image:
             rgb_image = image.convert("RGB")
-            image_array = np.array(rgb_image, dtype=np.float32)
+            resized_pil = rgb_image.resize((224, 224), Image.Resampling.BILINEAR if hasattr(Image, "Resampling") else Image.BILINEAR)
+            image_array = np.array(resized_pil, dtype=np.float32)
     except (UnidentifiedImageError, OSError) as exc:
         raise ValueError(f"Unable to read image from path: {image_path}") from exc
 
     if image_array.ndim != 3:
         raise ValueError("The loaded image must have three dimensions: height, width, channels.")
 
-    resized_image = tf.image.resize(image_array, size=(224, 224), method="bilinear")
-    resized_image = tf.cast(resized_image, tf.float32)
-    preprocessed_image = preprocess_input(resized_image)
-    processed_image = np.expand_dims(preprocessed_image.numpy(), axis=0)
+    if tf is not None and preprocess_input is not None:
+        try:
+            preprocessed_image = preprocess_input(image_array)
+            return np.expand_dims(preprocessed_image, axis=0)
+        except Exception:
+            pass
 
-    return processed_image
+    # Standard normalization fallback
+    normalized = image_array / 255.0
+    return np.expand_dims(normalized, axis=0)
