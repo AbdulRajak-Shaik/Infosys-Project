@@ -2,10 +2,14 @@
 
 from pathlib import Path
 
-import numpy as np
-import tensorflow as tf
+try:
+    import tensorflow as tf
+    from tensorflow.keras.applications.efficientnet import preprocess_input
+except ImportError:
+    tf = None
+    preprocess_input = None
+
 from PIL import Image, UnidentifiedImageError
-from tensorflow.keras.applications.efficientnet import preprocess_input
 
 
 def preprocess_image(image_path: str) -> np.ndarray:

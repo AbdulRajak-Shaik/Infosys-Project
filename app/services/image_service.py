@@ -6,7 +6,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
-import tensorflow as tf
+try:
+    import tensorflow as tf
+except ImportError:
+    tf = None
+
 from PIL import Image
 
 from app.image_preprocessing import preprocess_image
