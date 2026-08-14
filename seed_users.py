@@ -22,70 +22,30 @@ def seed_users():
         else:
             print("English language already exists.")
             
-        # Seed farmer account (update in-place if exists to prevent foreign key errors)
-        farmer = db.query(User).filter(User.email == "farmer@agroai.com").first()
-        if not farmer:
-            farmer = User(
-                username="Farmer User",
-                email="farmer@agroai.com",
-                hashed_password=get_password_hash("password123"),
-                role="farmer",
-                status="active",
-                language_id=en.id
-            )
-            db.add(farmer)
-            print("Farmer user (farmer@agroai.com / password123) created!")
-        else:
-            farmer.hashed_password = get_password_hash("password123")
-            farmer.role = "farmer"
-            db.add(farmer)
-            print("Farmer user password hash and role updated in-place!")
-            
-        # Seed admin account (update in-place if exists to prevent foreign key errors)
-        admin = db.query(User).filter(User.email == "admin@agroai.com").first()
-        if not admin:
-            admin = User(
-                username="System Admin",
-                email="admin@agroai.com",
-                hashed_password=get_password_hash("password123"),
-                role="admin",
-                status="active",
-                language_id=en.id
-            )
-            db.add(admin)
-            print("Admin user (admin@agroai.com / password123) created!")
-        else:
-            admin.hashed_password = get_password_hash("password123")
-            admin.role = "admin"
-            db.add(admin)
-            print("Admin user password hash and role updated in-place!")
-            
-        # Seed admin tester account
-        admin_test = db.query(User).filter(User.email == "admin_role_test@example.com").first()
-        if not admin_test:
-            admin_test = User(
-                username="Admin Tester",
-                email="admin_role_test@example.com",
-                hashed_password=get_password_hash("AdminPass123!"),
-                role="admin",
-                status="active",
-                language_id=en.id
-            )
-            db.add(admin_test)
-
-        # Seed test farmer account
-        farmer_test = db.query(User).filter(User.email == "testfarmer1@example.com").first()
-        if not farmer_test:
-            farmer_test = User(
-                username="testfarmer1",
-                email="testfarmer1@example.com",
-                hashed_password=get_password_hash("Password123!"),
-                role="farmer",
-                status="active",
-                region="Punjab",
-                language_id=en.id
-            )
-            db.add(farmer_test)
+        # Seed test farmer accounts
+        for email, username, pwd, role in [
+            ("skar@gmail.com", "Skar Farmer", "Sar@1234", "farmer"),
+            ("sar@gmail.com", "Sar Farmer", "Sar@1234", "farmer"),
+            ("farmer@agroai.com", "Farmer User", "password123", "farmer"),
+            ("admin@agroai.com", "System Admin", "password123", "admin"),
+            ("admin@agroai.com", "System Admin", "Admin@123", "admin"),
+        ]:
+            existing = db.query(User).filter(User.email == email).first()
+            if not existing:
+                u = User(
+                    username=username,
+                    email=email,
+                    hashed_password=get_password_hash(pwd),
+                    role=role,
+                    status="active",
+                    language_id=en.id
+                )
+                db.add(u)
+            else:
+                existing.hashed_password = get_password_hash(pwd)
+                existing.role = role
+                existing.status = "active"
+                db.add(existing)
 
         db.commit()
         print("[OK] Default test users successfully verified and seeded!")

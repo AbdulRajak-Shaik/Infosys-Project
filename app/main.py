@@ -42,6 +42,13 @@ try:
 except Exception as exc:
     print(f"DB connection note: {exc}")
 
+# Seed default database accounts and languages
+try:
+    from seed_users import seed_users
+    seed_users()
+except Exception as exc:
+    print(f"User seeding note: {exc}")
+
 app = FastAPI(
     title="User Authentication API",
     description="Production-ready FastAPI backend with PostgreSQL, security best-practices, Alembic support, image prediction, and crop recommendation.",
@@ -55,6 +62,7 @@ app = FastAPI(
 app.add_middleware( 
     CORSMiddleware,
     allow_origins=[
+        "https://agroai-frontend-2bmp.onrender.com",
         "http://localhost:5173",
         "http://127.0.0.1:5173",
         "http://localhost:4173",
@@ -66,7 +74,7 @@ app.add_middleware(
         "http://localhost:8443",
         "http://127.0.0.1:8443",
     ],
-    allow_origin_regex=r"https?://.*",
+    allow_origin_regex=r"https://.*\.onrender\.com|https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

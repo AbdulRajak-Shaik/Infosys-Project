@@ -61,7 +61,7 @@ function LoginForm({ onLogin, onForgot, onRegister }: { onLogin: (role: 'farmer'
     } catch (err: any) {
       let errMsg = err.message || 'Login failed. Please check your credentials and role selection.'
       if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
-        errMsg = 'Unable to connect to backend server. Please ensure python run_server.py is running on http://127.0.0.1:8000.'
+        errMsg = 'Unable to connect to backend server. Please check your network connection or verify backend status.'
       }
       setError(errMsg)
     } finally {
