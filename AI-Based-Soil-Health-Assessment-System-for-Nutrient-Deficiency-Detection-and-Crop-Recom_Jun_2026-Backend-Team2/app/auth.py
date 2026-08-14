@@ -54,11 +54,17 @@ def register_user(db: Session, user_data: UserRegisterRequest) -> User:
     print("User Data:", user_data.model_dump())
     print("Username:", user_data.username)
     print("Region:", user_data.region)
+    # Resolve role from request payload, defaulting to FARMER
+    requested_role = (user_data.role or "farmer").lower()
+    if requested_role == "admin":
+        assigned_role = UserRole.ADMIN.value
+    else:
+        assigned_role = UserRole.FARMER.value
     db_user = User(
         username=user_data.username,
         email=normalized_email,
         hashed_password=hashed_password,
-        role=UserRole.FARMER.value,
+        role=assigned_role,
         status=UserStatus.ACTIVE.value,
         region=user_data.region,
         language_id=user_data.language_id,
@@ -157,6 +163,11 @@ def update_user_profile(
 
     current_user.email = str(user_data.email).strip().casefold()
     current_user.language_id = user_data.language_id
+    # Persist username and region when provided
+    if user_data.username is not None and user_data.username.strip():
+        current_user.username = user_data.username.strip()
+    if user_data.region is not None:
+        current_user.region = user_data.region.strip() or current_user.region
     db.commit()
     db.refresh(current_user)
     return current_user

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { useTranslation } from '../i18n'
+import { useTranslation, useSarvamTranslation, Translate } from '../i18n'
 import { Users, Activity, BarChart3, MessageSquare, HelpCircle } from 'lucide-react'
 import StatCard from '../components/StatCard'
 import { Card, Badge, StatusDot, SearchInput } from '../components/ui'
@@ -22,6 +22,15 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
   const [activity, setActivity] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // String translations for labels and tooltips
+  const totalUsersText = useSarvamTranslation('Total Users')
+  const activeTodayText = useSarvamTranslation('Active Today')
+  const farmerAccountsText = useSarvamTranslation('Farmer Accounts')
+  const totalPredictionsText = useSarvamTranslation('Total Predictions')
+  const recommendationsText = useSarvamTranslation('Recommendations')
+  const incidentsText = useSarvamTranslation('Incidents')
+  const searchPlaceholderText = useSarvamTranslation('Search activity...')
 
   const soilData = insights?.soil_type_distribution ?? []
   const cropData = insights?.crop_recommendation_counts ?? []
@@ -86,7 +95,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
     return (
       <div className="p-4 md:p-6 flex flex-col items-center justify-center min-h-[400px] text-text-muted gap-2 animate-fade-in">
         <div className="w-8 h-8 rounded-full border-4 border-t-green-600 border-green-100 animate-spin" />
-        <span className="text-sm font-medium">{t('loadingMetrics') || 'Loading metrics...'}</span>
+        <span className="text-sm font-medium"><Translate text="Loading metrics..." /></span>
       </div>
     )
   }
@@ -94,7 +103,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
   if (error) {
     return (
       <div className="p-4 md:p-6 flex flex-col items-center justify-center min-h-[400px] text-red-500 gap-2 animate-fade-in">
-        <span className="text-sm font-medium">{error}</span>
+        <span className="text-sm font-medium"><Translate text={error} /></span>
       </div>
     )
   }
@@ -113,23 +122,23 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-text-primary">{t('enterpriseDashboard') || 'Enterprise dashboard'}</h2>
-          <p className="text-sm text-text-muted">{t('platformOverviewSystemHealth') || 'Platform overview and system health — 2026'}</p>
+          <h2 className="text-2xl font-bold text-text-primary"><Translate text="Enterprise dashboard" /></h2>
+          <p className="text-sm text-text-muted"><Translate text="Platform overview and system health — 2026" /></p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
             <StatusDot status="green" />
-            <span className="text-xs font-semibold text-green-700">{t('allSystemsOperational') || 'All systems operational'}</span>
+            <span className="text-xs font-semibold text-green-700"><Translate text="All systems operational" /></span>
           </div>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title={t('totalUsers') || "Total Users"} value={summary?.total_users != null ? summary.total_users.toLocaleString() : "0"} icon={<Users size={20} className="text-white" />} gradient color="linear-gradient(135deg, #2E7D32, #43A047)" />
-        <StatCard title={t('activeToday') || "Active Today"} value={summary?.active_today != null ? summary.active_today.toLocaleString() : "0"} icon={<Activity size={20} className="text-white" />} gradient color="linear-gradient(135deg, #1565C0, #1976D2)" />
-        <StatCard title={t('farmerAccounts') || "Farmer Accounts"} value={summary?.farmer_count != null ? summary.farmer_count.toLocaleString() : "0"} icon={<Users size={20} className="text-white" />} gradient color="linear-gradient(135deg, #2E7D32, #43A047)" />
-        <StatCard title={t('totalPredictions') || "Total Predictions"} value={summary?.total_predictions != null ? summary.total_predictions.toLocaleString() : "0"} icon={<BarChart3 size={20} className="text-white" />} gradient color="linear-gradient(135deg, #7B1FA2, #9C27B0)" />
+        <StatCard title={totalUsersText} value={summary?.total_users != null ? summary.total_users.toLocaleString() : "0"} icon={<Users size={20} className="text-white" />} gradient color="linear-gradient(135deg, #2E7D32, #43A047)" />
+        <StatCard title={activeTodayText} value={summary?.active_today != null ? summary.active_today.toLocaleString() : "0"} icon={<Activity size={20} className="text-white" />} gradient color="linear-gradient(135deg, #1565C0, #1976D2)" />
+        <StatCard title={farmerAccountsText} value={summary?.farmer_count != null ? summary.farmer_count.toLocaleString() : "0"} icon={<Users size={20} className="text-white" />} gradient color="linear-gradient(135deg, #2E7D32, #43A047)" />
+        <StatCard title={totalPredictionsText} value={summary?.total_predictions != null ? summary.total_predictions.toLocaleString() : "0"} icon={<BarChart3 size={20} className="text-white" />} gradient color="linear-gradient(135deg, #7B1FA2, #9C27B0)" />
       </div>
 
       {/* Analytics Row */}
@@ -137,12 +146,12 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
         {/* User Growth */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-text-primary">{t('predictionTrends') || 'User Growth'}</h3>
-            <Badge color="blue">{t('ytd2026') || '2026 YTD'}</Badge>
+            <h3 className="font-bold text-text-primary"><Translate text="User Growth" /></h3>
+            <Badge color="blue"><Translate text="2026 YTD" /></Badge>
           </div>
           {chartData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
-              {t('noDataAvailable') || 'No data available'}
+              <Translate text="No data available" />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
@@ -157,7 +166,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
                 <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
                 <Legend />
-                <Area type="monotone" dataKey="users" stroke="#2E7D32" strokeWidth={2} fill="url(#colorFarmers)" name={t('totalUsers') || 'Total Users'} />
+                <Area type="monotone" dataKey="users" stroke="#2E7D32" strokeWidth={2} fill="url(#colorFarmers)" name={totalUsersText} />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -166,11 +175,11 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
         {/* Most Recommended Crops */}
         <Card className="p-5">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="font-bold text-text-primary">{t('suitableCrops') || 'Suitable Crops'}</h3>
+            <h3 className="font-bold text-text-primary"><Translate text="Suitable Crops" /></h3>
           </div>
           {cropData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
-              {t('noPredictionsMadeYet') || 'No predictions made yet'}
+              <Translate text="No predictions made yet" />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
@@ -179,7 +188,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: '#f5f5f5' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="value" fill="#4CAF50" radius={[4, 4, 0, 0]} name={t('recommendations') || 'Recommendations'} />
+                <Bar dataKey="value" fill="#4CAF50" radius={[4, 4, 0, 0]} name={recommendationsText} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -189,10 +198,10 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
       <div className="grid lg:grid-cols-2 gap-4">
         {/* Soil Type Distribution */}
         <Card className="p-5">
-          <h3 className="font-bold text-text-primary mb-5">{t('soil') || 'Soil Classification'}</h3>
+          <h3 className="font-bold text-text-primary mb-5"><Translate text="Soil Classification" /></h3>
           {soilData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
-              {t('noPredictionsMadeYet') || 'No predictions made yet'}
+              <Translate text="No predictions made yet" />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
@@ -211,10 +220,10 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
 
         {/* Nutrient Deficiencies */}
         <Card className="p-5">
-          <h3 className="font-bold text-text-primary mb-5">{t('nutrientAlert') || 'Nutrient Alerts'}</h3>
+          <h3 className="font-bold text-text-primary mb-5"><Translate text="Nutrient Alerts" /></h3>
           {nutrientData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
-              {t('noPredictionsMadeYet') || 'No predictions made yet'}
+              <Translate text="No predictions made yet" />
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
@@ -223,7 +232,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
                 <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <Tooltip cursor={{ fill: '#f5f5f5' }} contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="value" fill="#FB8C00" radius={[0, 4, 4, 0]} name={t('incidents') || 'Incidents'} />
+                <Bar dataKey="value" fill="#FB8C00" radius={[0, 4, 4, 0]} name={incidentsText} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -231,57 +240,57 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
       </div>
 
       {/* Chatbot Monitoring Module */}
-      <h3 className="text-xl font-bold text-text-primary mt-8 mb-2">{t('chatbotMonitoring') || 'Chatbot Monitoring'}</h3>
+      <h3 className="text-xl font-bold text-text-primary mt-8 mb-2"><Translate text="Chatbot Monitoring" /></h3>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600"><MessageSquare size={24} /></div>
-          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.total_conversations?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted">{t('totalConversations') || 'Total Conversations'}</p></div>
+          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.total_conversations?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted"><Translate text="Total Conversations" /></p></div>
         </Card>
         <Card className="p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center text-purple-600"><HelpCircle size={24} /></div>
-          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.avg_questions_per_session ?? '0.0'}</p><p className="text-sm font-medium text-text-muted">{t('avgQuestionsPerSession') || 'Avg Questions/Session'}</p></div>
+          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.avg_questions_per_session ?? '0.0'}</p><p className="text-sm font-medium text-text-muted"><Translate text="Avg Questions/Session" /></p></div>
         </Card>
         <Card className="p-5 flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center text-green-600"><Users size={24} /></div>
-          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.active_users_today?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted">{t('activeUsersToday') || 'Active Users Today'}</p></div>
+          <div><p className="text-3xl font-bold text-text-primary">{chatbotMetrics?.active_users_today?.toLocaleString() ?? '0'}</p><p className="text-sm font-medium text-text-muted"><Translate text="Active Users Today" /></p></div>
         </Card>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-text-primary">{t('recentBotActivity') || 'Recent Bot Activity'}</h3>
+            <h3 className="font-bold text-text-primary"><Translate text="Recent Bot Activity" /></h3>
             <div className="w-64">
-              <SearchInput value={botSearch} onChange={setBotSearch} placeholder={t('searchActivity') || "Search activity..."} />
+              <SearchInput value={botSearch} onChange={setBotSearch} placeholder={searchPlaceholderText} />
             </div>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('time') || 'Time'}</th>
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('user') || 'User'}</th>
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('topic') || 'Topic'}</th>
-                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted">{t('language') || 'Language'}</th>
-                  <th className="text-left py-2 text-xs font-semibold text-text-muted">{t('status') || 'Status'}</th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted"><Translate text="Time" /></th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted"><Translate text="User" /></th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted"><Translate text="Topic" /></th>
+                  <th className="text-left py-2 pr-3 text-xs font-semibold text-text-muted"><Translate text="Language" /></th>
+                  <th className="text-left py-2 text-xs font-semibold text-text-muted"><Translate text="Status" /></th>
                 </tr>
               </thead>
               <tbody>
                 {filteredBotActivity.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-6 text-text-muted text-xs font-medium">
-                      {t('noDataAvailable') || 'No recent activity'}
+                      <Translate text="No recent activity" />
                     </td>
                   </tr>
                 ) : (
                   filteredBotActivity.map((a: any, i: number) => (
                     <tr key={a.id || i} className="border-b border-border hover:bg-background transition-colors">
-                      <td className="py-2.5 pr-3 text-xs text-text-muted">{a.time}</td>
-                      <td className="py-2.5 pr-3 font-medium text-text-primary text-xs">{a.user}</td>
-                      <td className="py-2.5 pr-3 text-xs">{t(normalizeTopicKey(a.topic)) || t(a.topic) || a.topic}</td>
-                      <td className="py-2.5 pr-3 text-xs">{t((a.lang || 'english').toLowerCase()) || a.lang}</td>
+                      <td className="py-2.5 pr-3 text-xs text-text-muted"><Translate text={a.time} /></td>
+                      <td className="py-2.5 pr-3 font-medium text-text-primary text-xs"><Translate text={a.user} /></td>
+                      <td className="py-2.5 pr-3 text-xs"><Translate text={normalizeTopicKey(a.topic)} /></td>
+                      <td className="py-2.5 pr-3 text-xs"><Translate text={a.lang} /></td>
                       <td className="py-2.5">
-                        <Badge color={a.status === 'Resolved' ? 'green' : 'orange'}>{t(normalizeStatusKey(a.status)) || t(a.status) || a.status}</Badge>
+                        <Badge color={a.status === 'Resolved' ? 'green' : 'orange'}><Translate text={normalizeStatusKey(a.status)} /></Badge>
                       </td>
                     </tr>
                   ))
@@ -293,10 +302,10 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
 
         <Card className="p-5 flex flex-col justify-between">
           <div>
-            <h3 className="font-bold text-text-primary mb-5">{t('languagesUsed') || 'Languages Used'}</h3>
+            <h3 className="font-bold text-text-primary mb-5"><Translate text="Languages Used" /></h3>
             {langData.filter((l: any) => l.value > 0).length === 0 ? (
               <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
-                {t('noDataAvailable') || 'No data available'}
+                <Translate text="No data available" />
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
@@ -313,11 +322,11 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
             )}
           </div>
           <div className="mt-4 border-t border-border pt-4">
-            <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">{t('allSupportedLanguages') || 'All Supported Languages'}</h4>
+            <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2"><Translate text="All Supported Languages" /></h4>
             <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
               {langData.map((lang: any) => (
                 <div key={lang.name} className="flex justify-between items-center p-1.5 rounded-lg bg-background border border-border text-[11px]">
-                  <span className="font-medium text-text-primary truncate mr-1">{t(lang.name.toLowerCase()) || lang.name}</span>
+                  <span className="font-medium text-text-primary truncate mr-1"><Translate text={lang.name} /></span>
                   <span className="font-mono text-text-muted bg-surface px-1 py-0.5 rounded border border-border flex-shrink-0">{lang.value}</span>
                 </div>
               ))}

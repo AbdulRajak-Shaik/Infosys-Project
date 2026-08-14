@@ -73,6 +73,7 @@ def generate_final_recommendation(
                 "nutrient_deficiencies": nutrient_analysis["deficiencies"],
                 "recommended_crops": crop_recommendation["recommended_crops"],
                 "recommended_fertilizers": nutrient_analysis["recommended_fertilizers"],
+                "prediction_type": "final",
             },
         )
 

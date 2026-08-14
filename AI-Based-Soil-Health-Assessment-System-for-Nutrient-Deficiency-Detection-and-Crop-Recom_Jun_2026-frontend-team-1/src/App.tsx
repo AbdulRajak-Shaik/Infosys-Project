@@ -16,7 +16,7 @@ import { Toast, LineSpinner, Input, SelectInput, Button } from './components/ui'
 import FloatingChatbot from './components/FloatingChatbot'
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { FEATURES } from './config'
-import api, { getCurrentUser, logoutUser, getAdminUsers, updateAdminUser, deleteAdminUser, type UserProfile, LANGUAGE_ID_TO_CODE } from './services/api'
+import api, { getCurrentUser, logoutUser, getAdminUsers, updateAdminUser, deleteAdminUser, type UserProfile, LANGUAGE_ID_TO_CODE, getNotifications, markNotificationRead, markAllNotificationsRead } from './services/api'
 import { useTranslation } from './i18n'
 import { useLanguage } from './contexts/LanguageContext'
 
@@ -134,38 +134,56 @@ export default function App() {
   }
 
   // ── Global notification state ─────────────────────────────
-  const [allNotifs, setAllNotifs] = useState(() => generateRealNotifications())
-  const [notifReadIds, setNotifReadIds] = useState<Set<string>>(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('notification_read_ids') || '[]')
-      return new Set(saved)
-    } catch { return new Set() }
-  })
+  const [allNotifs, setAllNotifs] = useState<any[]>([])
+  const [notifReadIds, setNotifReadIds] = useState<Set<string>>(new Set())
+
+  const fetchNotifs = () => {
+    getNotifications()
+      .then(items => {
+        if (Array.isArray(items)) {
+          setAllNotifs(items)
+          const readSet = new Set(items.filter((it: any) => it.read).map((it: any) => it.id))
+          setNotifReadIds(readSet)
+        }
+      })
+      .catch(() => {
+        setAllNotifs([])
+      })
+  }
 
   useEffect(() => {
-    const refresh = () => setAllNotifs(generateRealNotifications())
-    window.addEventListener('storage', refresh)
-    window.addEventListener('predictionCreated', refresh)
-    return () => {
-      window.removeEventListener('storage', refresh)
-      window.removeEventListener('predictionCreated', refresh)
+    if (appState === 'app') {
+      fetchNotifs()
+    } else {
+      setAllNotifs([])
     }
-  }, [])
+  }, [appState])
+
+  useEffect(() => {
+    if (appState === 'app') {
+      window.addEventListener('storage', fetchNotifs)
+      window.addEventListener('predictionCreated', fetchNotifs)
+      return () => {
+        window.removeEventListener('storage', fetchNotifs)
+        window.removeEventListener('predictionCreated', fetchNotifs)
+      }
+    }
+  }, [appState])
 
   const notifUnreadCount = allNotifs.filter(n => !notifReadIds.has(n.id)).length
   
   const markNotifRead = (id: string) => {
     setNotifReadIds(s => {
       const newSet = new Set([...s, id])
-      try { localStorage.setItem('notification_read_ids', JSON.stringify([...newSet])) } catch {}
       return newSet
     })
+    markNotificationRead(id).catch(() => {})
   }
   
   const markAllNotifsRead = () => {
     const allIds = new Set(allNotifs.map(n => n.id))
     setNotifReadIds(allIds)
-    try { localStorage.setItem('notification_read_ids', JSON.stringify([...allIds])) } catch {}
+    markAllNotificationsRead().catch(() => {})
   }
 
   const handleLogout = async () => {
@@ -1351,7 +1369,7 @@ function AdminAnalytics() {
           {renderChart(soilData, (
             <PieChart>
               <Pie data={soilData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
-                {soilData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                {soilData.map((_entry: unknown, index: number) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
               </Pie>
               <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
               <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 11 }} />
@@ -1365,7 +1383,7 @@ function AdminAnalytics() {
             {renderChart(languageData.filter((d: any) => d.value > 0), (
               <PieChart>
                 <Pie data={languageData.filter((d: any) => d.value > 0)} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={2} dataKey="value">
-                  {languageData.filter((d: any) => d.value > 0).map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  {languageData.filter((d: any) => d.value > 0).map((_entry: unknown, index: number) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                 </Pie>
                 <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
                 <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 11 }} />

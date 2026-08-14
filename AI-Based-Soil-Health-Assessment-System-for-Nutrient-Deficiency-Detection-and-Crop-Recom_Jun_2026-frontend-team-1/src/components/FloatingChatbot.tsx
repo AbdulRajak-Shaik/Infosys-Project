@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, type ChangeEvent, type PointerEvent } from
 import { Bot, X, Send, Mic, Image as ImageIcon, Sparkles, Trash2, Copy, Check, Volume2, Camera, Upload, Globe } from 'lucide-react'
 
 import { sendChatMessage, getAgronomicAiResponse, translateTextApi } from '../services/api'
-import { useTranslation } from '../i18n'
+import { useTranslation, Translate, useSarvamTranslation } from '../i18n'
 import { useLanguage } from '../contexts/LanguageContext'
 
 interface Message {
@@ -35,6 +35,12 @@ export default function FloatingChatbot() {
     const found = INDIAN_LANGUAGES.find(l => l.code.toLowerCase().startsWith(currentLanguage.toLowerCase()))
     return found?.name || (currentLanguage === 'en' ? 'English' : currentLanguage)
   })()
+
+  const translatedAsk = useSarvamTranslation("Ask AgroAI in")
+  const translatedListening = useSarvamTranslation("Listening in")
+  const translatedOnline = useSarvamTranslation("Online")
+  const translatedCleared = useSarvamTranslation("Chat cleared")
+
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', role: 'assistant', content: t('floatingChatbot.welcome') }
@@ -231,7 +237,7 @@ export default function FloatingChatbot() {
   }
 
   const handleClear = () => {
-    setMessages([{ id: Date.now().toString(), role: 'assistant', content: t('floatingChatbot.cleared') }])
+    setMessages([{ id: Date.now().toString(), role: 'assistant', content: translatedCleared }])
   }
 
   const SUGGESTIONS = [
@@ -346,7 +352,7 @@ export default function FloatingChatbot() {
                     {languageDisplayName} 🌐
                   </button>
                 </h3>
-                <p className="text-[10px] text-white/80 font-medium">{t('floatingChatbot.onlineStatus')}</p>
+                <p className="text-[10px] text-white/80 font-medium">{translatedOnline}</p>
               </div>
             </div>
             <div className="flex gap-1.5">
@@ -372,7 +378,7 @@ export default function FloatingChatbot() {
                   {msg.imageUrl && (
                     <img src={msg.imageUrl} alt="Attached crop/soil sample" className="max-w-full rounded-lg mb-2 border border-white/20 shadow-sm max-h-36 object-cover" />
                   )}
-                  <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                  <p className="leading-relaxed whitespace-pre-wrap"><Translate text={msg.content} /></p>
 
                   {/* Actions on hover */}
                   {msg.role === 'assistant' && (
@@ -423,7 +429,7 @@ export default function FloatingChatbot() {
             <div className="px-3 py-1.5 flex gap-1.5 overflow-x-auto custom-scrollbar border-t border-border bg-background">
               {SUGGESTIONS.map((s, i) => (
                 <button key={i} onClick={() => handleSend(s)} className="flex-shrink-0 text-[10px] font-medium px-2.5 py-1 rounded-full border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors whitespace-nowrap">
-                  {s}
+                  <Translate text={s} />
                 </button>
               ))}
             </div>
@@ -452,7 +458,7 @@ export default function FloatingChatbot() {
 
               <input
                 type="text"
-                placeholder={isRecording ? `🎙️ Listening in ${languageDisplayName}...` : `Ask AgroAI in ${languageDisplayName}...`}
+                placeholder={isRecording ? `🎙️ ${translatedListening} ${languageDisplayName}...` : `${translatedAsk} ${languageDisplayName}...`}
                 className={`flex-1 bg-transparent border-none outline-none text-xs text-text-primary px-1 ${isRecording ? 'placeholder-red-500 font-semibold animate-pulse' : ''}`}
                 value={input}
                 onChange={e => setInput(e.target.value)}

@@ -177,6 +177,13 @@ export interface UserProfile {
 }
 
 export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
+  const theme = localStorage.getItem('agroai_theme');
+  const lang = localStorage.getItem('selected_language');
+  localStorage.clear();
+  sessionStorage.clear();
+  if (theme) localStorage.setItem('agroai_theme', theme);
+  if (lang) localStorage.setItem('selected_language', lang);
+
   const data = await request<TokenResponse>('/login', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -187,6 +194,13 @@ export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
 }
 
 export async function loginAdmin(payload: LoginPayload): Promise<TokenResponse> {
+  const theme = localStorage.getItem('agroai_theme');
+  const lang = localStorage.getItem('selected_language');
+  localStorage.clear();
+  sessionStorage.clear();
+  if (theme) localStorage.setItem('agroai_theme', theme);
+  if (lang) localStorage.setItem('selected_language', lang);
+
   const data = await request<TokenResponse>('/admin/login', {
     method: 'POST',
     body: JSON.stringify(payload),
@@ -219,6 +233,39 @@ export async function getCurrentUser(): Promise<UserProfile> {
   return request<UserProfile>('/me', { method: 'GET' });
 }
 
+/** Returns a user-scoped localStorage key so data never leaks across accounts. */
+export function getUserScopedKey(baseKey: string): string {
+  try {
+    const token = localStorage.getItem('access_token');
+    if (!token) return baseKey;
+    // Decode the JWT payload (base64url, second segment)
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    const userId = payload.user_id || payload.sub || '';
+    return userId ? `${baseKey}_${userId}` : baseKey;
+  } catch {
+    return baseKey;
+  }
+}
+
+export async function updateUserProfile(params: {
+  username?: string;
+  email: string;
+  language_id: number;
+  region?: string;
+}): Promise<UserProfile | null> {
+  const token = localStorage.getItem('access_token');
+  if (!token) return null;
+  try {
+    return await request<UserProfile>('/me', {
+      method: 'PUT',
+      body: JSON.stringify(params),
+    });
+  } catch (err) {
+    console.warn('Failed to update profile on backend:', err);
+    return null;
+  }
+}
+
 export async function updateUserLanguage(langCode: string, email?: string): Promise<UserProfile | null> {
   const token = localStorage.getItem('access_token');
   if (!token) return null;
@@ -240,9 +287,17 @@ export async function updateUserLanguage(langCode: string, email?: string): Prom
 }
 
 export async function logoutUser(): Promise<{ message: string }> {
-  const result = await request<{ message: string }>('/logout', { method: 'POST' });
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
+  const theme = localStorage.getItem('agroai_theme');
+  const lang = localStorage.getItem('selected_language');
+  localStorage.clear();
+  sessionStorage.clear();
+  if (theme) localStorage.setItem('agroai_theme', theme);
+  if (lang) localStorage.setItem('selected_language', lang);
+
+  let result: { message: string } = { message: 'Logged out successfully' };
+  try {
+    result = await request<{ message: string }>('/logout', { method: 'POST' });
+  } catch {}
   return result;
 }
 
@@ -282,7 +337,9 @@ export interface PredictSoilPayload {
 
 export interface PredictSoilResponse {
   soil_type?: string;
+  canonical_soil_type?: string;
   confidence?: number;
+  probabilities?: Record<string, number>;
   soil_health?: string;
   soil_health_score?: number;
   soil_fertility_status?: string;
@@ -421,100 +478,37 @@ export function getAgronomicAiResponse(question: string, targetLanguage?: string
   // 1. NON-AGRICULTURE QUERY FILTER
   if (!isAgricultureQuery(question)) {
     if (l.includes('telugu') || l.includes('te')) {
-      return `నేను వ్యవసాయము మరియు నేల ఆరోగ్యానికి కేటాయించిన AI వ్యవసాయ అసిస్టెంట్ ని 🌾. 
-
-నేను పంటలు, నేల స్వభావం, ఎరువుల వాడకం, వాతావరణం మరియు పురుగు మందుల నివారణకు సంబంధించిన ప్రశ్నలకు మాత్రమే సమాధానం ఇవ్వగలను. 
-
-దయచేసి వ్యవసాయానికి లేదా మీ పంటలకు సంబంధించిన ప్రశ్నను మాత్రమే అడగండి!`;
-    }
-    if (l.includes('tamil') || l.includes('ta')) {
-      return `நான் விவசாயம் மற்றும் மண் வளத்திற்கு மட்டுமே பிரத்யேகமாக உருவாக்கப்பட்ட AI உதவியாளர் 🌾.
-
-பயிர்கள், மண் வளம், உர மேலாண்மை, வானிலை மற்றும் பூச்சி கட்டுப்பாடு தொடர்பான கேள்விகளுக்கு மட்டுமே என்னால் பதிலளிக்க முடியும்.
-
-தயவுசெய்து விவசாயம் அல்லது உங்கள் பயிர் சார்ந்த கேள்வியைக் கேட்கவும்!`;
+      return "నేను వ్యవసాయ చాట్‌బాట్‌ను, వ్యవసాయం లేదా వ్యవసాయానికి సంబంధించిన ప్రశ్నలు లేదా అంశాలను నన్ను అడగండి.";
     }
     if (l.includes('hindi') || l.includes('hi')) {
-      return `मैं एक विशेष कृषि एवं मृदा स्वास्थ्य AI सहायक हूँ 🌾।
-
-मैं केवल खेती, फसलों, मिट्टी, उर्वरकों, मौसम और कीट नियंत्रण से जुड़े प्रश्नों के उत्तर दे सकता हूँ।
-
-कृपया केवल कृषि या अपनी फसल से संबंधित प्रश्न पूछें!`;
+      return "मैं कृषि का चैटबॉट हूँ, मुझसे कृषि या खेती से संबंधित प्रश्न या विषय पूछें।";
     }
-    if (l.includes('urdu') || l.includes('ur')) {
-      return `میں ایک خصوصی زراعت اور مٹی کی صحت کا AI اسسٹنٹ ہوں 🌾۔
-
-میں صرف فصلوں، مٹی، کھاد، موسم اور کیڑوں سے متعلق سوالات کے جوابات دے سکتا ہوں۔
-
-براہ کرم صرف زراعت یا اپنی فصل سے متعلق سوال پوچھیں!`;
-    }
-    if (l.includes('assamese') || l.includes('as')) {
-      return `মই কৃষি আৰু মাটিৰ স্বাস্থ্যৰ বাবে উৎসৰ্গিত AI কৃষি সহায়ক 🌾।
-
-মই কেৱল খেতি, শস্য, মাটি, সাৰ আৰু বতৰ সম্পৰ্কীয় প্ৰশ্নৰ উত্তৰ দিব পাৰোঁ।
-
-অনুগ্ৰহ কৰি কেৱল কৃষি সম্পৰ্কীয় প্ৰশ্ন সুধিব!`;
-    }
-    if (l.includes('odia') || l.includes('or')) {
-      return `ମୁଁ ଏକ ବିଶେଷ କୃଷି ଏବଂ ମୃତ୍ତିକା ସ୍ୱାସ୍ଥ୍ୟ AI ସହାୟକ 🌾 |
-
-ମୁଁ କେବଳ ଫସଲ, ମାଟି, ସାର ଏବଂ ପାଣିପାଗ ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନର ଉତ୍ତର ଦେଇପାରିବି |
-
-ଦୟାକରି କେବଳ କୃଷି ସମ୍ବନ୍ଧୀୟ ପ୍ରଶ୍ନ ପଚାରନ୍ତୁ!`;
+    if (l.includes('tamil') || l.includes('ta')) {
+      return "நான் விவசாயத்தின் சாட்பாட், விவசாயம் அல்லது விவசாயம் தொடர்பான கேள்விகள் அல்லது தலைப்புகளை என்னிடம் கேளுங்கள்.";
     }
     if (l.includes('kannada') || l.includes('kn')) {
-      return `ನಾನು ಕೃಷಿ ಮತ್ತು ಮಣ್ಣಿನ ಆರೋಗ್ಯಕ್ಕಾಗಿ ಮೀಸಲಾಗಿರುವ AI ಕೃಷಿ ಸಹಾಯಕ 🌾.
-
-ನಾನು ಬೆಳೆಗಳು, ಮಣ್ಣಿನ ಸ್ಥಿತಿ, ರಸಗೊಬ್ಬರ ಬಳಕೆ, ಹವಾಮಾನ ಮತ್ತು ಕೀಟ ನಿಯಂತ್ರಣಕ್ಕೆ ಸಂಬಂಧಿಸಿದ ಪ್ರಶ್ನೆಗಳಿಗೆ ಮಾತ್ರ ಉತ್ತರಿಸಬಲ್ಲೆ.
-
-ದಯವಿಟ್ಟು ಕೃಷಿ ಅಥವಾ ನಿಮ್ಮ ಬೆಳೆಗೆ ಸಂಬಂಧಿಸಿದ ಪ್ರಶ್ನೆಯನ್ನು ಮಾತ್ರ ಕೇಳಿ!`;
+      return "ನಾನು ಕೃಷಿ ಚಾಟ್‌ಬಾಟ್, ಕೃಷಿ ಅಥವಾ ಬೇಸಾಯಕ್ಕೆ ಸಂಬಂಧಿಸಿದ ಪ್ರಶ್ನೆಗಳನ್ನು ಅಥವಾ ವಿಷಯಗಳನ್ನು ನನ್ನನ್ನು ಕೇಳಿ.";
     }
     if (l.includes('malayalam') || l.includes('ml')) {
-      return `ഞാൻ കൃഷിക്കും മണ്ണ് സംരക്ഷണത്തിനുമായി പ്രവർത്തിക്കുന്ന AI കാർഷിക സഹായിയാണ് 🌾.
-
-വിളകൾ, മണ്ണ്, വളപ്രയോഗം, കാലാവസ്ഥ, കീടനിയന്ത്രണം എന്നിവയുമായി ബന്ധപ്പെട്ട ചോദ്യങ്ങൾക്ക് മാത്രമേ എനിക്ക് മറുപടി നൽകാൻ കഴിയൂ.
-
-ദയവായി കൃഷിയുമായി ബന്ധപ്പെട്ട ചോദ്യങ്ങൾ മാത്രം ചോദിക്കുക!`;
+      return "ഞാൻ കൃഷിയുടെ ഒരു ചാറ്റ്ബോട്ട് ആണ്, കൃഷിയെയോ കാർഷിക മേഖലയെയോ കുറിച്ചുള്ള ചോദ്യങ്ങളോ വിഷയങ്ങളോ എന്നോട് ചോദിക്കുക.";
     }
     if (l.includes('marathi') || l.includes('mr')) {
-      return `मी एक विशेष कृषी आणि मृदा आरोग्य AI सहाय्यक आहे 🌾.
-
-मी फक्त शेती, पिके, माती, खते, हवामान आणि कीटक नियंत्रणाशी संबंधित प्रश्नांची उत्तरे देऊ शकतो.
-
-कृपया फक्त शेती किंवा तुमच्या पिकांशी संबंधित प्रश्न विचारू शकता!`;
+      return "मी शेतीचा चॅटबॉट आहे, मला शेती किंवा शेतीशी संबंधित प्रश्न किंवा विषय विचारा.";
     }
-
-    if (l.includes('malayalam') || l.includes('ml')) {
-      return `**നെല്ല് & വിളകൾക്ക് മികച്ച വളപ്രയോഗം (NPK Ratios)** 🌾
-
-**ഉചിതമായ വള പ്രയോഗം (ഏക്കറിന്):**
-- **യൂറിയ (Nitrogen):** 80 കി.ഗ്രാം/ഏക്കർ (3 ഘട്ടങ്ങളിലായി നൽകുക)
-- **ഡി.എ.പി (DAP 18-46-0):** 40-50 കി.ഗ്രാം/ഏക്കർ
-- **എം.ഒ.പി (MOP 60% K2O):** 30-40 കി.ഗ്രാം/ഏക്കർ.`;
+    if (l.includes('gujarati') || l.includes('gu')) {
+      return "હું ખેતીનો ચેટબોટ છું, મને ખેતી અથવા ખેતી સંબંધિત પ્રશ્નો અથવા વિષયો પૂછો.";
     }
-
-    if (l.includes('marathi') || l.includes('mr')) {
-      return `**भात आणि पिकांसाठी सर्वोत्तम खत व्यवस्थापन (NPK Ratios)** 🌾
-
-**शिफारस केलेले खतांचे प्रमाण (प्रति एकर):**
-- **युरिया (Nitrogen):** 80 किग्रॅ/एकरी (3 हप्त्यांमध्ये द्या)
-- **डीएપી (DAP 18-46-0):** 40-50 किग्रॅ/एकरी
-- **पोटॅश (MOP 60% K2O):** 30-40 किग्रॅ/एकरी.`;
+    if (l.includes('bengali') || l.includes('bn')) {
+      return "আমি কৃষির চ্যাটবট, আমাকে কৃষি বা চাষ সংক্রান্ত প্রশ্ন বা বিষয় জিজ্ঞাসা করুন।";
     }
-
-    return `**Best Fertilizer Application Advisory for Rice / Crops** 🌾
-
-**Recommended NPK Dosage:**
-- **Nitrogen (N):** 120 kg/ha — Apply 1/3 at sowing, 1/3 at tillering, and 1/3 at flowering.
-- **Phosphorus (P):** 60 kg/ha — Apply **DAP (18-46-0)** @ 40 kg/acre as basal dose before sowing.
-- **Potassium (K):** 50 kg/ha — Apply **MOP (Muriate of Potash 60% K2O)** @ 50 kg/acre at field preparation.
-
-**Best Practices:**
-1. Always irrigate lightly after chemical fertilizer application.
-2. Mix organic compost (Farm Yard Manure @ 3–5 tons/acre) to improve fertilizer efficiency.`;
+    if (l.includes('punjabi') || l.includes('pa')) {
+      return "ਮੈਂ ਖੇਤੀਬਾੜੀ ਦਾ ਚੈਟਬੋਟ ਹਾਂ, ਮੈਨੂੰ ਖੇਤੀਬਾੜੀ ਜਾਂ ਖੇਤੀ ਨਾਲ ਸਬੰਧਤ ਸਵਾਲ ਜਾਂ ਵਿਸ਼ੇ ਪੁੱਛੋ।";
+    }
+    return "i am chatbot of agriculture ask me questions or topics related to agriculture or farming.";
+  }
 
   // 2. FERTILIZER & RICE QUERIES
-  if (q.includes('fertilizer') || q.includes('npk') || q.includes('urea') || q.includes('dap') || q.includes('ఉత్తమ') || q.includes('உரம்') || q.includes('உரங்கள்') || q.includes('நெல்') || q.includes('ఎరువులు') || q.includes('ఎరువు') || q.includes('వరి') || q.includes('खाद') || q.includes('उर्वरक') || q.includes('धान') || q.includes('ಬೆಳೆ') || q.includes('വളം') || q.includes('ખાન') || q.includes('ਸਾਰ') || q.includes('کھاد') || q.includes('সাৰ') || q.includes('ସାର')) {
+  if (q.includes('fertilizer') || q.includes('npk') || q.includes('urea') || q.includes('dap') || q.includes('ఉత్తమ') || q.includes('உரம்') || q.includes('உரங்கள்') || q.includes('நெல்') || q.includes('ఎరువులు') || q.includes('ఎరువు') || q.includes('వరి') || q.includes('खाद') || q.includes('उर्वरक') || q.includes('धान') || q.includes('ಬೆಳೆ') || q.includes('വളം') || q.includes('ખાન') || q.includes('ਸਾਰ') || q.includes('ਖੇਤੀ') || q.includes('সাৰ') || q.includes('ସାର')) {
     if (l.includes('telugu') || l.includes('te')) {
       return `**వరి & పంటలకు ఉత్తమమైన ఎరువుల యాజమాన్యం (NPK Ratios)** 🌾
 
@@ -527,67 +521,7 @@ export function getAgronomicAiResponse(question: string, targetLanguage?: string
   - 1/3 వంతు చిరుపొట్ట దశలో (40-45 రోజులకు)
 - **భాస్వరం (DAP 18-46-0):** 40-50 కేజీలు / ఎకరానికి — నాటు వేసే ముందే ఆఖరి దుక్కిలో వేయాలి.
 - **పొటాషియం (MOP 60% K2O):** 30-40 కేజీలు / ఎకరానికి — ఆఖరి దుక్కిలో వేయాలి.`;
-  }
-
-  if (l.includes('malayalam') || l.includes('ml')) {
-    return `**നമസ്കാരം! ഞാൻ നിങ്ങളുടെ AgroAI കാർഷിക സഹായിയാണ്** 🌱
-
-നിങ്ങളുടെ കൃഷി സംശയങ്ങൾക്ക് മറുപടി നൽകാൻ ഞാൻ ഇവിടെയുണ്ട്:
-- 🌾 **വിള ശുപാർശകൾ**
-- 🧪 **വളപ്രയോഗം**
-- ☁️ **കാലാവസ്ഥാ മുന്നറിയിപ്പുകൾ**
-
-നിങ്ങളുടെ ചോദ്യം താഴെ ടൈപ്പ് ചെയ്യുക!`;
-  }
-
-  if (l.includes('marathi') || l.includes('mr')) {
-    return `**नमस्कार! मी तुमचा AgroAI कृषी सहाय्यक आहे** 🌱
-
-मी तुमच्या शेतीविषयक प्रश्नांमध्ये मदत करण्यास तयार आहे:
-- 🌾 **पीक शिफारसी**
-- 🧪 **खत व्यवस्थापन**
-- ☁️ **हवामान आणि शेती सल्ला**
-
-तुमचा प्रश्न येथे टाईप करा!`;
-  }
-
-  if (l.includes('bengali') || l.includes('bn')) {
-    return `**নমস্কার! আমি আপনার AgroAI কৃষি সহকারী** 🌱
-
-আপনার কৃষি সম্পর্কিত প্রশ্নের উত্তর দিতে সাহায্য করতে পারি:
-- 🌾 **ফসল সুপারিশ**
-- 🧪 **সার ব্যবস্থাপনা**
-- ☁️ **আবহাওয়া পূর্বাভাস**
-
-আপনার প্রশ্ন এখানে লিখুন!`;
-  }
-
-  if (l.includes('gujarati') || l.includes('gu')) {
-    return `**નમસ્તે! હું તમારો AgroAI કૃષિ સહાયક છું** 🌱
-
-તમારા ખેતી પ્રશ્નોના ઉત્તર આપવા માટે તૈયાર છું:
-- 🌾 **પાક ભલામણ**
-- 🧪 **ખાતર વ્યવસ્થાપન**
-- ☁️ **હવામાન સલાહ**
-
-તમારો પ્રશ્ન અહીં લખો!`;
-  }
-
-  if (l.includes('punjabi') || l.includes('pa')) {
-    return `**ਸਤਿ ਸ਼੍ਰੀ ਅਕਾਲ! ਮੈਂ ਤੁਹਾਡਾ AgroAI ਖੇਤੀਬਾੜੀ ਸਹਾਇਕ ਹਾਂ** 🌱
-
-ਖੇਤੀਬਾੜੀ ਅਤੇ ਫ਼ਸਲਾਂ ਦੇ ਸਵਾਲਾਂ ਵਿੱਚ ਤੁਹਾਡੀ ਮਦਦ ਕਰਨ ਲਈ ਤਿਆਰ ਹਾਂ:
-- 🌾 **ਫ਼ਸਲ ਸਿਫਾਰਸ਼ਾਂ**
-- 🧪 **ਖਾਦ ਪ੍ਰਬੰਧਨ**
-- ☁️ **ਮੌਸਮ ਦੀ ਜਾਣਕਾਰੀ**
-
-ਆਪਣਾ ਸਵਾਲ ਇੱਥੇ ਲਿਖੋ!`;
-  }
-
-  return `**Hello! I am your AI Agriculture & Soil Health Assistant** 🌱
-
-To get the best yield, maintain balanced N-P-K nutrient application (typically 120-60-40 kg/ha for cereals), keep soil pH between 6.0 and 7.5, and ensure timely irrigation. You can use our Soil Health & Crop Recommendation modules for personalized farm analysis!`;
-  }
+    }
 
     if (l.includes('kannada') || l.includes('kn')) {
       return `**ಭತ್ತ ಮತ್ತು ಬೆಳೆಗಳಿಗೆ ಉತ್ತಮ ರಸಗೊಬ್ಬರ ನಿರ್ವಹಣೆ (NPK Ratios)** 🌾
@@ -696,7 +630,7 @@ To get the best yield, maintain balanced N-P-K nutrient application (typically 1
 2. Apply Nitrogen in split doses to reduce nutrient leaching.`;
   }
 
-  // 4. GREETINGS
+  // 4. GREETINGS & DEFAULT ADVISORY
   if (l.includes('telugu') || l.includes('te')) {
     return `**నమస్తే! నేను మీ AgroAI వ్యవసాయ అసిస్టెంట్** 🌱
 
@@ -716,7 +650,7 @@ To get the best yield, maintain balanced N-P-K nutrient application (typically 1
 - 🌾 **பயிர் பரிந்துரைகள்** (மண் pH மற்றும் NPK அடிப்படையில்)
 - 🧪 **உர மேலாண்மை** (DAP, Urea, MOP அளவுகள்)
 - 🐛 **பயிர் நோய் கண்டறிதல் & நிவாரணம்**
-- ☁️ **வானிலை & பாசன ஆலோசனைகள்**
+- ☁️ **வானிலை & பாசன ஆলোசனைகள்**
 
 உங்கள் கேள்விகளைத் தயங்காமல் கேட்கவும்!`;
   }
@@ -937,7 +871,8 @@ function normalizeHistoryItem(item: any): HistoryItem {
 
 export function saveLocalPrediction(item: Partial<HistoryItem>) {
   try {
-    const existing = JSON.parse(localStorage.getItem('agroai_prediction_history') || '[]')
+    const storageKey = getUserScopedKey('agroai_prediction_history');
+    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]')
     const rawItem: HistoryItem = {
       id: Date.now(),
       created_at: new Date().toISOString(),
@@ -945,7 +880,7 @@ export function saveLocalPrediction(item: Partial<HistoryItem>) {
     }
     const newItem = normalizeHistoryItem(rawItem)
     const updated = [newItem, ...existing]
-    localStorage.setItem('agroai_prediction_history', JSON.stringify(updated))
+    localStorage.setItem(storageKey, JSON.stringify(updated))
     window.dispatchEvent(new Event('predictionCreated'))
   } catch (err) {
     console.warn('saveLocalPrediction error:', err)
@@ -953,9 +888,10 @@ export function saveLocalPrediction(item: Partial<HistoryItem>) {
 }
 
 export async function getPredictionHistory(): Promise<HistoryItem[]> {
+  const storageKey = getUserScopedKey('agroai_prediction_history');
   const localItems: HistoryItem[] = (() => {
     try {
-      const raw = JSON.parse(localStorage.getItem('agroai_prediction_history') || '[]')
+      const raw = JSON.parse(localStorage.getItem(storageKey) || '[]')
       return Array.isArray(raw) ? raw.map(normalizeHistoryItem) : []
     } catch {
       return []
@@ -1054,10 +990,10 @@ export async function toggleCommunityPostLike(id: number, isLiked: boolean): Pro
 }
 
 // ── Feedback API ───────────────────────────────────────────
-export async function submitFeedback(rating: number, comment: string): Promise<{ id: number; message?: string }> {
+export async function submitFeedback(rating: number, comment: string, category?: string): Promise<{ id: number; message?: string }> {
   return request<{ id: number; message?: string }>('/feedback', {
     method: 'POST',
-    body: JSON.stringify({ rating, comment }),
+    body: JSON.stringify({ rating, comment, category }),
   });
 }
 
@@ -1072,6 +1008,37 @@ export interface AdminStats {
 
 export async function getAdminStats(): Promise<AdminStats> {
   return request<AdminStats>('/admin/dashboard/summary', { method: 'GET' });
+}
+
+/** Public endpoint — no auth required. Returns real DB aggregate counts for LandingPage / About. */
+export interface PlatformStats {
+  total_users: number;
+  farmer_count: number;
+  total_predictions: number;
+  feedback_count: number;
+  avg_rating: number;
+  language_count: number;
+}
+
+export async function getPlatformStats(): Promise<PlatformStats> {
+  // This endpoint is public — bypass the auth-requiring request() helper
+  const BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
+  const res = await fetch(`${BASE}/platform-stats`);
+  if (!res.ok) throw new Error('Failed to fetch platform stats');
+  return res.json() as Promise<PlatformStats>;
+}
+
+/** Returns aggregate feedback stats (avg rating, total, response rate) from DB. */
+export interface FeedbackSummary {
+  total_reviews: number;
+  average_rating: number;
+  active_farmers: number;
+  response_rate: number;
+  rating_distribution: Record<number, number>;
+}
+
+export async function getFeedbackSummary(): Promise<FeedbackSummary> {
+  return request<FeedbackSummary>('/feedback/summary', { method: 'GET' });
 }
 
 export async function getAdminUsers(): Promise<any[]> {

@@ -129,6 +129,7 @@ class PredictionHistory(Base):
     nutrient_deficiencies: Mapped[list] = mapped_column(JSON, nullable=False)
     recommended_crops: Mapped[list] = mapped_column(JSON, nullable=False)
     recommended_fertilizers: Mapped[list] = mapped_column(JSON, nullable=False)
+    prediction_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -171,6 +172,9 @@ class Feedback(Base):
 
     rating: Mapped[int] = mapped_column(nullable=False)
     comment: Mapped[str] = mapped_column(String(500), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    admin_response: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

@@ -1,14 +1,13 @@
 """Image prediction API routes for soil classification."""
 
 import os
-import shutil
-import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_current_user_optional, get_db
 from app.models import User
 from app.services.image_service import predict_soil
 from app.services.history_service import create_prediction_history
@@ -25,7 +24,7 @@ _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 @router.post("/predict-image", tags=["Prediction"])
 async def predict_image(
     file: UploadFile | None = File(None),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Accept an uploaded soil image and return a prediction payload."""
@@ -37,9 +36,20 @@ async def predict_image(
 
     temp_file_path = None
     try:
-        temp_file_path = _UPLOADS_DIR / f"{file.filename}"
+        # Use a unique temp filename to avoid collisions
+        suffix = Path(file.filename).suffix or ".jpg"
+        unique_name = f"soil_{uuid.uuid4().hex}{suffix}"
+        temp_file_path = _UPLOADS_DIR / unique_name
+
+        # Read file content and write to disk
+        file_content = await file.read()
+        if not file_content:
+            raise HTTPException(status_code=400, detail="Uploaded file is empty.")
         with temp_file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(file_content)
+
+        if not temp_file_path.exists() or temp_file_path.stat().st_size == 0:
+            raise FileNotFoundError(f"Failed to save uploaded file to {temp_file_path}")
 
         lang_id = getattr(current_user, "language_id", 1) if current_user else 1
         result = predict_soil(str(temp_file_path), lang_id)
@@ -54,6 +64,7 @@ async def predict_image(
                         "soil_image_path": str(temp_file_path),
                         "soil_type": result.get("canonical_soil_type", result["soil_type"]),
                         "soil_confidence": result.get("confidence", 0.0),
+                        "prediction_type": "soil",
                     }
                 )
             except Exception:
@@ -66,7 +77,7 @@ async def predict_image(
             "probabilities": result.get("probabilities", {}),
         }
     except FileNotFoundError as exc:
-        raise HTTPException(status_code=404, detail="Image file not found.") from exc
+        raise HTTPException(status_code=404, detail=f"Image file processing failed: {exc}") from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:

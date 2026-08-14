@@ -58,6 +58,7 @@ async def predict_crop(
                         "temperature": request.temperature,
                         "humidity": request.humidity,
                         "recommended_crops": rec_crops,
+                        "prediction_type": "crop",
                     }
                 )
             except Exception:

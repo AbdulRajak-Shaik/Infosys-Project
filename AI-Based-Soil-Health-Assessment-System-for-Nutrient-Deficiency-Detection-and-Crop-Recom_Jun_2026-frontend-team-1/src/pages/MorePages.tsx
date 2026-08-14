@@ -1,4 +1,5 @@
 import { useTranslation } from '../i18n'
+import { useLanguage } from '../contexts/LanguageContext'
 import { formatRelativeTime, formatLocalizedFullDate } from '../utils/dateUtils'
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Cloud, Droplets, Thermometer, Wind, Sunrise, Sunset, Bell, Star, Download, Search, Filter, ChevronDown, ChevronUp, Lock, Globe, Sun, Shield, Smartphone, Check, X, MapPin, Camera, Edit3, Trash2, Navigation, FileText, AlertCircle, Bot, Sparkles, Eye, EyeOff, Leaf, MessageSquare, TrendingUp, ThumbsUp, CheckCircle2, ExternalLink } from 'lucide-react'
@@ -871,7 +872,7 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
         input: `Location: ${weatherRes.location || loc.label} | Temp: ${Math.round(weatherRes.current_temperature)}°C | Condition: ${weatherRes.condition} | Humidity: ${weatherRes.humidity}%`,
         confidence: 100,
         status: 'success',
-      }).catch(() => {})
+      })
       window.dispatchEvent(new Event('predictionCreated'))
     } catch (err) {
       console.warn('[WeatherDashboard] API fetch failed, using local data:', err)
@@ -1761,10 +1762,9 @@ export function Notifications({ onNavigate, readIds: readIdsProp, onMarkRead, on
   useEffect(() => {
     const refreshNotifs = () => setLocalNotifs(generateRealNotifications())
     
-    // Try API first, fall back to local generation
     getNotifications()
       .then(items => {
-        if (Array.isArray(items) && items.length > 0) {
+        if (Array.isArray(items)) {
           setLocalNotifs(items)
           const readSet = new Set(items.filter((it: any) => it.read).map((it: any) => it.id))
           setLocalReadIds(prev => new Set([...prev, ...readSet]))
@@ -2472,12 +2472,12 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
   const { t, currentLanguage } = useTranslation()
   const [user, setUser] = useState<any>(null)
   const [editing, setEditing] = useState(false)
-  const [name, setName] = useState('Sarvam AI')
-  const [bio, setBio] = useState('Active registered farmer profile')
-  const [email, setEmail] = useState('ramyasreer2007@gmail.com')
+  const [name, setName] = useState('')
+  const [bio, setBio] = useState('')
+  const [email, setEmail] = useState('')
   const [role, setRole] = useState('FARMER')
-  const [phone, setPhone] = useState('+91 8008997880')
-  const [region, setRegion] = useState('Andhra Pradesh, Tirupati')
+  const [phone, setPhone] = useState('')
+  const [region, setRegion] = useState('')
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -2813,12 +2813,11 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
   onNavigate?: (page: string) => void
 }) {
   const { t } = useTranslation()
+  const { currentLanguage, setLanguage } = useLanguage()
   // Load saved settings from localStorage
   const loadSaved = (key: string, fallback: any) => {
     try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback } catch { return fallback }
   }
-
-  const [lang, setLang] = useState(() => loadSaved('settings_language', 'English'))
   const [notifEmail, setNotifEmail] = useState(() => loadSaved('settings_notif_email', true))
   const [notifSMS, setNotifSMS] = useState(() => loadSaved('settings_notif_sms', false))
   const [notifPush, setNotifPush] = useState(() => loadSaved('settings_notif_push', true))
@@ -2940,9 +2939,9 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
       <Card className="p-5">
         <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2"><Globe size={16} /> {t('Language')}</h3>
         <SelectInput
-          options={INITIAL_LANGUAGES.map(l => ({ value: l.name, label: `${l.name} (${l.native})` }))}
-          value={lang}
-          onChange={e => setLang(e.target.value)}
+          options={INITIAL_LANGUAGES.map(l => ({ value: l.code, label: `${l.name} (${l.native})` }))}
+          value={currentLanguage}
+          onChange={e => setLanguage(e.target.value)}
         />
       </Card>
       

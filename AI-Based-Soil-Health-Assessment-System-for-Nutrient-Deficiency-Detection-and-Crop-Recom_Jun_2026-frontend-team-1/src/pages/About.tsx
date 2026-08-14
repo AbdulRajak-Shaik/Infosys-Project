@@ -2,24 +2,25 @@ import { ArrowRight, Brain, Cloud, Shield, Leaf, TrendingUp, Users, Target, Acti
 import { Button, Card, Breadcrumb } from '../components/ui'
 import { useTranslation } from '../i18n'
 import { useState, useEffect } from 'react'
-import { getAdminStats, getPredictionHistory } from '../services/api'
+import { getAdminStats, getPredictionHistory, getPlatformStats } from '../services/api'
 
 export function About({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { t } = useTranslation()
 
-  // Real stats from API + localStorage fallback
-  const [realStats, setRealStats] = useState({ predictions: 0, farmers: 0 })
+  // Real stats from backend — no hardcoded fallbacks
+  const [realStats, setRealStats] = useState({ predictions: 0, farmers: 0, avgRating: 0, languageCount: 0 })
   useEffect(() => {
-    // Try fetching from real backend first
-    Promise.all([getPredictionHistory(), getAdminStats()])
-      .then(([history, stats]) => {
-        setRealStats({ predictions: history.length, farmers: stats.farmer_count })
+    Promise.all([getPredictionHistory(), getAdminStats(), getPlatformStats()])
+      .then(([history, adminStats, platformStats]) => {
+        setRealStats({
+          predictions: history.length,
+          farmers: adminStats.farmer_count,
+          avgRating: platformStats.avg_rating,
+          languageCount: platformStats.language_count,
+        })
       })
-      .catch(() => setRealStats({ predictions: 0, farmers: 0 }))
+      .catch(() => setRealStats({ predictions: 0, farmers: 0, avgRating: 0, languageCount: 0 }))
   }, [])
-
-  // Format a number nicely: 1234 → "1,234", 12500 → "12,500+"
-  const fmt = (n: number) => n.toLocaleString()
 
   return (
     <div className="animate-fade-in relative">
@@ -108,10 +109,10 @@ export function About({ onNavigate }: { onNavigate?: (page: string) => void }) {
         {/* Statistics Section */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { label: t('farmersServed'), value: fmt(realStats.farmers || 62), icon: <Users size={24} className="text-blue-500" />, desc: t('Actual farmer accounts registered in AgroAI.') },
-            { label: t('Your Predictions Made'), value: fmt(realStats.predictions || 62), icon: <Activity size={24} className="text-green-500" />, desc: t('AI-powered soil, crop, fertilizer, weather, and disease predictions in your History.') },
-            { label: t('modelAccuracy'), value: '96.4%', icon: <Target size={24} className="text-purple-500" />, desc: t('Our CNN model is validated on 185,000 soil samples across 12 soil types, achieving 96.4% classification accuracy.') },
-            { label: t('cropTypes'), value: '12', icon: <MapPin size={24} className="text-orange-500" />, desc: t('From Sandy Loam to Black Cotton soil — our AI classifies all 12 major Indian and global soil categories.') },
+            { label: t('farmersServed'), value: realStats.farmers > 0 ? realStats.farmers.toLocaleString() : '0', icon: <Users size={24} className="text-blue-500" />, desc: t('Actual farmer accounts registered in AgroAI.') },
+            { label: t('Your Predictions Made'), value: realStats.predictions > 0 ? realStats.predictions.toLocaleString() : '0', icon: <Activity size={24} className="text-green-500" />, desc: t('AI-powered soil, crop, fertilizer, weather, and disease predictions in your History.') },
+            { label: t('avgFeedbackRating') || 'Avg. Feedback Rating', value: realStats.avgRating > 0 ? `${realStats.avgRating.toFixed(1)}/5` : t('noRatingsYet') || 'No ratings yet', icon: <Target size={24} className="text-purple-500" />, desc: t('Average star rating given by registered farmers who submitted feedback on AgroAI.') },
+            { label: t('languagesSupported') || 'Languages Supported', value: realStats.languageCount > 0 ? String(realStats.languageCount) : '0', icon: <MapPin size={24} className="text-orange-500" />, desc: t('Number of Indian and international languages supported by the multilingual AI system.') },
           ].map((stat, i) => (
             <Card key={i} className="p-6 bg-surface/60 backdrop-blur-md border-border/50 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
               <div className="w-12 h-12 rounded-xl bg-background flex items-center justify-center mb-4 shadow-sm border border-border">
@@ -134,16 +135,16 @@ export function About({ onNavigate }: { onNavigate?: (page: string) => void }) {
               <svg className="absolute inset-0 w-full h-full opacity-20" preserveAspectRatio="none">
                 <path d="M0,400 Q100,300 200,350 T400,200 T600,250 T800,100" fill="none" stroke="currentColor" strokeWidth="2" className="text-green-500" />
               </svg>
-              {/* Floating Metric */}
+              {/* Live prediction count card */}
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface/90 backdrop-blur-md border border-green-500/30 rounded-2xl p-6 shadow-xl animate-float">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
                     <TrendingUp size={16} className="text-green-600 dark:text-green-400" />
                   </div>
-                  <span className="text-sm font-semibold text-text-secondary">{t('Yield Forecast')}</span>
+                  <span className="text-sm font-semibold text-text-secondary">{t('totalPredictions') || 'Total Predictions'}</span>
                 </div>
                 <div className="text-4xl font-extrabold text-green-600 dark:text-green-400 tracking-tight">
-                  +24%
+                  {realStats.predictions > 0 ? realStats.predictions.toLocaleString() : '—'}
                 </div>
                 <div className="w-full bg-background rounded-full h-1.5 mt-4 overflow-hidden">
                   <div className="bg-green-500 h-full rounded-full w-3/4 animate-shimmer" />
@@ -183,9 +184,9 @@ export function About({ onNavigate }: { onNavigate?: (page: string) => void }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
-              { title: t('Deep Learning'), desc: t('Our convolutional neural networks analyze leaf and soil images to detect diseases, deficiencies, and soil types with 94%+ accuracy — even from low-quality mobile camera photos.'), icon: <Brain size={24} className="text-purple-500" />, glow: 'group-hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]', page: 'soil' },
+              { title: t('Deep Learning'), desc: t('Our convolutional neural networks analyze leaf and soil images to detect diseases, deficiencies, and soil types — even from low-quality mobile camera photos.'), icon: <Brain size={24} className="text-purple-500" />, glow: 'group-hover:shadow-[0_0_30px_rgba(168,85,247,0.15)]', page: 'soil' },
               { title: t('Global Weather APIs'), desc: t('Real-time and 7-day hyper-local weather forecasts powered by OpenWeatherMap and Nominatim, providing precipitation, humidity, wind, and UV data for your exact farm location.'), icon: <Cloud size={24} className="text-blue-500" />, glow: 'group-hover:shadow-[0_0_30px_rgba(59,130,246,0.15)]', page: 'weather' },
-              { title: t('Soil Bioinformatics'), desc: t('Advanced NPK, pH, and organic carbon analysis using spectral data and machine learning models trained on over 500,000 soil samples from diverse agro-climatic zones worldwide.'), icon: <Leaf size={24} className="text-green-500" />, glow: 'group-hover:shadow-[0_0_30px_rgba(34,197,94,0.15)]', page: 'crop' },
+              { title: t('Soil Bioinformatics'), desc: t('Advanced NPK, pH, and organic carbon analysis using spectral data and machine learning models trained on diverse agro-climatic zone datasets.'), icon: <Leaf size={24} className="text-green-500" />, glow: 'group-hover:shadow-[0_0_30px_rgba(34,197,94,0.15)]', page: 'crop' },
               { title: t('Secure Architecture'), desc: t('All farm data is encrypted end-to-end with AES-256 encryption. We follow GDPR and Indian DPDP Act compliance standards to ensure your agricultural data remains private and secure.'), icon: <Shield size={24} className="text-orange-500" />, glow: 'group-hover:shadow-[0_0_30px_rgba(249,115,22,0.15)]', page: 'settings' },
             ].map((tech, i) => (
               <Card key={i} className={`p-6 bg-surface border-border group transition-all duration-300 hover:-translate-y-2 cursor-pointer ${tech.glow}`} onClick={() => onNavigate?.(tech.page)}>

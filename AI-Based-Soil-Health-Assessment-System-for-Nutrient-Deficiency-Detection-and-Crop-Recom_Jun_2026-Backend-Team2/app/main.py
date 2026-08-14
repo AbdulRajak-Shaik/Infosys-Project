@@ -12,7 +12,7 @@ from app.routes.history_routes import router as history_router
 from app.routes.task_routes import router as task_router
 from app.routes.chat_routes import router as chat_router
 from app.routes.analytics import router as analytics_router
-from app.routes.admin_dashboard import router as admin_dashboard_router
+from app.routes.admin_dashboard import router as admin_dashboard_router, api_router as api_dashboard_router
 from app.routes.admin_users import router as admin_users_router
 from app.database import engine, Base
 from app.routes.feedback_routes import router as feedback_router
@@ -101,6 +101,7 @@ app.include_router(chat_router)
 app.include_router(analytics_router)
 
 app.include_router(admin_dashboard_router)
+app.include_router(api_dashboard_router)
 app.include_router(admin_users_router)
 
 app.include_router(feedback_router)
@@ -120,3 +121,42 @@ def root():
         "api_name": "User Authentication API",
         "docs_url": "/docs"
     }
+
+
+@app.get("/platform-stats", tags=["Public"])
+def platform_stats():
+    """
+    Public endpoint — no authentication required.
+    Returns real aggregate platform metrics from the database.
+    Used by the Landing Page and About page to display honest numbers.
+    """
+    from sqlalchemy import func
+    from app.models import PredictionHistory, Feedback
+    db = SessionLocal()
+    try:
+        total_users: int = db.query(func.count(User.id)).scalar() or 0
+        farmer_count: int = db.query(User).filter(User.role == UserRole.FARMER.value).count()
+        total_predictions: int = db.query(func.count(PredictionHistory.id)).scalar() or 0
+        feedback_count: int = db.query(func.count(Feedback.id)).scalar() or 0
+        avg_rating_raw = db.query(func.avg(Feedback.rating)).scalar()
+        avg_rating: float = round(float(avg_rating_raw), 1) if avg_rating_raw is not None else 0.0
+        language_count: int = db.query(func.count(Language.id)).scalar() or 0
+        return {
+            "total_users": total_users,
+            "farmer_count": farmer_count,
+            "total_predictions": total_predictions,
+            "feedback_count": feedback_count,
+            "avg_rating": avg_rating,
+            "language_count": language_count,
+        }
+    except Exception:
+        return {
+            "total_users": 0,
+            "farmer_count": 0,
+            "total_predictions": 0,
+            "feedback_count": 0,
+            "avg_rating": 0.0,
+            "language_count": 0,
+        }
+    finally:
+        db.close()

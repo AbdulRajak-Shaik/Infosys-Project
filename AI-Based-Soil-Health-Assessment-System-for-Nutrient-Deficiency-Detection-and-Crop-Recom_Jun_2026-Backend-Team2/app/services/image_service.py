@@ -106,67 +106,25 @@ def predict_soil(image_path: str, language_id: int | None = None) -> Dict[str, A
     processed_image = preprocess_image(image_path)
     model = _load_model_once()
 
-    # Image RGB feature extraction to refine feature accuracy
-    filename_lower = image_file.name.lower()
-    override_index: Optional[int] = None
-
-    if "clay" in filename_lower and "Clay Soil" in class_names:
-        override_index = class_names.index("Clay Soil")
-    elif ("black" in filename_lower or "regur" in filename_lower) and "Black Soil" in class_names:
-        override_index = class_names.index("Black Soil")
-    elif ("sandy" in filename_lower or "sand" in filename_lower) and "Sandy Soil" in class_names:
-        override_index = class_names.index("Sandy Soil")
-    elif "alluvial" in filename_lower and "Alluvial Soil" in class_names:
-        override_index = class_names.index("Alluvial Soil")
-    elif ("silt" in filename_lower or "silty" in filename_lower) and "Silt Soil" in class_names:
-        override_index = class_names.index("Silt Soil")
-    elif ("loam" in filename_lower or "loamy" in filename_lower) and "Loamy Soil" in class_names:
-        override_index = class_names.index("Loamy Soil")
-    else:
-        try:
-            with Image.open(image_file) as PIL_img:
-                rgb_img = PIL_img.convert("RGB")
-                np_img = np.array(rgb_img, dtype=np.float32)
-                mean_r = float(np.mean(np_img[:, :, 0]))
-                mean_g = float(np.mean(np_img[:, :, 1]))
-                mean_b = float(np.mean(np_img[:, :, 2]))
-                brightness = (mean_r + mean_g + mean_b) / 3.0
-
-                if brightness < 70 and mean_r < 80 and mean_g < 80 and mean_b < 80:
-                    if "Black Soil" in class_names:
-                        override_index = class_names.index("Black Soil")
-                elif brightness > 160 and mean_r > 150 and mean_g > 140:
-                    if "Sandy Soil" in class_names:
-                        override_index = class_names.index("Sandy Soil")
-                elif 70 <= brightness <= 145 and mean_r > mean_b:
-                    if "Clay Soil" in class_names:
-                        override_index = class_names.index("Clay Soil")
-        except Exception as exc:
-            print("[DEBUG] Image feature extraction note:", exc)
-
     raw_preds = model.predict(processed_image, verbose=0)[0]
     # Ensure raw_preds is a 1D probability distribution
     if raw_preds.ndim > 1:
         raw_preds = raw_preds.flatten()
 
-    # Softmax normalization if needed
-    exp_preds = np.exp(raw_preds - np.max(raw_preds))
-    probs = exp_preds / np.sum(exp_preds)
+    # Since the model outputs softmax probabilities directly, use them if they sum to 1.
+    if np.abs(np.sum(raw_preds) - 1.0) < 1e-3 and np.all(raw_preds >= 0):
+        probs = raw_preds
+    else:
+        exp_preds = np.exp(raw_preds - np.max(raw_preds))
+        probs = exp_preds / np.sum(exp_preds)
 
     predicted_index = int(np.argmax(probs))
     confidence_score = float(probs[predicted_index] * 100)
 
-    if override_index is not None:
-        predicted_index = override_index
-        confidence_score = max(confidence_score, 95.8)
-
     # Re-normalize probability map
     prob_map = {}
     for idx, c_name in enumerate(class_names):
-        if idx == predicted_index:
-            prob_map[c_name] = round(confidence_score, 2)
-        else:
-            prob_map[c_name] = round(float(probs[idx] * 100), 2)
+        prob_map[c_name] = round(float(probs[idx] * 100), 2)
 
     canonical_soil_type = class_names[predicted_index]
     translated_soil_type = translate_text(canonical_soil_type, language_id)

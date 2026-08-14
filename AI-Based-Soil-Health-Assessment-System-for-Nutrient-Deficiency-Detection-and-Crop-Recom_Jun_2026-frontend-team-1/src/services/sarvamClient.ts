@@ -1187,13 +1187,9 @@ export function useSarvamUsername(originalUsername: string): string {
   const { currentLanguage } = useLanguage();
 
   const langCode = (currentLanguage || 'en').toLowerCase().split('-')[0];
-  if (langCode === 'en' || !originalUsername) {
-    return originalUsername || '';
-  }
-
   const localVal = translateLocationString(originalUsername, langCode);
 
-  const [translatedUsername, setTranslatedUsername] = useState<string>(localVal || originalUsername);
+  const [translatedUsername, setTranslatedUsername] = useState<string>(localVal || originalUsername || '');
 
   useEffect(() => {
     if (!originalUsername) return;
@@ -1220,6 +1216,10 @@ export function useSarvamUsername(originalUsername: string): string {
     };
   }, [originalUsername, currentLanguage, langCode]);
 
+  if (langCode === 'en' || !originalUsername) {
+    return originalUsername || '';
+  }
+
   return translatedUsername || localVal || originalUsername;
 }
 
@@ -1231,13 +1231,9 @@ export function useSarvamLocation(originalLocation: string): string {
   const { currentLanguage } = useLanguage();
 
   const langCode = (currentLanguage || 'en').toLowerCase().split('-')[0];
-  if (langCode === 'en' || !originalLocation) {
-    return originalLocation || '';
-  }
-
   const localVal = translateLocationString(originalLocation, langCode);
 
-  const [translatedLocation, setTranslatedLocation] = useState<string>(localVal || originalLocation);
+  const [translatedLocation, setTranslatedLocation] = useState<string>(localVal || originalLocation || '');
 
   useEffect(() => {
     if (!originalLocation) return;
@@ -1264,5 +1260,66 @@ export function useSarvamLocation(originalLocation: string): string {
     };
   }, [originalLocation, currentLanguage, langCode]);
 
+  if (langCode === 'en' || !originalLocation) {
+    return originalLocation || '';
+  }
+
   return translatedLocation || localVal || originalLocation;
 }
+
+/**
+ * Custom React hook for translating any arbitrary dynamic content with Sarvam AI.
+ * Automatically updates when the source text or target language changes.
+ */
+export function useSarvamTranslation(
+  originalText: string,
+  mode: 'translate' | 'transliterate' = 'translate'
+): string {
+  const { currentLanguage } = useLanguage();
+  const langCode = (currentLanguage || 'en').toLowerCase().split('-')[0];
+
+  const localVal = translateLocationString(originalText, langCode);
+  const [translatedText, setTranslatedText] = useState<string>(localVal || originalText);
+
+  useEffect(() => {
+    if (!originalText) {
+      setTranslatedText('');
+      return;
+    }
+
+    const cleanText = originalText.trim();
+    if (!cleanText) {
+      setTranslatedText('');
+      return;
+    }
+
+    let isMounted = true;
+    if (langCode === 'en') {
+      setTranslatedText(cleanText);
+      return;
+    }
+
+    // Try local mapping first
+    const freshLocal = translateLocationString(cleanText, langCode);
+    if (freshLocal && freshLocal !== cleanText) {
+      setTranslatedText(freshLocal);
+      return;
+    }
+
+    // Otherwise, translate with Sarvam API
+    translateWithSarvam(cleanText, currentLanguage, mode)
+      .then(res => {
+        if (isMounted && typeof res === 'string' && res) {
+          setTranslatedText(res);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [originalText, currentLanguage, langCode, mode]);
+
+  return translatedText || localVal || originalText;
+}
+

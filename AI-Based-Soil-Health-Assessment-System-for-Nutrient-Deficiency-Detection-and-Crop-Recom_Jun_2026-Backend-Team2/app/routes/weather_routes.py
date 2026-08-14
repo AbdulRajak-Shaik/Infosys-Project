@@ -82,13 +82,19 @@ def get_current_weather_endpoint(
     effective_language_id = language_id or (current_user.language_id if current_user else None)
 
     # Validate: need at least one of location or coords
+    if location is None and lat is None and lon is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide either 'location' (city name) or both 'lat' and 'lon'.",
+        )
+
     has_coords = lat is not None and lon is not None
-    has_location = location and location.strip()
+    has_location = location is not None and bool(location.strip())
 
     if not has_coords and not has_location:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provide either 'location' (city name) or both 'lat' and 'lon'.",
+            detail="Location parameter cannot be empty or coordinates must be complete.",
         )
 
     try:
@@ -123,13 +129,19 @@ def get_weather_forecast_endpoint(
     """Fetch 5-day forecast. Prefers lat/lon when provided, falls back to location name."""
     effective_language_id = language_id or (current_user.language_id if current_user else None)
 
+    if location is None and lat is None and lon is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Provide either 'location' (city name) or both 'lat' and 'lon'.",
+        )
+
     has_coords = lat is not None and lon is not None
-    has_location = location and location.strip()
+    has_location = location is not None and bool(location.strip())
 
     if not has_coords and not has_location:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Provide either 'location' (city name) or both 'lat' and 'lon'.",
+            detail="Location parameter cannot be empty or coordinates must be complete.",
         )
 
     try:

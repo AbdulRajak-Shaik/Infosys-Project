@@ -1,5 +1,12 @@
 export const TRANSLATIONS: Record<string, Record<string, string>> = {
   "en": {
+    "registeredFarmers": "Registered Farmers",
+    "feedbackReceived": "Feedback Received",
+    "languagesSupported": "Languages Supported",
+    "adminRoleDescription": "Access system administration, user management, and AI analytics.",
+    "realDataNote": "All numbers are real-time counts from our platform database.",
+    "analysisNotAvailable": "Analysis not available",
+
     "farmerLogin": "Farmer Login",
     "adminLogin": "Admin Login",
     "selectLoginType": "Select Login Type",
@@ -824,6 +831,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "noContributorsYet": "No contributors yet."
   },
   "hi": {
+    "registeredFarmers": "पंजीकृत किसान",
+    "feedbackReceived": "प्राप्त प्रतिक्रिया",
+    "languagesSupported": "समर्थित भाषाएँ",
+    "adminRoleDescription": "सिस्टम प्रशासन, उपयोगकर्ता प्रबंधन और एआई एनालिटिक्स तक पहुंचें।",
+    "realDataNote": "सभी संख्याएँ हमारे प्लेटफ़ॉर्म डेटाबेस से वास्तविक समय की गणनाएँ हैं।",
+    "analysisNotAvailable": "विश्लेषण उपलब्ध नहीं है",
+
     "farmerLogin": "किसान लॉगिन",
     "adminLogin": "एडमिन लॉगिन",
     "selectLoginType": "लॉगिन प्रकार चुनें",
@@ -1667,6 +1681,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सटीक जिला सेट करें"
   },
   "te": {
+    "registeredFarmers": "నమోదిత రైతులు",
+    "feedbackReceived": "అందిన అభిప్రాయాలు",
+    "languagesSupported": "మద్దతు ఉన్న భాషలు",
+    "adminRoleDescription": "సిస్టమ్ అడ్మినిస్ట్రేషన్, యూజర్ మేనేజ్‌మెంట్ మరియు AI విశ్లేషణలను యాక్సెస్ చేయండి.",
+    "realDataNote": "అన్ని సంఖ్యలు మా ప్లాట్‌ఫారమ్ డేటాబేస్ నుండి నిజ-సమయ గణనలు.",
+    "analysisNotAvailable": "విశ్లేషణ అందుబాటులో లేదు",
+
     "farmerLogin": "రైతు లాగిన్",
     "adminLogin": "అడ్మిన్ లాగిన్",
     "selectLoginType": "లాగిన్ రకాన్ని ఎంచుకోండి",
@@ -2505,6 +2526,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ఖచ్చితమైన జిల్లాను సెట్ చేయండి"
   },
   "ta": {
+    "registeredFarmers": "பதிவு செய்யப்பட்ட விவசாயிகள்",
+    "feedbackReceived": "பெறப்பட்ட கருத்துக்கள்",
+    "languagesSupported": "ஆதரிக்கப்படும் மொழிகள்",
+    "adminRoleDescription": "அமைப்பு நிர்வாகம், பயனர் மேலாண்மை மற்றும் AI பகுப்பாய்வை அணுகவும்.",
+    "realDataNote": "அனைத்து எண்களும் எங்கள் தள தரவுத்தளத்திலிருந்து நிகழ்நேர எண்ணிக்கையாகும்.",
+    "analysisNotAvailable": "பகுப்பாய்வு கிடைக்கவில்லை",
+
     "farmerLogin": "விவசாயி உள்நுழைவு",
     "adminLogin": "நிர்வாகி உள்நுழைவு",
     "selectLoginType": "உள்நுழைவு வகையைத் தேர்ந்தெடுக்கவும்",
@@ -3343,6 +3371,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "துல்லியமான மாவட்டத்தை அமைக்கவும்"
   },
   "kn": {
+    "registeredFarmers": "ನೊಂದಾಯಿತ ರೈತರು",
+    "feedbackReceived": "ಸ್ವೀಕರಿಸಿದ ಪ್ರತಿಕ್ರಿಯೆ",
+    "languagesSupported": "ಬೆಂಬಲಿತ ಭಾಷೆಗಳು",
+    "adminRoleDescription": "ಸಿಸ್ಟಮ್ ಆಡಳಿತ, ಬಳಕೆದಾರ ನಿರ್ವಹಣೆ ಮತ್ತು AI ಅನಾಲಿಟಿಕ್ಸ್ ಅನ್ನು ಪ್ರವೇಶಿಸಿ.",
+    "realDataNote": "ಎಲ್ಲಾ ಸಂಖ್ಯೆಗಳು ನಮ್ಮ ಪ್ಲಾಟ್‌ಫಾರ್ಮ್ ಡೇಟಾಬೇಸ್‌ನಿಂದ ನೈಜ-ಸಮಯದ ಎಣಿಕೆಗಳಾಗಿವೆ.",
+    "analysisNotAvailable": "ವಿಶ್ಲೇಷಣೆ ಲಭ್ಯವಿಲ್ಲ",
+
     "predictionTrends": "ಮುನ್ಸೂಚನೆ ಪ್ರವೃತ್ತಿಗಳು",
     "predictionTrendsEmpty": "ನೀವು ಮಣ್ಣು ಮತ್ತು ಬೆಳೆಗಳನ್ನು ವಿಶ್ಲೇಷಿಸಿದಂತೆ ನಿಮ್ಮ ಮುನ್ಸೂಚನೆ ಪ್ರವೃತ್ತಿಗಳು ಇಲ್ಲಿ ಕಾಣಿಸಿಕೊಳ್ಳುತ್ತವೆ.",
     "Jan": "ಜನವರಿ",
@@ -4180,6 +4215,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ನಿಖರವಾದ ಜಿಲ್ಲೆಯನ್ನು ಹೊಂದಿಸಿ"
   },
   "ml": {
+    "registeredFarmers": "രജിസ്റ്റർ ചെയ്ത കർഷകർ",
+    "feedbackReceived": "ലഭിച്ച ഫീഡ്‌ബാക്ക്",
+    "languagesSupported": "പിന്തുണയ്ക്കുന്ന ഭാഷകൾ",
+    "adminRoleDescription": "സിസ്റ്റം അഡ്മിനിസ്ട്രേഷൻ, ഉപയോക്തൃ മാനേജ്മെന്റ്, AI അനലിറ്റിക്സ് എന്നിവ ആക്സസ് ചെയ്യുക.",
+    "realDataNote": "എല്ലാ നമ്പറുകളും ഞങ്ങളുടെ പ്ലാറ്റ്ഫോം ഡാറ്റാബേസിൽ നിന്നുള്ള തത്സമയ എണ്ണമാണ്.",
+    "analysisNotAvailable": "വിശകലനം ലഭ്യമല്ല",
+
     "predictionTrends": "പ്രവചന ട്രെൻഡുകൾ",
     "predictionTrendsEmpty": "മണ്ണും വിളകളും വിശകലനം ചെയ്യുമ്പോൾ നിങ്ങളുടെ പ്രവചന ട്രെൻഡുകൾ ഇവിടെ കാണപ്പെടും.",
     "Jan": "ജനുവരി",
@@ -5017,6 +5059,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "കൃത്യമായ ജില്ല നൽകുക"
   },
   "mr": {
+    "registeredFarmers": "नोंदणीकृत शेतकरी",
+    "feedbackReceived": "मिळालेला अभिप्राय",
+    "languagesSupported": "समर्थित भाषा",
+    "adminRoleDescription": "सिस्टम प्रशासन, वापरकर्ता व्यवस्थापन आणि एआय विश्लेषणे ऍक्सेस करा.",
+    "realDataNote": "सर्व संख्या आमच्या प्लॅटफॉर्म डेटाबेसवरील रिअल-टाइम मोजणी आहेत.",
+    "analysisNotAvailable": "विश्लेषण उपलब्ध नाही",
+
     "predictionTrends": "पूर्वाभास ट्रेंड्स",
     "predictionTrendsEmpty": "तुम्ही माती आणि पिकांचे विश्लेषण करताच तुमचे पूर्वाभास ट्रेंड येथे दिसतील.",
     "Jan": "जानेवारी",
@@ -5854,6 +5903,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "अचूक जिल्हा सेट करा"
   },
   "bn": {
+    "registeredFarmers": "নিবন্ধিত কৃষক",
+    "feedbackReceived": "প্রাপ্ত প্রতিক্রিয়া",
+    "languagesSupported": "সমর্থিত ভাষা",
+    "adminRoleDescription": "সিস্টেম প্রশাসন, ব্যবহারকারী পরিচালনা এবং এআই বিশ্লেষণ অ্যাক্সেস করুন।",
+    "realDataNote": "সমস্ত সংখ্যা আমাদের প্ল্যাটফর্ম ডাটাবেস থেকে রিয়েল-টাইม গণনা।",
+    "analysisNotAvailable": "বিশ্লেষণ উপলব্ধ নয়",
+
     "predictionTrends": "পূর্বাভাস ট্রেন্ডস",
     "predictionTrendsEmpty": "আপনি মাটি এবং ফসল বিশ্লেষণ করার সাথে সাথে আপনার পূর্বাভাস ট্রেন্ডগুলি এখানে উপস্থিত হবে।",
     "Jan": "জানুয়ারী",
@@ -6691,6 +6747,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "সঠিক জেলা সেট করুন"
   },
   "gu": {
+    "registeredFarmers": "નોંધાયેલા ખેડૂતો",
+    "feedbackReceived": "મળેલ પ્રતિસાદ",
+    "languagesSupported": "સમર્થિત ભાષાઓ",
+    "adminRoleDescription": "સિસ્ટમ એડમિનિસ્ટ્રેશન, યુઝર મેનેજમેન્ટ અને AI એનાલિટિક્સ એક્સેસ કરો.",
+    "realDataNote": "બધી સંખ્યાઓ અમારા પ્લેટફોર્મ ડેટાબેઝમાંથી રીઅલ-ટાઇમ ગણતરીઓ છે.",
+    "analysisNotAvailable": "વિશ્લેષણ ઉપલબ્ધ નથી",
+
     "predictionTrends": "આગાહીના પ્રવાહો",
     "predictionTrendsEmpty": "જેમ જેમ તમે જમીન અને પાકનું વિશ્લેષણ કરશો તેમ તેમ તમારા આગાહીના પ્રવાહો અહીં દેખાશે.",
     "Jan": "જાન્યુઆરી",
@@ -7528,6 +7591,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ચોક્કસ જિલ્લો સેટ કરો"
   },
   "pa": {
+    "registeredFarmers": "ਰਜਿਸਟਰਡ ਕਿਸਾਨ",
+    "feedbackReceived": "ਪ੍ਰਾਪਤ ਫੀਡਬੈਕ",
+    "languagesSupported": "ਸਮਰਥਿਤ ਭਾਸ਼ਾਵਾਂ",
+    "adminRoleDescription": "ਸਿਸਟਮ ਪ੍ਰਸ਼ਾਸਨ, ਉਪਭੋਗਤਾ ਪ੍ਰਬੰਧਨ ਅਤੇ AI ਵਿਸ਼ਲੇਸ਼ਣ ਤੱਕ ਪਹੁੰచ ਕਰੋ।",
+    "realDataNote": "ਸਾਰੀਆਂ ਸੰਖਿਆਵਾਂ ਸਾਡੇ ਪਲੇਟਫਾਰਮ ਡੇਟਾਬੇਸ ਤੋਂ ਰੀਅਲ-ਟਾਈਮ ਗਿਣਤੀਆਂ ਹਨ।",
+    "analysisNotAvailable": "ਵਿਸ਼ਲੇਸ਼ਣ ਉਪਲਬਧ ਨਹੀਂ ਹੈ",
+
     "predictionTrends": "ਪੂਰਵ-ਅਨੁਮਾਨ ਦੇ ਰੁਝਾਨ",
     "predictionTrendsEmpty": "ਜਿਵੇਂ ਹੀ ਤੁਸੀਂ ਮਿੱਟੀ ਅਤੇ ਫ਼ਸਲਾਂ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰਦੇ ਹੋ, ਤੁਹਾਡੇ ਪੂਰਵ-ਅਨੁਮਾਨ ਦੇ ਰੁਝਾਨ ਇੱਥੇ ਦਿਖਾਈ ਦੇਣਗੇ।",
     "Jan": "ਜਨਵਰੀ",
@@ -8365,6 +8435,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ਸਟੀਕ ਜ਼ਿਲ੍ਹਾ ਸੈੱਟ ਕਰੋ"
   },
   "or": {
+    "registeredFarmers": "ପଞ୍ջୀକୃତ କୃଷକ",
+    "feedbackReceived": "ପ୍ରତିକ୍ରିୟା ଗ୍ରହଣ କରାଯାଇଛି",
+    "languagesSupported": "ସମର୍ଥିତ ଭାଷା",
+    "adminRoleDescription": "ସିଷ୍ଟମ ପ୍ରଶାସନ, ଉପଭୋକ୍ତା ପରିଚାଳନା ଏବଂ AI ଆନାଲିଟିକ୍ସକୁ ପ୍ରବେଶ କରନ୍ତୁ।",
+    "realDataNote": "ସମସ୍ତ ସଂଖ୍ୟା ଆମର ପ୍ଲାଟଫର୍ମ ଡାଟାବେସରୁ ପ୍ରକୃତ ସମୟ ଗଣନା ଅଟେ।",
+    "analysisNotAvailable": "ବିଶ୍ଳେଷଣ ଉପଲବ୍ଧ ନାହିଁ",
+
     "predictionTrends": "ପୂର୍ବାନୁମାନ ପ୍ରବୃତ୍ତି",
     "predictionTrendsEmpty": "ଆପଣ ମାଟି ଏବଂ ଫସଲ ବିଶ୍ଳେଷଣ କଲାବେଳେ ଆପଣଙ୍କର ପୂର୍ବାନୁମାନ ପ୍ରବୃତ୍ତି ଏଠାରେ ଦେଖାଯିବ ।",
     "Jan": "ଜାନୁଆରୀ",
@@ -9202,6 +9279,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ସଠିକ୍ ଜିଲ୍ଲା ସେଟ୍ କରନ୍ତୁ"
   },
   "as": {
+    "registeredFarmers": "পঞ্জীয়নভুক্ত কৃষক",
+    "feedbackReceived": "প্ৰাপ্ত মতামত",
+    "languagesSupported": "সমৰ্থিত ভাষাসমূহ",
+    "adminRoleDescription": "চিষ্টেম প্ৰশাসন, ব্যৱহাৰকাৰী ব্যৱস্থাপনা আৰু এআই বিশ্লেষণ ব্যৱহাৰ কৰক।",
+    "realDataNote": "সকলো সংখ্যা আমাৰ প্লেটফৰ্ম ডেটাবেচৰ পৰা লোৱা বাস্তৱ সময়ৰ গণনা।",
+    "analysisNotAvailable": "বিশ্লেষণ উপলব্ধ নহয়",
+
     "predictionTrends": "পূৰ্বানুমানৰ প্ৰৱণতা",
     "predictionTrendsEmpty": "আপুনি মাটি আৰু শস্য বিশ্লেষণ কৰাৰ লগে লগে আপোনাৰ পূৰ্বানুমানৰ প্ৰৱণতাসমূহ ইয়াত দেখা যাব।",
     "Jan": "জানুৱাৰী",
@@ -10039,6 +10123,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "সঠিক জিলা ছেট কৰক"
   },
   "ur": {
+    "registeredFarmers": "رجسٹرڈ کسان",
+    "feedbackReceived": "موصولہ رائے",
+    "languagesSupported": "حمایت یافتہ زبانیں",
+    "adminRoleDescription": "سistem ایڈمنسٹریشن، صارف کے انتظام اور AI تجزیات تک رسائی حاصل کریں۔",
+    "realDataNote": "تمام نمبر ہمارے پلیٹ فارم ڈیٹا بیس سے حقیقی وقت کی گنتی ہیں۔",
+    "analysisNotAvailable": "تجزیہ دستیاب نہیں ہے",
+
     "predictionTrends": "پیشین گوئی کے رجحانات",
     "predictionTrendsEmpty": "جیسے جیسے آپ مٹی اور فصلوں کا تجزیہ کریں گے، آپ کے پیشین گوئی کے رجحانات یہاں ظاہر ہوں گے۔",
     "Jan": "جنوری",
@@ -10876,6 +10967,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "صحیح ضلع قائم کریں"
   },
   "mai": {
+    "registeredFarmers": "पंजीकृत किसान",
+    "feedbackReceived": "प्राप्त प्रतिक्रिया",
+    "languagesSupported": "समर्थित भाषा",
+    "adminRoleDescription": "सिस्टम प्रशासन, उपयोगकर्ता प्रबंधन और एआई एनालिटिक्स तक पहुंचू।",
+    "realDataNote": "सब संख्या हमर प्लेटफ़ॉर्म डेटाबेस सँ वास्तविक समयक गणना अछि।",
+    "analysisNotAvailable": "विश्लेषण उपलब्ध नै अछि",
+
     "predictionTrends": "पूर्वाभास रुझान",
     "predictionTrendsEmpty": "जेना-जेना अहाँ माटि आ फसलक विश्लेषण करब, अहाँक पूर्वाभास रुझान एतय दिखाई देत।",
     "Jan": "जनवरी",
@@ -11713,6 +11811,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सटीक जिला सेट करू"
   },
   "mni": {
+    "registeredFarmers": "রেজিস্তার তৌরবা লৌমীশিং",
+    "feedbackReceived": "ফংলবা ফীদবেক",
+    "languagesSupported": "শৌগৎপা লোনশিং",
+    "adminRoleDescription": "সিস্তেম এদমিনিস্ত্রেসন, য়ুজর মেনেজমেন্ত অমসুং এআই এনালাইতিক্স য়ৌবা।",
+    "realDataNote": "মশিং পুম্নমক অসি ঐখোইগী প্লেতফোর্ম দেতাবেজতগী তশেংবা মশিংনি।",
+    "analysisNotAvailable": "বিশ্লেষণ ফংদে",
+
     "predictionTrends": "પોথাক પ્રોગ્રેસ",
     "predictionTrendsEmpty": "নহাক্না মাটি অমসুং পাম্বী এনালাইসিস তৌবগা তাকপগী ফিভম মফম অসিদা উবা ফংগনি।",
     "Jan": "જાન્યુઆરી",
@@ -12550,6 +12655,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "অચুম্বা জিল্লা সেৎ তৌবীয়ু"
   },
  "sat": {
+    "registeredFarmers": "ᱨᱮᱡᱤᱥᱴᱟᱨ ᱟᱠᱟᱱ ᱪᱟᱹᱥᱤ",
+    "feedbackReceived": "ᱧᱟᱢ ᱟᱠᱟᱱ ᱯᱷᱤᱰᱵᱮᱠ",
+    "languagesSupported": "ᱜᱚᱲᱚ ᱟᱠᱟᱱ ᱯᱟᱹᱨᱥᱤ ᱠᱚ",
+    "adminRoleDescription": "ᱥᱤᱥᱴᱮᱢ ᱪᱟᱪᱞᱟᱣ, ᱵᱮᱵᱷᱟᱨᱤᱭᱟᱹ ᱪᱟᱪᱞᱟᱣ ᱟᱨ AI ᱵᱤᱥᱞᱮᱥᱚᱱ ᱵᱮᱵᱷᱟᱨ ᱢᱮ᱾",
+    "realDataNote": "ᱥᱟᱱᱟᱢ ᱞᱮᱠᱷᱟ ᱫᱚ ᱟᱵᱚᱣᱟᱜ ᱯᱞᱮᱴᱯᱷᱚᱨᱢ ᱰᱮᱴᱟᱵᱮᱥ ᱠᱷᱚᱱ ᱥᱟᱹᱨᱤ ᱚᱠᱛᱚ ᱨᱮᱭᱟᱜ ᱞᱮᱠᱷᱟ ᱠᱟᱱᱟ᱾",
+    "analysisNotAvailable": "ᱵᱤᱥᱞᱮᱥᱚᱱ ᱵᱟᱹᱱᱩᱜᱼᱟ",
+
  "predictionTrends": "ᱟᱹᱜᱩ ᱴᱨᱮᱱᱰ",
  "predictionTrendsEmpty": " ᱟᱢ ᱦᱟᱥᱟ ᱟᱨ ᱪᱟᱥ ᱵᱤᱥᱞᱮᱥᱚᱱ ᱱᱚᱸᱰᱮ ᱧᱮᱞᱚᱜᱼᱟ।",
  "Jan": "ᱡᱟᱱᱩᱣᱟᱨᱤ",
@@ -12955,7 +13067,7 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
  "Verified Account": "ᱪᱮᱠ ᱟᱠᱟᱱ ᱮᱠᱟᱣᱩᱱᱴ",
  "Voice input is supported in Google Chrome, Microsoft Edge, and modern browsers.": "Voice input is supported in Google Chrome, Microsoft Edge, and modern browsers.",
  "We believe that global food security starts with empowering the individual farmer. By analyzing millions of data points — from atmospheric pressure to soil microbiome levels — we remove the guesswork from crop planning.": "",
- " ᱥᱮᱨᱢᱟ ᱨᱤᱢᱤᱞ": "ᱥᱮᱨᱢᱟ ᱠᱷᱚᱵᱚᱨ",
+ 
  " ᱥᱮᱨᱢᱟ ᱨᱤᱢᱤᱞ Enhancements": "ᱢᱚ ᱥᱮᱨᱢᱟ ᱨᱤᱢᱤᱞ ᱵᱷᱟᱹᱜᱤ",
  " ᱥᱮᱨᱢᱟ ᱨᱤᱢᱤᱞ Tracks": " ᱥᱮᱨᱢᱟ ᱨᱤᱢᱤᱞ ᱴᱨᱮᱠ",
  "Wind": "Wind",
@@ -13387,6 +13499,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
  "setExactDistrict": "Set District"
  },
   "brx": {
+    "registeredFarmers": "रेजिस्टार खालामजानाय आबादारीफोर",
+    "feedbackReceived": "मोननाय फिननाय",
+    "languagesSupported": "मदद होनाय रावफोर",
+    "adminRoleDescription": "सिस्टम सामलायनाय, बाहायगिरि सामलायनाय आरो एआई एनालिटिक्स मोननाय।",
+    "realDataNote": "गासै अनजिमाफोरा जोंनि प्लैटफर्म डेटाबेसनिफ्राय सम-सम अनजिमाफोर।",
+    "analysisNotAvailable": "बिजिरनाय गैया",
+
     "predictionTrends": "फोरमायनाय जारिमिन",
     "predictionTrendsEmpty": "नोंथाङा हादाम आरो फसल बिजिरनायजों नोंथांनि नायनाय बेयाव नुजागोन।",
     "Jan": "जानुवारी",
@@ -14224,6 +14343,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "गेबें जिल्ला फज'"
   },
   "doi": {
+    "registeredFarmers": "पंजीकृत किसान",
+    "feedbackReceived": "मिल्ली दी राय",
+    "languagesSupported": "समर्थित बोलियां",
+    "adminRoleDescription": "सिस्टम प्रशासन, उपयोगकर्ता प्रबंधन ते एआई विश्लेषण तगर पहुंचो।",
+    "realDataNote": "सारे आंकड़े साडे प्लेटफार्म डेटाबेस थमां वास्तविक समय दी गिनती न।",
+    "analysisNotAvailable": "विश्लेषण उपलब्ध नहीं ऐ",
+
     "predictionTrends": "पूर्वाभास रुझान",
     "predictionTrendsEmpty": "जिऐं-जिऐं तुस मिट्टी ते फसलें दा विश्लेषण करोगे, तुंदे पूर्वाभास रुझान इत्थै दिख्घनगे।",
     "Jan": "जनवरी",
@@ -15062,6 +15188,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सटीक जिला सेट करो"
   },
   "ks": {
+    "registeredFarmers": "رجسٹرڈ زمیندار",
+    "feedbackReceived": "رائے موصول",
+    "languagesSupported": "حمایت یافتہ زبانیں",
+    "adminRoleDescription": "سسٹم ایڈمنسٹریشن، صارف انتظام تہٕ AI تجزیاتی سافٹ وئیرس تام رسائی۔",
+    "realDataNote": "سٲری نمبر چھِ سانہِ پلیٹ فارم ڈیٹا بیس پیٹھہٕ حقیقی وقتک گنتی۔",
+    "analysisNotAvailable": "تجزیہٕ دستیاب چھُ نہٕ",
+
     "predictionTrends": "پیش گوئی ہُنٛد رجحان",
     "predictionTrendsEmpty": "یِتھ کن تُہیٚو زمیٖن تہِ فصل تجزِیہ کٔریو، تُہنٛد پیش گوئی رجحان ییتھِ وُچھِو।",
     "Jan": "جنوری",
@@ -15899,6 +16032,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "جان ضلعہٕ سیٹ کٔریو"
   },
   "kok": {
+    "registeredFarmers": "नोंदणी केल्ले शेतकार",
+    "feedbackReceived": "मेळिल्ली प्रतिक्रिया",
+    "languagesSupported": "फाटबळ आशिल्ल्यो भासो",
+    "adminRoleDescription": "सिस्टम प्रशासन, वापरकर्ता व्यवस्थापन आनी एआय विश्लेषणाक प्रवेश मेळात.",
+    "realDataNote": "सगळे आकडे आमच्या प्लॅटफॉर्म डेटाबेसांतल्यान खऱ्या वेळार मेळिल्ले आसात.",
+    "analysisNotAvailable": "विश्लेषण उपलब्ध ना",
+
     "predictionTrends": "पूर्वाभास ट्रेंड्स",
     "predictionTrendsEmpty": "तुम्हीं माती आनी पिकांचें विश्लेषण करतना तुमचे अंदाज ट्रेंड्स हांगा दिसतले.",
     "Jan": "जानेवारी",
@@ -16736,6 +16876,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सारको जिल्हो थारायात"
   },
   "ne": {
+    "registeredFarmers": "दर्ता भएका कृषकहरू",
+    "feedbackReceived": "प्राप्त प्रतिक्रिया",
+    "languagesSupported": "समर्थित भाषाहरू",
+    "adminRoleDescription": "प्रणाली प्रशासन, प्रयोगकर्ता व्यवस्थापन र एआई विश्लेषणमा पहुँच गर्नुहोस्।",
+    "realDataNote": "सबै संख्याहरू हाम्रो प्लेटफर्म डाटाबेसबाट वास्तविक-समय गणना हुन्।",
+    "analysisNotAvailable": "विश्लेषण उपलब्ध छैन",
+
     "predictionTrends": "पूर्वाभास प्रवृत्तिहरू",
     "predictionTrendsEmpty": "तपाईंले माटो र बालीहरूको विश्लेषण गर्दा तपाईंको पूर्वावलोकन प्रवृत्तिहरू यहाँ देखा पर्नेछन्।",
     "Jan": "जनवरी",
@@ -17573,6 +17720,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सही जिल्ला सेट गर्नुहोस्"
   },
   "sa": {
+    "registeredFarmers": "पञ्जीकृताः कृषकाः",
+    "feedbackReceived": "प्राप्ता प्रतिक्रिया",
+    "languagesSupported": "समर्थिताः भाषाः",
+    "adminRoleDescription": "तन्त्रप्रशासनम्, प्रयोक्तृप्रबन्धनम्, कृत्रिमबुद्धि-विश्लेषणं च प्राप्नुवन्तु।",
+    "realDataNote": "सर्वाः संख्याः अस्माकं मञ्चदत्तांशतः वास्तविकसमयगणनाः सन्ति।",
+    "analysisNotAvailable": "विश्लेषणं न लभ्यते",
+
     "predictionTrends": "पूर्वानुमान-प्रवृत्तिः",
     "predictionTrendsEmpty": "यथा भवान् मृत्तिकां सस्यानि च विश्लेषयिष्यति, भवतः पूर्वानुमान-प्रवृत्तिः अत्र दृश्यते।",
     "Jan": "जनवरी",
@@ -18410,6 +18564,13 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "यथार्थमण्डलं निर्धारयतु"
   },
   "sd": {
+    "registeredFarmers": "رجسٽرڊ هاري",
+    "feedbackReceived": "رايا حاصل ڪيا ويا",
+    "languagesSupported": "مدد ڪيل ٻوليون",
+    "adminRoleDescription": "سسٽم انتظاميه، واپرائيندڙ جي انتظام ۽ AI تجزيات تائين رسائي حاصل ڪريو.",
+    "realDataNote": "سڀ نمبر اسان جي پليٽ فارم ڊيٽابيس مان حقيقي وقت جي ڳڻپ آهن.",
+    "analysisNotAvailable": "تجزيو دستياب ناهي",
+
     "predictionTrends": "اڳڪٿي جا لاڙا",
     "predictionTrendsEmpty": "جيئن توهان مٽي ۽ پوکن جو تجزيو ڪندا، توهان جا اڳڪٿي جا لاڙا هتي ظاهر ٿيندا.",
     "Jan": "جنوري",

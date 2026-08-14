@@ -14,6 +14,7 @@ class UserRegisterRequest(BaseModel):
     confirm_password: str = Field(..., description="Confirm password. Must be identical to password.")
     language_id: int = Field(..., description="ID of the predefined language from the languages table.")
     region: str = Field(..., min_length=2, max_length=100, description="State, district, or region of the user.")
+    role: Literal["farmer", "admin"] | None = Field(default="farmer", description="Role for the new account. Defaults to 'farmer'.")
 
     @field_validator("password")
     @classmethod
@@ -157,6 +158,8 @@ class UserUpdateRequest(BaseModel):
     """Schema for updating the authenticated user's profile."""
     email: EmailStr
     language_id: int
+    username: str | None = Field(default=None, min_length=2, max_length=50, description="Updated display name.")
+    region: str | None = Field(default=None, max_length=100, description="Updated region or location.")
 
 
 class UserLoginRequest(BaseModel):
@@ -385,6 +388,13 @@ class FeedbackCreate(BaseModel):
 
     rating: int = Field(..., ge=1, le=5)
     comment: str = Field(..., min_length=1, max_length=500)
+    category: str | None = None
+
+
+class FeedbackReplyRequest(BaseModel):
+    """Schema for admin replying to feedback."""
+
+    admin_response: str = Field(..., min_length=1, max_length=500)
 
 
 class FeedbackResponse(BaseModel):
@@ -394,6 +404,10 @@ class FeedbackResponse(BaseModel):
     user_id: int
     rating: int
     comment: str
+    category: str | None = None
+    admin_response: str | None = None
+    is_resolved: bool = False
+    user_name: str | None = None
     created_at: datetime
 
     class Config:
