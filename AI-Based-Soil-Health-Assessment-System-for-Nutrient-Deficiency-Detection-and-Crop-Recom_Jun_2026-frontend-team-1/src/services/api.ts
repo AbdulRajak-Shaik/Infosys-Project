@@ -808,7 +808,7 @@ export async function sendChatMessage(question: string, prediction_history_id?: 
   const localAns = getAgronomicAiResponse(question, targetLanguage);
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Backend timeout')), 15000)
+    setTimeout(() => reject(new Error('Backend timeout')), 30000)
   );
 
   const fetchPromise = (async () => {

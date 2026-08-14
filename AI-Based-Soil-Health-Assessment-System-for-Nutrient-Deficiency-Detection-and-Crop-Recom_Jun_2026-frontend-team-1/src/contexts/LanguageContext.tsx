@@ -27,6 +27,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [currentLanguage])
 
   useEffect(() => {
+    // Only sync from cross-tab storage events (not same-tab changes)
     const syncLanguage = () => {
       try {
         const stored = localStorage.getItem('selected_language') || 'en'
@@ -34,10 +35,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
       } catch {}
     }
     window.addEventListener('storage', syncLanguage)
-    window.addEventListener('languageChange', syncLanguage)
     return () => {
       window.removeEventListener('storage', syncLanguage)
-      window.removeEventListener('languageChange', syncLanguage)
     }
   }, [])
 
@@ -46,9 +45,11 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.setItem('selected_language', lang)
     } catch {}
+    // Single direct update — do NOT also dispatch 'languageChange' here;
+    // that would synchronously trigger a second setCurrentLanguage call
+    // before React commits this one, breaking the hooks count invariant.
     setCurrentLanguage(lang)
-    window.dispatchEvent(new Event('languageChange'))
-    
+
     // Sync preferred language to backend if logged in
     import('../services/api')
       .then(({ updateUserLanguage }) => {

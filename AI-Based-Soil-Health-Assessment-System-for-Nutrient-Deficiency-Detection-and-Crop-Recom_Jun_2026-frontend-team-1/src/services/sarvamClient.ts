@@ -1184,26 +1184,23 @@ export async function translateWithSarvam(
  * Automatically updates when username or selected language changes.
  */
 export function useSarvamUsername(originalUsername: string): string {
+  // ALL hooks must be called unconditionally — no early returns before them.
   const { currentLanguage } = useLanguage();
-
   const langCode = (currentLanguage || 'en').toLowerCase().split('-')[0];
-  if (langCode === 'en' || !originalUsername) {
-    return originalUsername || '';
-  }
+  const isEnglish = langCode === 'en' || !originalUsername;
+  const localVal = isEnglish ? '' : translateLocationString(originalUsername, langCode);
 
-  const localVal = translateLocationString(originalUsername, langCode);
-
-  const [translatedUsername, setTranslatedUsername] = useState<string>(localVal || originalUsername);
+  const [translatedUsername, setTranslatedUsername] = useState<string>(
+    localVal || originalUsername || ''
+  );
 
   useEffect(() => {
-    if (!originalUsername) return;
-
-    let isMounted = true;
-    if (langCode === 'en') {
-      setTranslatedUsername(originalUsername);
+    if (!originalUsername || isEnglish) {
+      setTranslatedUsername(originalUsername || '');
       return;
     }
 
+    let isMounted = true;
     const freshLocal = translateLocationString(originalUsername, langCode);
     setTranslatedUsername(freshLocal);
 
@@ -1218,8 +1215,9 @@ export function useSarvamUsername(originalUsername: string): string {
     return () => {
       isMounted = false;
     };
-  }, [originalUsername, currentLanguage, langCode]);
+  }, [originalUsername, currentLanguage, langCode, isEnglish]);
 
+  if (isEnglish) return originalUsername || '';
   return translatedUsername || localVal || originalUsername;
 }
 
@@ -1228,26 +1226,23 @@ export function useSarvamUsername(originalUsername: string): string {
  * Automatically updates when location or selected language changes.
  */
 export function useSarvamLocation(originalLocation: string): string {
+  // ALL hooks must be called unconditionally — no early returns before them.
   const { currentLanguage } = useLanguage();
-
   const langCode = (currentLanguage || 'en').toLowerCase().split('-')[0];
-  if (langCode === 'en' || !originalLocation) {
-    return originalLocation || '';
-  }
+  const isEnglish = langCode === 'en' || !originalLocation;
+  const localVal = isEnglish ? '' : translateLocationString(originalLocation, langCode);
 
-  const localVal = translateLocationString(originalLocation, langCode);
-
-  const [translatedLocation, setTranslatedLocation] = useState<string>(localVal || originalLocation);
+  const [translatedLocation, setTranslatedLocation] = useState<string>(
+    localVal || originalLocation || ''
+  );
 
   useEffect(() => {
-    if (!originalLocation) return;
-
-    let isMounted = true;
-    if (langCode === 'en') {
-      setTranslatedLocation(originalLocation);
+    if (!originalLocation || isEnglish) {
+      setTranslatedLocation(originalLocation || '');
       return;
     }
 
+    let isMounted = true;
     const freshLocal = translateLocationString(originalLocation, langCode);
     setTranslatedLocation(freshLocal);
 
@@ -1262,7 +1257,8 @@ export function useSarvamLocation(originalLocation: string): string {
     return () => {
       isMounted = false;
     };
-  }, [originalLocation, currentLanguage, langCode]);
+  }, [originalLocation, currentLanguage, langCode, isEnglish]);
 
+  if (isEnglish) return originalLocation || '';
   return translatedLocation || localVal || originalLocation;
 }
