@@ -2,12 +2,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from app.config import settings
 
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
 engine_kwargs = {"pool_pre_ping": True}
-if settings.DATABASE_URL.startswith("sqlite"):
+if db_url.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
 
 engine = create_engine(
-    settings.DATABASE_URL,
+    db_url,
     **engine_kwargs
 )
 

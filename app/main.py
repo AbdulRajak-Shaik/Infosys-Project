@@ -21,20 +21,26 @@ from app.routes.weather_routes import router as weather_router
 from app.routes.translation_routes import router as translation_router
 
 # Dynamic table creation fallback (useful for dev/test before running migrations)
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as exc:
+    print(f"Table creation note: {exc}")
 
 # Safe dynamic columns addition
 from sqlalchemy import text
-with engine.connect() as conn:
-    for col_def in [
-        "ALTER TABLE feedback ADD COLUMN admin_response VARCHAR(500)",
-        "ALTER TABLE feedback ADD COLUMN is_resolved BOOLEAN DEFAULT FALSE"
-    ]:
-        try:
-            conn.execute(text(col_def))
-            conn.commit()
-        except Exception:
-            pass
+try:
+    with engine.connect() as conn:
+        for col_def in [
+            "ALTER TABLE feedback ADD COLUMN admin_response VARCHAR(500)",
+            "ALTER TABLE feedback ADD COLUMN is_resolved BOOLEAN DEFAULT FALSE"
+        ]:
+            try:
+                conn.execute(text(col_def))
+                conn.commit()
+            except Exception:
+                pass
+except Exception as exc:
+    print(f"DB connection note: {exc}")
 
 app = FastAPI(
     title="User Authentication API",
