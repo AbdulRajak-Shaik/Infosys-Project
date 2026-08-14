@@ -105,13 +105,38 @@ app.include_router(weather_router)
 
 
 
-@app.get("/", tags=["Root"])
-def root():
-    """
-    Root endpoint serving basic status checks.
-    """
-    return {
-        "status": "online",
-        "api_name": "User Authentication API",
-        "docs_url": "/docs"
-    }
+# ── Unified Fullstack Static File & SPA Serving ───────────────
+import os
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIST = os.path.join(BASE_DIR, "dist")
+if not os.path.exists(FRONTEND_DIST):
+    FRONTEND_DIST = os.path.join(BASE_DIR, "AI-Based-Soil-Health-Assessment-System-for-Nutrient-Deficiency-Detection-and-Crop-Recom_Jun_2026-frontend-team-1", "dist")
+
+if os.path.exists(FRONTEND_DIST):
+    assets_dir = os.path.join(FRONTEND_DIST, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="static-assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        # Do not intercept API docs or schema
+        if full_path.startswith("docs") or full_path.startswith("redoc") or full_path.startswith("openapi.json"):
+            return None
+        target_file = os.path.join(FRONTEND_DIST, full_path)
+        if full_path and os.path.isfile(target_file):
+            return FileResponse(target_file)
+        index_file = os.path.join(FRONTEND_DIST, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        return {"status": "online", "api_name": "AgroAI Fullstack Application"}
+else:
+    @app.get("/", tags=["Root"])
+    def root():
+        return {
+            "status": "online",
+            "api_name": "User Authentication API",
+            "docs_url": "/docs"
+        }

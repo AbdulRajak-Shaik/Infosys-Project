@@ -4,24 +4,14 @@
  */
 
 function getBaseUrl(): string {
-  let rawUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
-  
-  // If deployed on Render (.onrender.com) and env var is missing or localhost, fallback to live backend
-  if (typeof window !== 'undefined' && window.location.hostname.includes('.onrender.com')) {
-    if (!rawUrl || rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1')) {
-      rawUrl = 'https://agroai-backend-0egu.onrender.com';
+  if (typeof window !== 'undefined') {
+    // If running on local Vite dev server port 5173/5174, point to local FastAPI port 8000
+    if (window.location.port === '5173' || window.location.port === '5174') {
+      return 'http://127.0.0.1:8000';
     }
   }
-  
-  if (!rawUrl) {
-    rawUrl = 'http://127.0.0.1:8000';
-  }
-  
-  if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
-    rawUrl = `https://${rawUrl}`;
-  }
-  
-  return rawUrl.replace(/\/$/, '');
+  // When served together as a unified application on Render, use same-origin relative URLs
+  return '';
 }
 
 const BASE_URL = getBaseUrl();

@@ -1,7 +1,7 @@
 services:
-  # Backend FastAPI Web Service
+  # Unified Fullstack AgroAI Application (Frontend React SPA + FastAPI Backend)
   - type: web
-    name: agroai-backend
+    name: agroai-app
     env: python
     plan: free
     region: singapore
@@ -14,21 +14,3 @@ services:
         generateValue: true
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "43200"
-
-  # Frontend React/Vite Static Site
-  - type: web
-    name: agroai-frontend
-    env: static
-    rootDir: AI-Based-Soil-Health-Assessment-System-for-Nutrient-Deficiency-Detection-and-Crop-Recom_Jun_2026-frontend-team-1
-    buildCommand: npm install && npm run build
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: agroai-backend
-          property: host
