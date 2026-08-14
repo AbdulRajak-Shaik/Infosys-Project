@@ -45,31 +45,44 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...(options.headers as Record<string, string> || {}),
   };
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s to allow Render cold starts
 
-  if (!response.ok) {
-    let errorMessage = `API Error (${response.status})`;
-    try {
-      const errorData = await response.json();
-      if (errorData.detail) {
-        if (typeof errorData.detail === 'string') {
-          errorMessage = errorData.detail;
-        } else if (Array.isArray(errorData.detail)) {
-          errorMessage = errorData.detail.map((e: any) => e.msg || JSON.stringify(e)).join(', ');
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let errorMessage = `API Error (${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          } else if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map((e: any) => e.msg || JSON.stringify(e)).join(', ');
+          }
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
         }
-      } else if (errorData.message) {
-        errorMessage = errorData.message;
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
-  }
 
-  return response.json() as Promise<T>;
+    return response.json() as Promise<T>;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Connection timed out while server was waking up. Please try again in 5 seconds.');
+    }
+    throw err;
+  }
 }
 
 // ── Translation Database API ────────────────────────────────
