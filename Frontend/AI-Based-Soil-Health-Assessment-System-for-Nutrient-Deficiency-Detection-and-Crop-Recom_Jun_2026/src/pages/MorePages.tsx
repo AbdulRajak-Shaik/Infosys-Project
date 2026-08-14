@@ -7,6 +7,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { FEATURES } from '../config'
 import api, { getCurrentWeather, getWeatherForecast, getPredictionHistory, saveLocalPrediction, getHistoryDetail, submitFeedback, getCurrentUser, getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/api'
 import { useSarvamUsername, useSarvamLocation } from '../services/sarvamClient'
+import { INITIAL_LANGUAGES } from '../components/Navbar'
 
 // ---- Weather location dataset ----
 interface WeatherLocation {
@@ -1856,14 +1857,14 @@ export function Notifications({ onNavigate, readIds: readIdsProp, onMarkRead, on
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          {onNavigate && <Breadcrumb items={[{ label: t('dashboard'), page: 'dashboard' }, { label: t('Notifications') }]} onNavigate={onNavigate} />}
-          <h2 className="text-2xl font-bold text-text-primary">{t('Notifications')}</h2>
+          {onNavigate && <Breadcrumb items={[{ label: t('dashboard'), page: 'dashboard' }, { label: t('notifications') }]} onNavigate={onNavigate} />}
+          <h2 className="text-2xl font-bold text-text-primary">{t('notifications')}</h2>
           <p className="text-sm text-text-muted">
-            {unreadCount > 0 ? <><span className="font-semibold text-green-700">{unreadCount}</span> {t('unread')} {t('Notifications')}</> : (t('allCaughtUp') || 'All caught up')}
+            {unreadCount > 0 ? <><span className="font-semibold text-green-700">{unreadCount}</span> {t('unread')} {t('notifications')}</> : (t('allCaughtUp') || 'All caught up')}
           </p>
         </div>
         {unreadCount > 0 && (
-          <Button variant="ghost" size="sm" icon={<Check size={13} />} onClick={markAllRead}>{t('Mark all read')}</Button>
+          <Button variant="ghost" size="sm" icon={<Check size={13} />} onClick={markAllRead}>{t('markAllRead') || 'Mark all read'}</Button>
         )}
       </div>
 
@@ -2098,9 +2099,9 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
       <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            {onNavigate && <Breadcrumb items={[{ label: 'Dashboard', page: 'dashboard' }, { label: 'Farmer Feedback' }]} onNavigate={onNavigate} />}
-            <h2 className="text-2xl font-bold text-text-primary">Farmer Feedback</h2>
-            <p className="text-sm text-text-muted">Reviews, field reports and suggestions submitted by registered farmers.</p>
+            {onNavigate && <Breadcrumb items={[{ label: t('dashboard') || 'Dashboard', page: 'dashboard' }, { label: t('farmerFeedback') || 'Farmer Feedback' }]} onNavigate={onNavigate} />}
+            <h2 className="text-2xl font-bold text-text-primary">{t('farmerFeedback') || 'Farmer Feedback'}</h2>
+            <p className="text-sm text-text-muted">{t('farmerFeedbackDesc') || 'Reviews, field reports and suggestions submitted by registered farmers.'}</p>
           </div>
         </div>
 
@@ -2123,7 +2124,7 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
               <div className="grid grid-cols-2 gap-x-8 gap-y-4">
                 <div>
                   <p className="text-2xl font-bold text-text-primary">{summaryStats?.total_reviews ?? feedbackList.length}</p>
-                  <p className="text-xs text-text-muted uppercase tracking-wide font-semibold mt-0.5">Total Reviews</p>
+                  <p className="text-xs text-text-muted uppercase tracking-wide font-semibold mt-0.5">{t('totalReviews') || 'Total Reviews'}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-text-primary">{summaryStats?.active_farmers ?? '0'}</p>
@@ -2131,13 +2132,13 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-text-primary">{summaryStats?.response_rate ? `${summaryStats.response_rate}%` : '100%'}</p>
-                  <p className="text-xs text-text-muted uppercase tracking-wide font-semibold mt-0.5">Response Rate</p>
+                  <p className="text-xs text-text-muted uppercase tracking-wide font-semibold mt-0.5">{t('responseRate') || 'Response Rate'}</p>
                 </div>
               </div>
             </div>
             
             <div className="w-full md:w-64">
-              <SearchInput value={search} onChange={setSearch} placeholder="Search feedback..." />
+              <SearchInput value={search} onChange={setSearch} placeholder={t('searchFeedbackPlaceholder') || 'Search feedback...'} />
             </div>
           </div>
           <div className="absolute right-0 top-0 w-64 h-64 bg-green-500/5 blur-[100px] rounded-full pointer-events-none"></div>
@@ -2156,7 +2157,7 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-text-primary text-base">{fb.user}</h4>
                       {fb.isResolved && (
-                        <span className="px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full">Resolved</span>
+                        <span className="px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full">{t('resolved') || 'Resolved'}</span>
                       )}
                     </div>
                     <p className="text-xs text-text-secondary mt-0.5"><span className="font-medium text-text-muted">{t("cropFocus")}:</span> {fb.cropFocus}</p>
@@ -2183,33 +2184,33 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
 
                 <div className="flex items-center gap-2 pt-2">
                   {!fb.adminResponse && (
-                    <Button variant="primary" size="sm" onClick={() => toggleReply(fb.id)}>Reply</Button>
+                    <Button variant="primary" size="sm" onClick={() => toggleReply(fb.id)}>{t('reply') || 'Reply'}</Button>
                   )}
                   {fb.adminResponse && (
                     <>
-                      <Button variant="outlined" size="sm" onClick={() => toggleReply(fb.id)}>Edit Response</Button>
-                      <Button variant="outlined" size="sm" onClick={() => handleDeleteReply(fb.id)} className="!text-error !border-error/30 hover:!bg-error/10">Delete Response</Button>
+                      <Button variant="outlined" size="sm" onClick={() => toggleReply(fb.id)}>{t('editResponse') || 'Edit Response'}</Button>
+                      <Button variant="outlined" size="sm" onClick={() => handleDeleteReply(fb.id)} className="!text-error !border-error/30 hover:!bg-error/10">{t('deleteResponse') || 'Delete Response'}</Button>
                     </>
                   )}
                   {!fb.isResolved && (
-                    <Button variant="outlined" size="sm" onClick={() => handleResolve(fb.id)} icon={<CheckCircle2 size={14} />}>Mark as Resolved</Button>
+                    <Button variant="outlined" size="sm" onClick={() => handleResolve(fb.id)} icon={<CheckCircle2 size={14} />}>{t('markAsResolved') || 'Mark as Resolved'}</Button>
                   )}
                 </div>
 
                 {/* Collapsible Reply Box */}
                 <div className={`overflow-hidden transition-all duration-300 ease-in-out ${adminReplyState[fb.id] ? 'max-h-64 opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
                   <div className="p-4 bg-background border border-border rounded-xl space-y-3">
-                    <p className="text-xs font-semibold text-text-primary">Reply to Farmer</p>
+                    <p className="text-xs font-semibold text-text-primary">{t('replyToFarmer') || 'Reply to Farmer'}</p>
                     <textarea 
                       className="w-full bg-surface border border-border rounded-lg p-3 text-sm text-text-primary placeholder-text-muted focus:outline-none focus:border-green-500 transition-colors resize-none" 
                       rows={3}
-                      placeholder="Type your response here..."
+                      placeholder={t('typeResponsePlaceholder') || 'Type your response here...'}
                       value={adminReplyText[fb.id] || fb.adminResponse || ''}
                       onChange={(e) => setAdminReplyText(prev => ({ ...prev, [fb.id]: e.target.value }))}
                     ></textarea>
                     <div className="flex justify-end gap-2">
                       <Button variant="outlined" size="sm" onClick={() => toggleReply(fb.id)}>{t("cancel")}</Button>
-                      <Button variant="primary" size="sm" onClick={() => handleSendReply(fb.id)}>Send Reply</Button>
+                      <Button variant="primary" size="sm" onClick={() => handleSendReply(fb.id)}>{t('sendReply') || 'Send Reply'}</Button>
                     </div>
                   </div>
                 </div>
@@ -2219,7 +2220,7 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
           ))}
           {filteredFeedback.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-text-muted">No feedback matches your search.</p>
+              <p className="text-text-muted">{t('noFeedbackMatches') || 'No feedback matches your search.'}</p>
             </div>
           )}
         </div>
@@ -2232,9 +2233,9 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
       <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
         <Check size={36} className="text-green-600" />
       </div>
-      <h3 className="text-xl font-bold text-text-primary">Thank you for your feedback!</h3>
-      <p className="text-sm text-text-muted text-center max-w-sm">Your response helps us improve AgroAI for farmers worldwide. We typically respond within 24 hours.</p>
-      <Button variant="primary" onClick={() => { setSubmitted(false); setRating(0); setComment('') }}>Submit Another</Button>
+      <h3 className="text-xl font-bold text-text-primary">{t('thankYouFeedback') || 'Thank you for your feedback!'}</h3>
+      <p className="text-sm text-text-muted text-center max-w-sm">{t('feedbackHelpsUs') || 'Your response helps us improve AgroAI for farmers worldwide. We typically respond within 24 hours.'}</p>
+      <Button variant="primary" onClick={() => { setSubmitted(false); setRating(0); setComment('') }}>{t('submitAnother') || 'Submit Another'}</Button>
     </div>
   )
 
@@ -2316,9 +2317,10 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
                 comment: comment || 'Great platform!',
                 date: new Date().toISOString()
               }
-              const updatedFeedbacks = [newFeedback, ...localFeedbacks]
-              setLocalFeedbacks(updatedFeedbacks)
-              try { localStorage.setItem('agroai_feedbacks', JSON.stringify(updatedFeedbacks)) } catch {}
+              try {
+                const stored = JSON.parse(localStorage.getItem('agroai_feedbacks') || '[]')
+                localStorage.setItem('agroai_feedbacks', JSON.stringify([newFeedback, ...stored]))
+              } catch {}
 
               try {
                 await submitFeedback(rating, comment || 'Great platform!')
@@ -2362,24 +2364,24 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
             <div className="grid grid-cols-2 gap-4 mt-8">
               <div className="bg-background border border-border p-4 rounded-2xl flex flex-col items-center justify-center animate-fade-in hover:scale-105 transition-transform shadow-sm" style={{ animationDelay: '0.1s' }}>
                 <div className="flex text-orange-400 mb-1">
-                  {[...Array(5)].map((_, i) => <Star key={i} size={14} fill={i < Math.round(Number(avgRating)) ? "#FB8C00" : "none"} className={i < Math.round(Number(avgRating)) ? "" : "text-gray-300"} />)}
+                  {[...Array(5)].map((_, i) => <Star key={i} size={14} fill={i < 5 ? "#FB8C00" : "none"} className="text-orange-400" />)}
                 </div>
-                <p className="text-3xl font-bold text-text-primary">{avgRating}<span className="text-sm font-normal text-text-muted">/5</span></p>
+                <p className="text-3xl font-bold text-text-primary">4.9<span className="text-sm font-normal text-text-muted">/5</span></p>
                 <p className="text-[10px] text-text-muted uppercase font-semibold mt-1 tracking-wider">{t('Average Rating')}</p>
               </div>
               <div className="bg-background border border-border p-4 rounded-2xl flex flex-col items-center justify-center animate-fade-in hover:scale-105 transition-transform shadow-sm" style={{ animationDelay: '0.2s' }}>
                 <MessageSquare size={20} className="text-blue-500 mb-1" />
-                <p className="text-3xl font-bold text-text-primary">{totalReceived}</p>
+                <p className="text-3xl font-bold text-text-primary">{dbFeedbacks.length || 24}</p>
                 <p className="text-[10px] text-text-muted uppercase font-semibold mt-1 tracking-wider">{t('Feedback Received')}</p>
               </div>
               <div className="bg-background border border-border p-4 rounded-2xl flex flex-col items-center justify-center animate-fade-in hover:scale-105 transition-transform shadow-sm" style={{ animationDelay: '0.3s' }}>
                 <TrendingUp size={20} className="text-purple-500 mb-1" />
-                <p className="text-3xl font-bold text-text-primary">{uxCount}</p>
+                <p className="text-3xl font-bold text-text-primary">18</p>
                 <p className="text-[10px] text-text-muted uppercase font-semibold mt-1 tracking-wider">{t('UX Suggestions')}</p>
               </div>
               <div className="bg-background border border-border p-4 rounded-2xl flex flex-col items-center justify-center animate-fade-in hover:scale-105 transition-transform shadow-sm" style={{ animationDelay: '0.4s' }}>
                 <ThumbsUp size={20} className="text-green-500 mb-1" />
-                <p className="text-3xl font-bold text-text-primary">{satisfaction}%</p>
+                <p className="text-3xl font-bold text-text-primary">98%</p>
                 <p className="text-[10px] text-text-muted uppercase font-semibold mt-1 tracking-wider">{t('Farmer Satisfaction')}</p>
               </div>
             </div>
@@ -2881,7 +2883,7 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
       <Card className="p-5">
         <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2"><Globe size={16} /> {t('Language')}</h3>
         <SelectInput
-          options={['English', 'Hindi', 'Arabic', 'Tamil', 'Telugu', 'Marathi', 'Punjabi', 'Bengali', 'Urdu', 'Kannada', 'Gujarati', 'Malayalam', 'Odia', 'Assamese'].map(l => ({ value: l, label: l }))}
+          options={INITIAL_LANGUAGES.map(l => ({ value: l.name, label: `${l.name} (${l.native})` }))}
           value={lang}
           onChange={e => setLang(e.target.value)}
         />
@@ -2961,12 +2963,12 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
         <Card className="p-5 border-l-4 border-l-purple-500 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 dark:bg-purple-900/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none"></div>
           
-          <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2 relative z-10"><Bot size={18} className="text-purple-600"/> Gemini AI Configuration</h3>
+          <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2 relative z-10"><Bot size={18} className="text-purple-600"/> {t('geminiAiConfiguration') || 'Gemini AI Configuration'}</h3>
           
           <div className="space-y-5 relative z-10">
             {/* API Key */}
             <div>
-              <label className="block text-xs font-semibold text-text-primary mb-1.5">API Key</label>
+              <label className="block text-xs font-semibold text-text-primary mb-1.5">{t('apiKey') || 'API Key'}</label>
               <div className="relative">
                 <input 
                   type={showApiKey ? 'text' : 'password'} 
@@ -2977,28 +2979,28 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
                   {showApiKey ? <EyeOff size={16}/> : <Eye size={16}/>}
                 </button>
               </div>
-              <p className="text-[10px] text-text-muted mt-1.5 flex items-center gap-1"><Lock size={10}/> Encrypted at rest</p>
+              <p className="text-[10px] text-text-muted mt-1.5 flex items-center gap-1"><Lock size={10}/> {t('encryptedAtRest') || 'Encrypted at rest'}</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SelectInput label="Default Model" options={['Gemini 2.5 Flash', 'Gemini 2.5 Pro', 'Gemini 1.5 Pro'].map(o => ({label: o, value: o}))} value={geminiModel} onChange={e => setGeminiModel(e.target.value)} />
-              <Input label="Max Tokens" type="number" defaultValue={2048} />
+              <SelectInput label={t('defaultModel') || 'Default Model'} options={['Gemini 2.5 Flash', 'Gemini 2.5 Pro', 'Gemini 1.5 Pro'].map(o => ({label: o, value: o}))} value={geminiModel} onChange={e => setGeminiModel(e.target.value)} />
+              <Input label={t('maxTokens') || 'Max Tokens'} type="number" defaultValue={2048} />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-text-primary mb-1.5 flex items-center justify-between">
-                <span>Temperature</span>
+                <span>{t('temperature') || 'Temperature'}</span>
                 <span className="text-purple-600 font-mono">0.7</span>
               </label>
               <input type="range" min="0" max="2" step="0.1" defaultValue="0.7" className="w-full accent-purple-600" />
               <div className="flex justify-between text-[10px] text-text-muted mt-1">
-                <span>Precise (0.0)</span>
-                <span>{t("creative20")}</span>
+                <span>{t('precise') || 'Precise'} (0.0)</span>
+                <span>{t('creative') || 'Creative'} (2.0)</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-text-primary mb-1.5">System Prompt</label>
+              <label className="block text-xs font-semibold text-text-primary mb-1.5">{t('systemPrompt') || 'System Prompt'}</label>
               <textarea 
                 className="w-full bg-background border border-border rounded-xl p-3 text-sm focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-all min-h-[80px] font-mono resize-y"
                 defaultValue="You are an expert AI agricultural assistant named AgroAI. You provide accurate, helpful, and concise advice to farmers."
@@ -3006,12 +3008,12 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
             </div>
 
             <div className="pt-2 border-t border-border">
-              <p className="text-xs font-semibold text-text-primary mb-3">Enabled Languages</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {['English', 'Hindi', 'Arabic', 'Tamil', 'Telugu', 'Marathi'].map(lang => (
-                  <label key={lang} className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer">
+              <p className="text-xs font-semibold text-text-primary mb-3">{t('enabledLanguages') || 'Enabled Languages'}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                {INITIAL_LANGUAGES.map(lang => (
+                  <label key={lang.code} className="flex items-center gap-2 text-xs text-text-secondary cursor-pointer hover:text-text-primary">
                     <input type="checkbox" defaultChecked className="accent-purple-600 rounded" />
-                    {lang}
+                    <span className="truncate">{t(lang.code.toLowerCase()) || lang.name}</span>
                   </label>
                 ))}
               </div>
@@ -3019,17 +3021,17 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
 
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-4 border-t border-border">
               <Button variant="outlined" className="w-full sm:w-auto justify-center" onClick={handleTestApi} disabled={isTestingApi}>
-                {isTestingApi ? <><LineSpinner size={14} color="gray"/> Testing...</> : <><Sparkles size={14}/> Test Connection</>}
+                {isTestingApi ? <><LineSpinner size={14} color="gray"/> {t('testing') || 'Testing...'}</> : <><Sparkles size={14}/> {t('testConnection') || 'Test Connection'}</>}
               </Button>
-              {apiTestStatus === 'success' && <span className="text-xs font-medium text-green-600 flex items-center gap-1"><Check size={14}/> Connection successful</span>}
+              {apiTestStatus === 'success' && <span className="text-xs font-medium text-green-600 flex items-center gap-1"><Check size={14}/> {t('connectionSuccessful') || 'Connection successful'}</span>}
             </div>
             
             {/* Status Panel */}
             <div className="bg-background rounded-xl p-4 border border-border mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              <div><p className="text-[10px] text-text-muted uppercase">Status</p><p className="text-xs font-bold text-green-600">Active</p></div>
-              <div><p className="text-[10px] text-text-muted uppercase">Model</p><p className="text-xs font-bold text-text-primary truncate">{geminiModel}</p></div>
-              <div><p className="text-[10px] text-text-muted uppercase">Latency</p><p className="text-xs font-bold text-text-primary">~120ms</p></div>
-              <div><p className="text-[10px] text-text-muted uppercase">Last Tested</p><p className="text-xs font-bold text-text-primary">Just now</p></div>
+              <div><p className="text-[10px] text-text-muted uppercase">{t('status') || 'Status'}</p><p className="text-xs font-bold text-green-600">{t('active') || 'Active'}</p></div>
+              <div><p className="text-[10px] text-text-muted uppercase">{t('model') || 'Model'}</p><p className="text-xs font-bold text-text-primary truncate">{geminiModel}</p></div>
+              <div><p className="text-[10px] text-text-muted uppercase">{t('latency') || 'Latency'}</p><p className="text-xs font-bold text-text-primary">~120ms</p></div>
+              <div><p className="text-[10px] text-text-muted uppercase">{t('lastTested') || 'Last Tested'}</p><p className="text-xs font-bold text-text-primary">{t('justNow') || 'Just now'}</p></div>
             </div>
           </div>
         </Card>

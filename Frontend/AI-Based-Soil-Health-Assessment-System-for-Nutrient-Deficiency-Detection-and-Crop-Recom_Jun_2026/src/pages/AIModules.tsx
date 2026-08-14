@@ -265,7 +265,9 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
                   ? 'Clay soil with dense texture and high water-holding capacity. Rich in plant nutrients, ideal for paddy, sugarcane, and wheat. pH range: 6.5–7.5.'
                   : (apiResult?.soil_type?.toLowerCase().includes('alluvial'))
                   ? 'Alluvial soil rich in potash and organic matter. Highly fertile, ideal for rice, sugarcane, wheat, and oilseeds. pH range: 6.0–7.8.'
-                  : 'Sandy loam soil with good drainage properties. Ideal for root vegetables, cereals, and groundnut. pH range: 6.0–7.0'}
+                  : apiResult?.soil_type
+                  ? 'Sandy loam soil with good drainage properties. Ideal for root vegetables, cereals, and groundnut. pH range: 6.0–7.0'
+                  : 'Soil type could not be classified from this sample. Please try a different image or check input values.'}
               </p>
             </Card>
 
@@ -545,12 +547,15 @@ function AIEmptyState() {
   )
 }
 
-function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onViewHistory }: {
+function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onViewHistory, formData, weatherInfo, locationInfo }: {
   imagePreview: string | null
   imageFile?: File | null
   apiResult?: any
   onNewPrediction: () => void
   onViewHistory?: () => void
+  formData?: { N: string; P: string; K: string; ph: string }
+  weatherInfo?: { temperature: number; humidity: number; rainfall: number } | null
+  locationInfo?: { village?: string; district?: string; state?: string; country?: string } | null
 }) {
   const { t } = useTranslation()
   const [visibleCards, setVisibleCards] = useState(0)
@@ -769,7 +774,19 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
     <div className="flex flex-col gap-4">
       {cards.slice(0, visibleCards + 1)}
       <div className="flex flex-wrap gap-2 animate-fade-in pt-1">
-        <Button variant="primary" size="sm" icon={<Download size={13} />} onClick={() => generatePdfReport({})} className="flex-1 justify-center">{t('downloadPdfReport')}</Button>
+        <Button variant="primary" size="sm" icon={<Download size={13} />} onClick={() => generatePdfReport({
+          soilType: detectedSoil !== 'Unknown Soil' ? detectedSoil : undefined,
+          confidence: apiResult?.confidence ? (apiResult.confidence > 1 ? apiResult.confidence : apiResult.confidence * 100) : undefined,
+          topCrop: apiResult?.recommended_crop || undefined,
+          N: formData?.N ? parseFloat(formData.N) : undefined,
+          P: formData?.P ? parseFloat(formData.P) : undefined,
+          K: formData?.K ? parseFloat(formData.K) : undefined,
+          ph: formData?.ph ? parseFloat(formData.ph) : undefined,
+          temperature: weatherInfo ? `${weatherInfo.temperature}°C` : undefined,
+          humidity: weatherInfo ? `${weatherInfo.humidity}%` : undefined,
+          rainfall: weatherInfo ? `${weatherInfo.rainfall} mm` : undefined,
+          location: locationInfo ? [locationInfo.village, locationInfo.district ? `${locationInfo.district} District` : undefined, locationInfo.state, locationInfo.country].filter(Boolean).join(', ') : undefined,
+        })} className="flex-1 justify-center">{t('downloadPdfReport')}</Button>
         <Button 
           variant={saved ? 'success' : 'outlined'} 
           size="sm" 
@@ -1630,7 +1647,7 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
         <div className="min-h-[520px] lg:sticky lg:top-20">
           {stage === 'idle' && <AIEmptyState />}
           {stage === 'loading' && <AILoadingPanel />}
-          {stage === 'result' && <ResultPanel imagePreview={imagePreview} imageFile={imageFile} apiResult={soilApiResult || cropApiResult} onNewPrediction={handleReset} onViewHistory={() => onNavigate?.('history')} />}
+          {stage === 'result' && <ResultPanel imagePreview={imagePreview} imageFile={imageFile} apiResult={soilApiResult || cropApiResult} onNewPrediction={handleReset} onViewHistory={() => onNavigate?.('history')} formData={form} weatherInfo={weatherData} locationInfo={locationData} />}
         </div>
       </div>
     </div>

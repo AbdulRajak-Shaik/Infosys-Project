@@ -35,8 +35,9 @@ export function SearchInput({ value, onChange, placeholder, className = '', cont
 
 /** Line-art spinner — two 120° arcs rotating, no solid circle. Replaces Loader2 everywhere. */
 export function LineSpinner({ size = 16, color = 'currentColor', strokeWidth = 2 }: { size?: number; color?: string; strokeWidth?: number }) {
+  const { t } = useTranslation()
   return (
-    <svg width={size} height={size} viewBox="-8 -8 16 16" className="animate-line-art-spin flex-shrink-0" role="status" aria-label="Loading">
+    <svg width={size} height={size} viewBox="-8 -8 16 16" className="animate-line-art-spin flex-shrink-0" role="status" aria-label={t('loading')}>
       <path d="M 0 -6.5 A 6.5 6.5 0 0 1 5.63 3.25"
         stroke={color} fill="none" strokeWidth={strokeWidth} strokeLinecap="round" />
       <path d="M 0 6.5 A 6.5 6.5 0 0 1 -5.63 -3.25"
@@ -54,7 +55,6 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ variant = 'primary', size = 'md', loading, icon, children, className = '', disabled, ...props }: ButtonProps) {
-  const { t } = useTranslation()
 const base = 'relative inline-flex items-center justify-center gap-2 font-semibold rounded-lg transition-all duration-200 overflow-hidden cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary-500'
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-6 py-3 text-base' }
   const variants = {
@@ -88,7 +88,6 @@ export function Card({ children, className = '', onClick }: CardProps) {
 
 interface BadgeProps { children: ReactNode; color?: 'green' | 'blue' | 'orange' | 'red' | 'gray' | 'purple' }
 export function Badge({ children, color = 'green' }: BadgeProps) {
-  const { t } = useTranslation()
 const colors = {
     green: 'bg-primary-50 text-primary-700 border border-primary-100',
     blue: 'bg-blue-50 text-blue-700 border border-blue-100',
@@ -101,7 +100,6 @@ const colors = {
 }
 
 export function Skeleton({ className = '', variant = 'text' }: { className?: string, variant?: 'text' | 'circular' | 'rectangular' }) {
-  const { t } = useTranslation()
 const base = "skeleton relative overflow-hidden bg-background"
   const variants = {
     text: "h-4 w-full rounded",
@@ -171,7 +169,6 @@ export function ProgressBar({ value, color = '#2E7D32', label }: { value: number
 }
 
 export function StatusDot({ status }: { status: 'green' | 'yellow' | 'red' }) {
-  const { t } = useTranslation()
 const colors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-500' }
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${colors[status]}`} />
 }
@@ -179,8 +176,9 @@ const colors = { green: 'bg-green-500', yellow: 'bg-yellow-500', red: 'bg-red-50
 export function Breadcrumb({ items, onNavigate }: {items: { label: string; page?: string }[]
   onNavigate?: (page: string) => void
 }) {
+  const { t } = useTranslation()
   return (
-    <nav className="flex items-center gap-1 text-sm mb-1" aria-label="Breadcrumb">
+    <nav className="flex items-center gap-1 text-sm mb-1" aria-label={t('breadcrumb')}>
       {items.map((item, i) => (
         <span key={item.label} className="flex items-center gap-1">
           {i > 0 && <span className="text-text-muted select-none">›</span>}
@@ -200,7 +198,9 @@ export function Breadcrumb({ items, onNavigate }: {items: { label: string; page?
   )
 }
 
-export function Toast({ message, type = 'success', onClose }: { message: string; type?: 'success' | 'error' | 'warning'; onClose: () => void }) {const wrapperStyles = {
+export function Toast({ message, type = 'success', onClose }: { message: string; type?: 'success' | 'error' | 'warning'; onClose: () => void }) {
+  const { t } = useTranslation()
+  const wrapperStyles = {
     success: 'bg-surface border-green-200 text-green-800',
     error:   'bg-surface border-red-200   text-red-700',
     warning: 'bg-surface border-amber-200 text-amber-700',
@@ -243,7 +243,7 @@ export function Toast({ message, type = 'success', onClose }: { message: string;
         </svg>
       )}
       <span className="text-sm font-medium">{message}</span>
-      <button onClick={onClose} aria-label="Dismiss" className="ml-1 opacity-40 hover:opacity-70 transition-opacity">
+      <button onClick={onClose} aria-label={t('dismiss')} className="ml-1 opacity-40 hover:opacity-70 transition-opacity">
         <svg width="12" height="12" viewBox="-6 -6 12 12">
           <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" stroke="currentColor" fill="none" strokeWidth="1.8" strokeLinecap="round" />
         </svg>

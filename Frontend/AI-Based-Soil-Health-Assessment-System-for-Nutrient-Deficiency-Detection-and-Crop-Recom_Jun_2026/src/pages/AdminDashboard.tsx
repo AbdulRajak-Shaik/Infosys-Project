@@ -6,12 +6,13 @@ import { Card, Badge, StatusDot, SearchInput } from '../components/ui'
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts'
 import { getAdminStats } from '../services/api'
 import api from '../services/api'
+import { normalizeSoilKey, normalizeNutrientKey, normalizeCropKey, normalizeTopicKey, normalizeStatusKey } from '../utils/domainNormalizer'
 
 const COLORS = ['#2E7D32', '#1565C0', '#FB8C00', '#7B1FA2', '#D32F2F', '#0288D1']
 
 interface AdminDashboardProps { onNavigate?: (page: string) => void }
 
-export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboardProps) {
   const { t } = useTranslation()
 
   const [botSearch, setBotSearch] = useState('')
@@ -98,11 +99,14 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
     )
   }
 
-  const chartData = growth.map(g => ({
-    month: g.month ? g.month.substring(0, 3) : '',
-    users: g.users || 0,
-    farmers: g.farmers || 0
-  }))
+  const chartData = growth.map(g => {
+    const rawMonth = g.month ? g.month.substring(0, 3) : ''
+    return {
+      month: t(rawMonth) || rawMonth,
+      users: g.users || 0,
+      farmers: g.farmers || 0
+    }
+  })
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
@@ -110,7 +114,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-text-primary">{t('enterpriseDashboard') || 'Enterprise dashboard'}</h2>
-          <p className="text-sm text-text-muted">Platform overview and system health — 2026</p>
+          <p className="text-sm text-text-muted">{t('platformOverviewSystemHealth') || 'Platform overview and system health — 2026'}</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg border border-green-100">
@@ -134,7 +138,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         <Card className="p-5">
           <div className="flex items-center justify-between mb-5">
             <h3 className="font-bold text-text-primary">{t('predictionTrends') || 'User Growth'}</h3>
-            <Badge color="blue">2026 YTD</Badge>
+            <Badge color="blue">{t('ytd2026') || '2026 YTD'}</Badge>
           </div>
           {chartData.length === 0 ? (
             <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
@@ -170,7 +174,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={cropData.map((c: any) => ({ ...c, name: t(c.name) || c.name }))} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+              <BarChart data={cropData.map((c: any) => ({ ...c, name: t(normalizeCropKey(c.name)) || t(c.name) || c.name }))} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -193,8 +197,8 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           ) : (
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
-                <Pie data={soilData.map((s: any) => ({ ...s, name: t(s.name) || s.name }))} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" nameKey="name">
-                  {soilData.map((entry: any, index: number) => (
+                <Pie data={soilData.map((s: any) => ({ ...s, name: t(normalizeSoilKey(s.name)) || t(s.name) || s.name }))} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" nameKey="name">
+                  {soilData.map((_entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -214,7 +218,7 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={nutrientData.map((n: any) => ({ ...n, name: t(n.name) || n.name }))} layout="vertical" margin={{ top: 5, right: 5, bottom: 0, left: 10 }}>
+              <BarChart data={nutrientData.map((n: any) => ({ ...n, name: t(normalizeNutrientKey(n.name)) || t(n.name) || n.name }))} layout="vertical" margin={{ top: 5, right: 5, bottom: 0, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                 <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -274,10 +278,10 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                     <tr key={a.id || i} className="border-b border-border hover:bg-background transition-colors">
                       <td className="py-2.5 pr-3 text-xs text-text-muted">{a.time}</td>
                       <td className="py-2.5 pr-3 font-medium text-text-primary text-xs">{a.user}</td>
-                      <td className="py-2.5 pr-3 text-xs">{t(a.topic) || a.topic}</td>
-                      <td className="py-2.5 pr-3 text-xs">{t(a.lang) || a.lang}</td>
+                      <td className="py-2.5 pr-3 text-xs">{t(normalizeTopicKey(a.topic)) || t(a.topic) || a.topic}</td>
+                      <td className="py-2.5 pr-3 text-xs">{t((a.lang || 'english').toLowerCase()) || a.lang}</td>
                       <td className="py-2.5">
-                        <Badge color={a.status === 'Resolved' ? 'green' : 'orange'}>{t(a.status) || a.status}</Badge>
+                        <Badge color={a.status === 'Resolved' ? 'green' : 'orange'}>{t(normalizeStatusKey(a.status)) || t(a.status) || a.status}</Badge>
                       </td>
                     </tr>
                   ))
@@ -287,25 +291,38 @@ export default function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           </div>
         </Card>
 
-        <Card className="p-5">
-          <h3 className="font-bold text-text-primary mb-5">{t('languagesUsed') || 'Languages Used'}</h3>
-          {langData.length === 0 ? (
-            <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
-              {t('noDataAvailable') || 'No data available'}
+        <Card className="p-5 flex flex-col justify-between">
+          <div>
+            <h3 className="font-bold text-text-primary mb-5">{t('languagesUsed') || 'Languages Used'}</h3>
+            {langData.filter((l: any) => l.value > 0).length === 0 ? (
+              <div className="flex items-center justify-center h-[220px] text-text-muted text-sm font-medium">
+                {t('noDataAvailable') || 'No data available'}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={langData.filter((l: any) => l.value > 0).map((l: any) => ({ ...l, name: t(l.name.toLowerCase()) || l.name }))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
+                    {langData.filter((l: any) => l.value > 0).map((_entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
+                  <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          <div className="mt-4 border-t border-border pt-4">
+            <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-wider mb-2">{t('allSupportedLanguages') || 'All Supported Languages'}</h4>
+            <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto pr-1 custom-scrollbar">
+              {langData.map((lang: any) => (
+                <div key={lang.name} className="flex justify-between items-center p-1.5 rounded-lg bg-background border border-border text-[11px]">
+                  <span className="font-medium text-text-primary truncate mr-1">{t(lang.name.toLowerCase()) || lang.name}</span>
+                  <span className="font-mono text-text-muted bg-surface px-1 py-0.5 rounded border border-border flex-shrink-0">{lang.value}</span>
+                </div>
+              ))}
             </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={220}>
-              <PieChart>
-                <Pie data={langData.map((l: any) => ({ ...l, name: t(l.name) || l.name }))} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
-                  {langData.map((entry: any, index: number) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }} />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
-          )}
+          </div>
         </Card>
       </div>
     </div>

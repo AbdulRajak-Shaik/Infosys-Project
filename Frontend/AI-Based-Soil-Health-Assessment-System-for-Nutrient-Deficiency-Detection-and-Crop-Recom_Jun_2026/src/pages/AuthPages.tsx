@@ -5,6 +5,7 @@ import FloatingChatbot from '../components/FloatingChatbot'
 import { loginUser, loginAdmin, getCurrentUser, registerUser, requestPasswordReset, verifyPasswordReset, forgotPassword as apiForgotPassword } from '../services/api'
 import { useTranslation } from '../i18n'
 import LanguageSelector from '../components/LanguageSelector'
+import { INITIAL_LANGUAGES } from '../components/Navbar'
 
 type AuthPage = 'login' | 'register' | 'forgot'
 
@@ -60,7 +61,7 @@ function LoginForm({ onLogin, onForgot, onRegister }: { onLogin: (role: 'farmer'
     } catch (err: any) {
       let errMsg = err.message || 'Login failed. Please check your credentials and role selection.'
       if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError')) {
-        errMsg = 'Unable to connect to backend server. Please ensure python run_server.py is running on http://127.0.0.1:8000.'
+        errMsg = 'Unable to connect to backend server. Please check your network connection or verify backend status.'
       }
       setError(errMsg)
     } finally {
@@ -319,7 +320,7 @@ function RegisterForm({ onLogin }: { onSuccess?: () => void; onLogin: () => void
             label={t('preferredLanguage')} 
             value={form.language} 
             onChange={e => set('language', e.target.value)} 
-            options={['English', 'Hindi', 'Arabic', 'Tamil', 'Telugu', 'Marathi', 'Punjabi', 'Bengali', 'Urdu', 'Kannada'].map(l => ({ value: l, label: l }))} 
+            options={INITIAL_LANGUAGES.map(l => ({ value: l.name, label: `${l.name} (${l.native})` }))} 
           />
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium text-text-secondary">{t('userRole')}<span className="text-error ml-1">*</span></label>

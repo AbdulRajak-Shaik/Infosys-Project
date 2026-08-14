@@ -3,7 +3,28 @@
  * Connects React UI to FastAPI Backend at http://127.0.0.1:8000
  */
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+function getBaseUrl(): string {
+  let rawUrl = (import.meta.env.VITE_API_BASE_URL || '').trim();
+  
+  // If deployed on Render (.onrender.com) and env var is missing or localhost, fallback to live backend
+  if (typeof window !== 'undefined' && window.location.hostname.includes('.onrender.com')) {
+    if (!rawUrl || rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1')) {
+      rawUrl = 'https://agroai-backend-0egu.onrender.com';
+    }
+  }
+  
+  if (!rawUrl) {
+    rawUrl = 'http://127.0.0.1:8000';
+  }
+  
+  if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+    rawUrl = `https://${rawUrl}`;
+  }
+  
+  return rawUrl.replace(/\/$/, '');
+}
+
+const BASE_URL = getBaseUrl();
 
 function getAuthHeaders(isFormData = false): Record<string, string> {
   const headers: Record<string, string> = {};
@@ -24,31 +45,44 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     ...(options.headers as Record<string, string> || {}),
   };
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s to allow Render cold starts
 
-  if (!response.ok) {
-    let errorMessage = `API Error (${response.status})`;
-    try {
-      const errorData = await response.json();
-      if (errorData.detail) {
-        if (typeof errorData.detail === 'string') {
-          errorMessage = errorData.detail;
-        } else if (Array.isArray(errorData.detail)) {
-          errorMessage = errorData.detail.map((e: any) => e.msg || JSON.stringify(e)).join(', ');
+  try {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      let errorMessage = `API Error (${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          if (typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          } else if (Array.isArray(errorData.detail)) {
+            errorMessage = errorData.detail.map((e: any) => e.msg || JSON.stringify(e)).join(', ');
+          }
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
         }
-      } else if (errorData.message) {
-        errorMessage = errorData.message;
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
-  }
 
-  return response.json() as Promise<T>;
+    return response.json() as Promise<T>;
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+    if (err.name === 'AbortError') {
+      throw new Error('Connection timed out while server was waking up. Please try again in 5 seconds.');
+    }
+    throw err;
+  }
 }
 
 // ── Translation Database API ────────────────────────────────
@@ -808,7 +842,7 @@ export async function sendChatMessage(question: string, prediction_history_id?: 
   const localAns = getAgronomicAiResponse(question, targetLanguage);
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Backend timeout')), 15000)
+    setTimeout(() => reject(new Error('Backend timeout')), 30000)
   );
 
   const fetchPromise = (async () => {
