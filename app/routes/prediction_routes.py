@@ -8,7 +8,7 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from app.dependencies import get_current_user, get_db
+from app.dependencies import get_current_user_optional, get_db
 from app.models import User
 from app.services.image_service import predict_soil
 from app.services.history_service import create_prediction_history
@@ -25,7 +25,7 @@ _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 @router.post("/predict-image", tags=["Prediction"])
 async def predict_image(
     file: UploadFile | None = File(None),
-    current_user: User | None = Depends(get_current_user),
+    current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Accept an uploaded soil image and return a prediction payload."""
