@@ -705,47 +705,100 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
     </div>,
 
     // Card 3 — Fertilizer Advisory Schedule
-    <div key="fert" className="bg-surface rounded-2xl shadow-card border border-border p-5 animate-fade-in">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-          <FlaskConical size={16} className="text-blue-600" />
+    (() => {
+      const nVal = parseFloat(formData?.N || '90') || 90
+      const pVal = parseFloat(formData?.P || '42') || 42
+      const kVal = parseFloat(formData?.K || '43') || 43
+      const allOptimal = nVal > 100 && pVal > 60 && kVal > 100
+
+      const fertRows: Array<{ cat: string; prod: string; dose: string; method: string; isOptimal?: boolean }> = []
+
+      // Potassium Row
+      if (kVal < 60) {
+        fertRows.push({ cat: 'Potassium Supplement', prod: 'MOP (Muriate of Potash)', dose: '40–50 kg / acre', method: 'Basal — at sowing (Deficient K)' })
+      } else if (kVal <= 100) {
+        fertRows.push({ cat: 'Potassium Supplement', prod: 'MOP (Muriate of Potash)', dose: '15–20 kg / acre', method: 'Basal / split dose (Moderate K)' })
+      } else {
+        fertRows.push({ cat: 'Potassium (K)', prod: 'No Potash Required (Optimal Level)', dose: '0 kg / acre', method: 'Potassium is sufficient (Preserve natural reserve)', isOptimal: true })
+      }
+
+      // Phosphorus Row
+      if (pVal < 30) {
+        fertRows.push({ cat: 'Phosphorus Supplement', prod: 'DAP (Di-ammonium Phosphate)', dose: '35–40 kg / acre', method: 'Basal — at sowing (Deficient P)' })
+      } else if (pVal <= 60) {
+        fertRows.push({ cat: 'Phosphorus Supplement', prod: 'DAP or SSP', dose: '15–20 kg / acre', method: 'Basal application (Moderate P)' })
+      } else {
+        fertRows.push({ cat: 'Phosphorus (P)', prod: 'No Phosphate Required (Optimal Level)', dose: '0 kg / acre', method: 'Phosphorus is optimal (Avoids nutrient lockup)', isOptimal: true })
+      }
+
+      // Nitrogen Row
+      if (nVal < 60) {
+        fertRows.push({ cat: 'Nitrogen Supplement', prod: 'Urea (46% N)', dose: '35–45 kg / acre', method: 'Top dressing — 2 split doses (Deficient N)' })
+      } else if (nVal <= 100) {
+        fertRows.push({ cat: 'Nitrogen Supplement', prod: 'Urea (46% N)', dose: '15–20 kg / acre', method: 'Top dressing in split doses (Moderate N)' })
+      } else {
+        fertRows.push({ cat: 'Nitrogen (N)', prod: 'No Urea Required (Optimal Level)', dose: '0 kg / acre', method: 'Nitrogen is optimal (Prevents excess foliage/pest risk)', isOptimal: true })
+      }
+
+      // Organic Maintenance Row
+      fertRows.push({ cat: 'Organic Maintenance', prod: 'Farm Yard Manure / Compost', dose: '2–3 Tons / acre', method: 'Incorporate 15 days before sowing to sustain soil biology' })
+
+      return (
+        <div key="fert" className="bg-surface rounded-2xl shadow-card border border-border p-5 animate-fade-in">
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-8 h-8 rounded-lg ${allOptimal ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-600'} flex items-center justify-center`}>
+                <FlaskConical size={16} />
+              </div>
+              <h4 className="font-bold text-text-primary">{t('fertSchedule')}</h4>
+            </div>
+            {allOptimal && (
+              <span className="px-2.5 py-1 bg-green-100 text-green-800 text-[11px] font-bold rounded-full flex items-center gap-1">
+                ✓ Balanced Nutrients (0 kg Chemical Fert)
+              </span>
+            )}
+          </div>
+          <div className="overflow-x-auto mb-4">
+            <table className="w-full text-xs text-left">
+              <thead className="bg-green-800 text-white">
+                <tr>
+                  <th className="p-2.5 rounded-l-lg">{t('fertCategory')}</th>
+                  <th className="p-2.5">{t('productName')}</th>
+                  <th className="p-2.5">{t('dosageRate')}</th>
+                  <th className="p-2.5 rounded-r-lg">{t('appMethod')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {fertRows.map(f => (
+                  <tr key={f.cat} className={`hover:bg-background ${f.isOptimal ? 'bg-green-50/40 dark:bg-green-950/20' : ''}`}>
+                    <td className="p-2.5 font-semibold text-text-primary">{f.cat}</td>
+                    <td className={`p-2.5 ${f.isOptimal ? 'font-medium text-green-700 dark:text-green-400' : 'text-text-secondary'}`}>{f.prod}</td>
+                    <td className={`p-2.5 font-bold ${f.isOptimal ? 'text-text-muted' : 'text-green-700'}`}>{f.dose}</td>
+                    <td className="p-2.5 text-text-muted">{f.method}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="bg-background rounded-xl p-3 border border-border text-xs text-text-secondary space-y-1">
+            <p className="font-bold text-text-primary">{t("geminiAdvisoryNotes")}:</p>
+            {allOptimal ? (
+              <>
+                <p className="text-green-700 font-medium">✨ Soil macronutrients (N, P, K) are already at optimal levels. No synthetic chemical fertilizers are required.</p>
+                <p>- Maintain soil structure and microbial biodiversity with light compost or green mulch.</p>
+                <p>- Re-test soil after harvest before planning next season's nutrition.</p>
+              </>
+            ) : (
+              <>
+                <p>- {nVal <= 100 ? t("applyNitrogenSplit") : "Nitrogen is optimal; avoid extra synthetic nitrogen."}</p>
+                <p>- {pVal <= 60 ? t("usePhosphateBasal") : "Phosphorus is optimal; no additional phosphate needed."}</p>
+                <p>- {kVal <= 100 ? "Apply MOP based on recommended split dosing." : "Potassium is sufficient; maintain regular irrigation."}</p>
+              </>
+            )}
+          </div>
         </div>
-        <h4 className="font-bold text-text-primary">{t('fertSchedule')}</h4>
-      </div>
-      <div className="overflow-x-auto mb-4">
-        <table className="w-full text-xs text-left">
-          <thead className="bg-green-800 text-white">
-            <tr>
-              <th className="p-2.5 rounded-l-lg">{t('fertCategory')}</th>
-              <th className="p-2.5">{t('productName')}</th>
-              <th className="p-2.5">{t('dosageRate')}</th>
-              <th className="p-2.5 rounded-r-lg">{t('appMethod')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {[
-              { cat: 'Potassium Supplement', prod: 'MOP (Muriate of Potash)', dose: '50 kg / acre', method: 'Basal — at sowing' },
-              { cat: 'Phosphorus Supplement', prod: 'DAP (Di-ammonium Phosphate)', dose: '40 kg / acre', method: 'Basal — at sowing' },
-              { cat: 'Nitrogen Supplement', prod: 'Urea (46% N)', dose: '25 kg / acre', method: 'Top dressing — 2 split doses' },
-              { cat: 'Organic Manure', prod: 'Farm Yard Manure / Compost', dose: '3 Tons / acre', method: 'Incorporate 15 days before sowing' },
-            ].map(f => (
-              <tr key={f.cat} className="hover:bg-background">
-                <td className="p-2.5 font-semibold text-text-primary">{f.cat}</td>
-                <td className="p-2.5 text-text-secondary">{f.prod}</td>
-                <td className="p-2.5 font-bold text-green-700">{f.dose}</td>
-                <td className="p-2.5 text-text-muted">{f.method}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="bg-background rounded-xl p-3 border border-border text-xs text-text-secondary space-y-1">
-        <p className="font-bold text-text-primary">{t("geminiAdvisoryNotes")}:</p>
-        <p>- {t("applyNitrogenSplit")}.</p>
-        <p>- {t("usePhosphateBasal")}.</p>
-        <p>- {t("applyGypsumSoil")}.</p>
-      </div>
-    </div>,
+      )
+    })(),
   ]
 
   const handleSave = () => {
@@ -1854,165 +1907,239 @@ export function FertilizerRecommendation({ onNavigate }: { onNavigate?: (page: s
             </Card>
           )}
 
-          {stage === 'result' && (
-            <div className="space-y-4 animate-fade-in-up">
-              <Card className="p-5 border-l-4 border-green-500 relative overflow-hidden group hover:shadow-elevated transition-all-smooth">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <FlaskConical size={64} />
-                </div>
-                <div className="flex items-start justify-between mb-4 relative">
-                  <div>
-                    <p className="text-xs text-text-muted font-medium uppercase tracking-wider mb-1">{t("recommendedFertilizer")}</p>
-                    <h3 className="text-3xl font-bold text-text-primary">NPK 10:26:26</h3>
-                    <p className="text-sm text-text-secondary mt-1">Optimal ratio for Rice in Loamy soil</p>
-                  </div>
-                  <Badge color="green">94% Match</Badge>
-                </div>
-              </Card>
+          {stage === 'result' && (() => {
+            const nVal = parseFloat(form.N || '90') || 90
+            const pVal = parseFloat(form.P || '42') || 42
+            const kVal = parseFloat(form.K || '43') || 43
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <Card className="p-5 hover:shadow-elevated transition-shadow">
-                  <h4 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <Leaf size={18} className="text-green-500" />
-                    {t('organicRecs')}
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="bg-surface border border-border rounded-xl p-3 hover:border-green-300 transition-colors group">
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="font-bold text-text-primary group-hover:text-green-600 transition-colors">Vermicompost</p>
-                        <Badge color="green">{t('primary')}</Badge>
-                      </div>
-                      <p className="text-xs text-text-secondary mb-2">Application: <span className="font-semibold text-text-primary">2 tons/hectare</span></p>
-                      <p className="text-[11px] text-text-muted">Apply during field preparation before sowing.</p>
+            const nStatus = nVal < 60 ? { label: 'Deficient', color: '#EF4444', pct: Math.min(100, Math.round((nVal / 60) * 50)) }
+              : nVal <= 100 ? { label: 'Moderate', color: '#F59E0B', pct: Math.min(100, 50 + Math.round(((nVal - 60) / 40) * 35)) }
+              : { label: 'Optimal / Sufficient', color: '#10B981', pct: 95 }
+
+            const pStatus = pVal < 30 ? { label: 'Deficient', color: '#EF4444', pct: Math.min(100, Math.round((pVal / 30) * 50)) }
+              : pVal <= 60 ? { label: 'Moderate', color: '#F59E0B', pct: Math.min(100, 50 + Math.round(((pVal - 30) / 30) * 35)) }
+              : { label: 'Optimal / Sufficient', color: '#10B981', pct: 94 }
+
+            const kStatus = kVal < 60 ? { label: 'Deficient', color: '#EF4444', pct: Math.min(100, Math.round((kVal / 60) * 50)) }
+              : kVal <= 100 ? { label: 'Moderate', color: '#F59E0B', pct: Math.min(100, 50 + Math.round(((kVal - 60) / 40) * 35)) }
+              : { label: 'Optimal / Sufficient', color: '#10B981', pct: 96 }
+
+            const allOptimal = nVal > 100 && pVal > 60 && kVal > 100
+
+            const recommendedRatio = allOptimal
+              ? 'Balanced Soil — No Chemical Fertilizer Needed'
+              : (nVal < 60 && pVal < 30 && kVal < 60)
+              ? 'NPK 10:26:26 (Full Macro Supplement)'
+              : (nVal < 60 && pVal < 30)
+              ? 'DAP + Urea (N & P Boost)'
+              : (nVal < 60)
+              ? 'Urea (46-0-0 Top-Dress)'
+              : (pVal < 30)
+              ? 'Single Super Phosphate (SSP) / DAP'
+              : (kVal < 60)
+              ? 'MOP (0-0-60 Potash Supplement)'
+              : 'NPK 12:32:16 (Balanced Maintenance)'
+
+            const cropCapitalized = crop.charAt(0).toUpperCase() + crop.slice(1)
+            const soilCapitalized = soilType.charAt(0).toUpperCase() + soilType.slice(1)
+
+            const subTitle = allOptimal
+              ? `Optimal nutrient balance detected (N:${nVal}, P:${pVal}, K:${kVal} mg/kg) for ${cropCapitalized} in ${soilCapitalized} Soil. Maintain existing fertility naturally.`
+              : `Targeted nutrition plan for ${cropCapitalized} in ${soilCapitalized} Soil to correct detected deficits without over-fertilization.`
+
+            const chemFertItems: Array<{ name: string; dose: string; timing: string; isOptimal?: boolean }> = []
+            if (nVal < 60) {
+              chemFertItems.push({ name: 'Urea (46-0-0)', dose: '40–50 kg/ha', timing: 'Basal + Top-dress split (Low N)' })
+            } else if (nVal <= 100) {
+              chemFertItems.push({ name: 'Urea (46-0-0)', dose: '20–25 kg/ha', timing: 'Light top-dressing only (Moderate N)' })
+            }
+
+            if (pVal < 30) {
+              chemFertItems.push({ name: 'DAP (18-46-0)', dose: '35–45 kg/ha', timing: 'Basal application at sowing (Low P)' })
+            } else if (pVal <= 60) {
+              chemFertItems.push({ name: 'SSP (0-16-0) or DAP', dose: '20 kg/ha', timing: 'Basal application (Moderate P)' })
+            }
+
+            if (kVal < 60) {
+              chemFertItems.push({ name: 'MOP (0-0-60)', dose: '30–40 kg/ha', timing: 'Basal application (Low K)' })
+            } else if (kVal <= 100) {
+              chemFertItems.push({ name: 'MOP (0-0-60)', dose: '15–20 kg/ha', timing: 'Basal application (Moderate K)' })
+            }
+
+            if (chemFertItems.length === 0) {
+              chemFertItems.push(
+                { name: 'No Chemical Fertilizers Needed', dose: '0 kg/ha', timing: 'All macro-nutrients (N, P, K) are already optimal.', isOptimal: true },
+                { name: 'Prevent Over-fertilization', dose: 'Eco-Safe', timing: 'Avoid excess chemical inputs to prevent soil salinity and fertilizer burn.', isOptimal: true }
+              )
+            }
+
+            return (
+              <div className="space-y-4 animate-fade-in-up">
+                <Card className={`p-5 border-l-4 ${allOptimal ? 'border-emerald-500 bg-gradient-to-r from-emerald-500/5 to-transparent' : 'border-green-500'} relative overflow-hidden group hover:shadow-elevated transition-all-smooth`}>
+                  <div className="absolute top-0 right-0 p-4 opacity-10">
+                    <FlaskConical size={64} />
+                  </div>
+                  <div className="flex items-start justify-between mb-2 relative">
+                    <div>
+                      <p className="text-xs text-text-muted font-medium uppercase tracking-wider mb-1">{t("recommendedFertilizer")}</p>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-text-primary">{recommendedRatio}</h3>
+                      <p className="text-sm text-text-secondary mt-1">{subTitle}</p>
                     </div>
-                    <div className="bg-surface border border-border rounded-xl p-3 hover:border-green-300 transition-colors">
-                      <p className="font-bold text-text-primary mb-1">Farm Yard Manure</p>
-                      <p className="text-xs text-text-secondary mb-2">Application: <span className="font-semibold text-text-primary">5 tons/hectare</span></p>
-                      <p className="text-[11px] text-text-muted">Mix thoroughly with soil 15 days prior.</p>
+                    <Badge color="green">{allOptimal ? '100% Optimal' : '94% Match'}</Badge>
+                  </div>
+                </Card>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Card className="p-5 hover:shadow-elevated transition-shadow">
+                    <h4 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+                      <Leaf size={18} className="text-green-500" />
+                      {t('organicRecs')}
+                    </h4>
+                    <div className="space-y-3">
+                      <div className="bg-surface border border-border rounded-xl p-3 hover:border-green-300 transition-colors group">
+                        <div className="flex justify-between items-start mb-1">
+                          <p className="font-bold text-text-primary group-hover:text-green-600 transition-colors">Vermicompost</p>
+                          <Badge color="green">{t('primary')}</Badge>
+                        </div>
+                        <p className="text-xs text-text-secondary mb-2">Application: <span className="font-semibold text-text-primary">2 tons/hectare</span></p>
+                        <p className="text-[11px] text-text-muted">Apply during field preparation before sowing to enhance micro-flora.</p>
+                      </div>
+                      <div className="bg-surface border border-border rounded-xl p-3 hover:border-green-300 transition-colors">
+                        <p className="font-bold text-text-primary mb-1">Farm Yard Manure (FYM)</p>
+                        <p className="text-xs text-text-secondary mb-2">Application: <span className="font-semibold text-text-primary">3–5 tons/hectare</span></p>
+                        <p className="text-[11px] text-text-muted">Mix thoroughly with soil 15 days prior to seeding.</p>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-5 hover:shadow-elevated transition-shadow">
+                    <h4 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+                      <FlaskConical size={18} className={allOptimal ? 'text-green-600' : 'text-blue-500'} />
+                      {t('chemFerts')}
+                    </h4>
+                    <div className="space-y-3">
+                      {chemFertItems.map((cf, idx) => (
+                        <div key={idx} className={`bg-surface border ${cf.isOptimal ? 'border-green-200 dark:border-green-800/40 bg-green-50/20' : 'border-border'} rounded-xl p-3 hover:border-blue-300 transition-colors`}>
+                          <div className="flex justify-between items-start mb-1">
+                            <p className={`font-bold ${cf.isOptimal ? 'text-green-700 dark:text-green-400' : 'text-text-primary'}`}>{cf.name}</p>
+                            <Badge color={cf.isOptimal ? 'green' : 'blue'}>{cf.dose}</Badge>
+                          </div>
+                          <p className="text-xs text-text-secondary">Timing: <span className="font-medium">{cf.timing}</span></p>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </div>
+
+                <Card className="p-5">
+                  <h4 className="font-semibold text-text-primary mb-4">{t('Nutrient Deficiency')}</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <div className="flex justify-between text-xs mb-1 font-medium">
+                        <span className="text-text-secondary">{t('nitrogen')} (N): {nVal} mg/kg — {nStatus.label}</span>
+                        <span style={{ color: nStatus.color }}>{nStatus.pct}%</span>
+                      </div>
+                      <ProgressBar value={nStatus.pct} color={nStatus.color} />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1 font-medium">
+                        <span className="text-text-secondary">{t('phosphorus')} (P): {pVal} mg/kg — {pStatus.label}</span>
+                        <span style={{ color: pStatus.color }}>{pStatus.pct}%</span>
+                      </div>
+                      <ProgressBar value={pStatus.pct} color={pStatus.color} />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-xs mb-1 font-medium">
+                        <span className="text-text-secondary">{t('potassium')} (K): {kVal} mg/kg — {kStatus.label}</span>
+                        <span style={{ color: kStatus.color }}>{kStatus.pct}%</span>
+                      </div>
+                      <ProgressBar value={kStatus.pct} color={kStatus.color} />
                     </div>
                   </div>
                 </Card>
 
-                <Card className="p-5 hover:shadow-elevated transition-shadow">
-                  <h4 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <FlaskConical size={18} className="text-blue-500" />
-                    {t('chemFerts')}
-                  </h4>
-                  <div className="space-y-3">
-                    <div className="bg-surface border border-border rounded-xl p-3 hover:border-blue-300 transition-colors">
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="font-bold text-text-primary">DAP (18-46-0)</p>
-                        <Badge color="blue">25 kg/ha</Badge>
-                      </div>
-                      <p className="text-xs text-text-secondary">Timing: <span className="font-medium">Basal application</span></p>
+                <Card className="p-5">
+                  <h4 className="font-semibold text-text-primary mb-4">{t('Application Schedule')}</h4>
+                  <div className="relative pl-6 space-y-6 before:absolute before:inset-y-0 before:left-[11px] before:w-[2px] before:bg-border">
+                    <div className="relative">
+                      <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-green-500 ring-4 ring-background" />
+                      <p className="text-sm font-bold text-text-primary">Basal Dose <span className="font-normal text-text-muted ml-2">Day 0 (Sowing)</span></p>
+                      <p className="text-xs text-text-secondary mt-1">
+                        {allOptimal 
+                          ? 'Incorporate Farm Yard Manure (FYM) or compost into soil. No chemical basal fertilizers required.' 
+                          : 'Apply FYM, full dose of required DAP/MOP, and 1/3rd of Urea.'}
+                      </p>
                     </div>
-                    <div className="bg-surface border border-border rounded-xl p-3 hover:border-blue-300 transition-colors">
-                      <div className="flex justify-between items-start mb-1">
-                        <p className="font-bold text-text-primary">Urea (46-0-0)</p>
-                        <Badge color="blue">50 kg/ha</Badge>
-                      </div>
-                      <p className="text-xs text-text-secondary">Timing: <span className="font-medium">Basal + Top-dress</span></p>
+                    <div className="relative">
+                      <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-background" />
+                      <p className="text-sm font-bold text-text-primary">Vegetative Stage <span className="font-normal text-text-muted ml-2">Day 25-30</span></p>
+                      <p className="text-xs text-text-secondary mt-1">
+                        {nVal > 100 
+                          ? 'Nitrogen is optimal; top-dressing with Urea is not needed. Ensure regular irrigation.' 
+                          : 'Top-dress with 1/3rd of Urea after weeding.'}
+                      </p>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-purple-500 ring-4 ring-background" />
+                      <p className="text-sm font-bold text-text-primary">Flowering & Pod Fill <span className="font-normal text-text-muted ml-2">Day 50-55</span></p>
+                      <p className="text-xs text-text-secondary mt-1">
+                        {allOptimal 
+                          ? 'Maintain consistent soil moisture. Soil nutrient levels are sufficient to support maximum grain/fruit development.' 
+                          : 'Apply the remaining split of Urea if required.'}
+                      </p>
                     </div>
                   </div>
                 </Card>
-              </div>
 
-              <Card className="p-5">
-                <h4 className="font-semibold text-text-primary mb-4">{t('Nutrient Deficiency')}</h4>
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between text-xs mb-1 font-medium">
-                      <span className="text-text-secondary">{t('nitrogen')} (N) - Deficient</span>
-                      <span className="text-red-500">45%</span>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { title: t('Higher Yield'), desc: '+15–25% crop output', icon: <TrendingUp size={18} /> },
+                    { title: t('Better Roots'), desc: 'Stronger root system', icon: <Sprout size={18} /> },
+                    { title: t('Soil Health'), desc: 'Preserves soil fertility', icon: <Leaf size={18} /> },
+                    { title: t('Reduced Loss'), desc: 'Prevents N leaching', icon: <ShieldAlert size={18} /> }
+                  ].map(b => (
+                    <div key={b.title} className="bg-surface rounded-xl p-3 border border-border shadow-sm flex flex-col items-center justify-center text-center gap-1 hover:border-green-300 hover:shadow-card transition-all-smooth cursor-default group">
+                      <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform">{b.icon}</div>
+                      <span className="text-xs font-bold text-text-primary">{b.title}</span>
+                      <span className="text-[10px] text-text-muted">{b.desc}</span>
                     </div>
-                    <ProgressBar value={45} color="#EF4444" />
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1 font-medium">
-                      <span className="text-text-secondary">{t('phosphorus')} (P) - Optimal</span>
-                      <span className="text-green-500">82%</span>
+                  ))}
+                </div>
+
+                <Card className="p-4 bg-amber-50/50 border border-amber-200/50 dark:bg-amber-900/10 dark:border-amber-700/30">
+                  <div className="flex gap-3">
+                    <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-amber-800 dark:text-amber-500 mb-2 text-sm">{t("safetyNotes")}</p>
+                      <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1.5 list-disc list-inside">
+                        <li>Avoid applying fertilizers immediately before heavy rainfall.</li>
+                        <li>Maintain proper irrigation after chemical application.</li>
+                        <li>Avoid excess nitrogen to prevent pest susceptibility.</li>
+                      </ul>
                     </div>
-                    <ProgressBar value={82} color="#10B981" />
                   </div>
-                  <div>
-                    <div className="flex justify-between text-xs mb-1 font-medium">
-                      <span className="text-text-secondary">{t('potassium')} (K) - Sufficient</span>
-                      <span className="text-blue-500">95%</span>
-                    </div>
-                    <ProgressBar value={95} color="#3B82F6" />
-                  </div>
-                </div>
-              </Card>
+                </Card>
 
-              <Card className="p-5">
-                <h4 className="font-semibold text-text-primary mb-4">{t('Application Schedule')}</h4>
-                <div className="relative pl-6 space-y-6 before:absolute before:inset-y-0 before:left-[11px] before:w-[2px] before:bg-border">
-                  <div className="relative">
-                    <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-green-500 ring-4 ring-background" />
-                    <p className="text-sm font-bold text-text-primary">Basal Dose <span className="font-normal text-text-muted ml-2">Day 0 (Sowing)</span></p>
-                    <p className="text-xs text-text-secondary mt-1">Apply all FYM, full dose of DAP and MOP, and 1/3rd of Urea.</p>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-blue-500 ring-4 ring-background" />
-                    <p className="text-sm font-bold text-text-primary">Vegetative Stage <span className="font-normal text-text-muted ml-2">Day 25-30</span></p>
-                    <p className="text-xs text-text-secondary mt-1">Top-dress with 1/3rd of Urea after weeding.</p>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute -left-[29px] top-1 w-3 h-3 rounded-full bg-purple-500 ring-4 ring-background" />
-                    <p className="text-sm font-bold text-text-primary">Flowering Stage <span className="font-normal text-text-muted ml-2">Day 50-55</span></p>
-                    <p className="text-xs text-text-secondary mt-1">Apply the remaining 1/3rd of Urea.</p>
-                  </div>
+                <div className="flex gap-3 pt-2">
+                  <Button variant="secondary" onClick={handleReset} className="flex-1 justify-center">Generate New</Button>
+                  <Button 
+                    variant="primary" 
+                    icon={<Download size={14} />} 
+                    onClick={() => generatePdfReport({
+                      soilType: soilType.charAt(0).toUpperCase() + soilType.slice(1) + ' Soil',
+                      topCrop: crop.charAt(0).toUpperCase() + crop.slice(1),
+                      N: parseFloat(form.N) || 90,
+                      P: parseFloat(form.P) || 42,
+                      K: parseFloat(form.K) || 43,
+                    })} 
+                    className="flex-1 justify-center bg-green-700 hover:bg-green-800 text-white font-bold"
+                  >
+                    Download Plan
+                  </Button>
                 </div>
-              </Card>
-
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { title: t('Higher Yield'), desc: '+15–25% crop output', icon: <TrendingUp size={18} /> },
-                  { title: t('Better Roots'), desc: 'Stronger root system', icon: <Sprout size={18} /> },
-                  { title: t('Soil Health'), desc: 'Preserves soil fertility', icon: <Leaf size={18} /> },
-                  { title: t('Reduced Loss'), desc: 'Prevents N leaching', icon: <ShieldAlert size={18} /> }
-                ].map(b => (
-                  <div key={b.title} className="bg-surface rounded-xl p-3 border border-border shadow-sm flex flex-col items-center justify-center text-center gap-1 hover:border-green-300 hover:shadow-card transition-all-smooth cursor-default group">
-                    <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-green-600 group-hover:scale-110 transition-transform">{b.icon}</div>
-                    <span className="text-xs font-bold text-text-primary">{b.title}</span>
-                    <span className="text-[10px] text-text-muted">{b.desc}</span>
-                  </div>
-                ))}
               </div>
-
-              <Card className="p-4 bg-amber-50/50 border border-amber-200/50 dark:bg-amber-900/10 dark:border-amber-700/30">
-                <div className="flex gap-3">
-                  <AlertTriangle size={18} className="text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-amber-800 dark:text-amber-500 mb-2 text-sm">{t("safetyNotes")}</p>
-                    <ul className="text-xs text-amber-700 dark:text-amber-400 space-y-1.5 list-disc list-inside">
-                      <li>Avoid applying fertilizers immediately before heavy rainfall.</li>
-                      <li>Maintain proper irrigation after chemical application.</li>
-                      <li>Avoid excess nitrogen to prevent pest susceptibility.</li>
-                    </ul>
-                  </div>
-                </div>
-              </Card>
-
-              <div className="flex gap-3 pt-2">
-                <Button variant="secondary" onClick={handleReset} className="flex-1 justify-center">Generate New</Button>
-                <Button 
-                  variant="primary" 
-                  icon={<Download size={14} />} 
-                  onClick={() => generatePdfReport({
-                    soilType: soilType.charAt(0).toUpperCase() + soilType.slice(1) + ' Soil',
-                    topCrop: crop.charAt(0).toUpperCase() + crop.slice(1),
-                    N: parseFloat(form.N) || 90,
-                    P: parseFloat(form.P) || 42,
-                    K: parseFloat(form.K) || 43,
-                  })} 
-                  className="flex-1 justify-center bg-green-700 hover:bg-green-800 text-white font-bold"
-                >
-                  Download Plan
-                </Button>
-              </div>
-            </div>
-          )}
+            )
+          })()}
         </div>
       </div>
     </div>
