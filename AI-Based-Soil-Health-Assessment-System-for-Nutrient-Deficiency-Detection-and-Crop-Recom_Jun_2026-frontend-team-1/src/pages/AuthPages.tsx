@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Leaf, Eye, EyeOff, Mail, Lock, User, Phone, ChevronRight, ChevronLeft, CheckCircle2, ArrowLeft } from 'lucide-react'
 import { Button, Input, SelectInput } from '../components/ui'
 import FloatingChatbot from '../components/FloatingChatbot'
-import { loginUser, loginAdmin, getCurrentUser, registerUser, requestPasswordReset, verifyPasswordReset, forgotPassword as apiForgotPassword } from '../services/api'
+import { loginUser, loginAdmin, registerUser, requestPasswordReset, verifyPasswordReset, forgotPassword as apiForgotPassword, LANGUAGE_CODE_TO_ID } from '../services/api'
 import { useTranslation } from '../i18n'
 import LanguageSelector from '../components/LanguageSelector'
 import { INITIAL_LANGUAGES } from '../components/Navbar'
@@ -228,13 +228,17 @@ function RegisterForm({ onLogin }: { onSuccess?: () => void; onLogin: () => void
     setLoading(true)
     setRegError('')
     try {
+      const langEntry = INITIAL_LANGUAGES.find(l => l.name === form.language)
+      const langCode = langEntry?.code || 'en'
+      const language_id = LANGUAGE_CODE_TO_ID[langCode] || 1
+
       await registerUser({
-        username: form.name || (form.role === 'admin' ? 'System Admin' : 'Farmer'),
+        username: form.name.trim() || (form.role === 'admin' ? 'Admin' : 'Farmer'),
         email: form.email,
         password: form.password,
         confirm_password: form.confirm,
-        language_id: 1,
-        region: form.state ? `${form.state}, ${form.district}` : 'Telangana',
+        language_id,
+        region: form.state ? `${form.state}, ${form.district}` : '',
         role: form.role,
       })
       setDone(true)
@@ -243,7 +247,7 @@ function RegisterForm({ onLogin }: { onSuccess?: () => void; onLogin: () => void
       if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
         setRegError('Failed to connect to backend server. Please verify python run_server.py is running on port 8000.')
       } else {
-        setRegError(msg ? (t('registrationFailed') || msg) : t('registrationFailed'))
+        setRegError(msg ? `${t('registrationFailed') || 'Registration failed'}: ${msg}` : (t('registrationFailed') || 'Registration failed'))
       }
     } finally {
       setLoading(false)

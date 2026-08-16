@@ -1,15 +1,17 @@
-import { useTranslation } from '../i18n'
+import { useTranslation, Translate } from '../i18n'
+import { useLanguage } from '../contexts/LanguageContext'
 import { formatRelativeTime, formatLocalizedFullDate } from '../utils/dateUtils'
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { Cloud, Droplets, Thermometer, Wind, Sunrise, Sunset, Bell, Star, Download, Search, Filter, ChevronDown, ChevronUp, Lock, Globe, Sun, Shield, Smartphone, Check, X, MapPin, Camera, Edit3, Trash2, Navigation, FileText, AlertCircle, Bot, Sparkles, Eye, EyeOff, Leaf, MessageSquare, TrendingUp, ThumbsUp, CheckCircle2, ExternalLink } from 'lucide-react'
 import { Card, Badge, Button, Input, SelectInput, SearchInput, ProgressBar, Breadcrumb, LineSpinner } from '../components/ui'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { FEATURES } from '../config'
-import api, { getCurrentWeather, getWeatherForecast, getPredictionHistory, saveLocalPrediction, getHistoryDetail, submitFeedback, getCurrentUser, getNotifications, markNotificationRead, markAllNotificationsRead } from '../services/api'
+import api, { getCurrentWeather, getWeatherForecast, getPredictionHistory, saveLocalPrediction, getHistoryDetail, submitFeedback, getCurrentUser, getNotifications, markNotificationRead, markAllNotificationsRead, updateUserProfile, LANGUAGE_ID_TO_CODE } from '../services/api'
 import { useSarvamUsername, useSarvamLocation } from '../services/sarvamClient'
 import { INITIAL_LANGUAGES } from '../components/Navbar'
+import { getOrRequestLocation, getStoredCoords, setLocation as setStoredLocation } from '../services/locationService'
+import { generatePdfReport } from '../utils/pdfReportGenerator'
 
-// ---- Weather location dataset ----
 interface WeatherLocation {
   label: string
   state: string
@@ -18,6 +20,8 @@ interface WeatherLocation {
   wind: number
   condition: string
   feelsLike: number
+  lat?: number
+  lon?: number
 }
 
 const WEATHER_LOCATIONS: WeatherLocation[] = [
@@ -333,6 +337,8 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                 wind: Math.floor(Math.random() * 10) + 10,
                 condition: 'Partly Sunny',
                 feelsLike: Math.floor(Math.random() * 6) + 34,
+                lat: item.lat ? parseFloat(item.lat) : undefined,
+                lon: item.lon ? parseFloat(item.lon) : undefined,
               }
             })
             setApiSuggestions(parsed)
@@ -420,6 +426,8 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
             wind: 14,
             condition: 'Partly Sunny',
             feelsLike: 38,
+            lat: latitude,
+            lon: longitude,
           }
           setGpsStatus('success')
           onSelect(gpsLocation)
@@ -445,6 +453,8 @@ function LocationModal({ onSelect, onClose }: {onSelect: (loc: WeatherLocation) 
                 wind: 14,
                 condition: 'Partly Sunny',
                 feelsLike: 38,
+                lat: latitude,
+                lon: longitude,
               }
               setGpsStatus('success')
               onSelect(gpsLocation)
@@ -783,8 +793,9 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
   const getInitialLocation = (): WeatherLocation => {
     try {
       const saved = localStorage.getItem('selected_location')
-      if (saved) {
+      if (saved && saved.trim()) {
         const corrected = correctLocationLabel(saved)
+        const storedCoords = getStoredCoords()
         return {
           label: corrected,
           state: corrected.split(',')[2]?.trim() || 'India',
@@ -793,6 +804,8 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
           wind: 14,
           condition: 'Partly Sunny',
           feelsLike: 38,
+          lat: storedCoords?.lat,
+          lon: storedCoords?.lon,
         }
       }
       const userStr = localStorage.getItem('user') || localStorage.getItem('user_profile')
@@ -812,14 +825,15 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
         }
       }
     } catch {}
+    // No location yet — return empty placeholder; geolocation will fill it
     return {
-      label: 'Srikalahasthi, Tirupati District, Andhra Pradesh, India',
-      state: 'Andhra Pradesh',
-      temp: 32,
-      humidity: 68,
-      wind: 14,
-      condition: 'Partly Sunny',
-      feelsLike: 38,
+      label: '',
+      state: 'India',
+      temp: 0,
+      humidity: 0,
+      wind: 0,
+      condition: '',
+      feelsLike: 0,
     }
   }
 
@@ -828,41 +842,112 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
   const [loading, setLoading] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('Fetching weather...')
   const [expandedDay, setExpandedDay] = useState<string | null>(null)
+  const [apiWeather, setApiWeather] = useState<any>(null)
+  const [apiForecast, setApiForecast] = useState<any>(null)
+
+  // Fetch real weather data from backend using coordinates or location name
+  const fetchRealWeather = async (loc: WeatherLocation) => {
+    try {
+      const [weatherRes, forecastRes] = await Promise.all([
+        getCurrentWeather(loc.label, loc.lat, loc.lon),
+        getWeatherForecast(loc.label, loc.lat, loc.lon),
+      ])
+      setApiWeather(weatherRes)
+      setApiForecast(forecastRes)
+      // Update location state with real values from API
+      setLocation(prev => ({
+        ...prev,
+        temp: Math.round(weatherRes.current_temperature),
+        humidity: weatherRes.humidity,
+        wind: Math.round(weatherRes.wind_speed * 3.6), // m/s → km/h
+        condition: weatherRes.condition,
+        feelsLike: Math.round(weatherRes.feels_like),
+        label: weatherRes.location || prev.label,
+      }))
+      // Update prediction history with real API data
+      saveLocalPrediction({
+        type: 'Weather',
+        prediction_type: 'weather',
+        result: `Weather Track: ${(weatherRes.location || loc.label).split(',')[0]}`,
+        input: `Location: ${weatherRes.location || loc.label} | Temp: ${Math.round(weatherRes.current_temperature)}°C | Condition: ${weatherRes.condition} | Humidity: ${weatherRes.humidity}%`,
+        confidence: 100,
+        status: 'success',
+      })
+      window.dispatchEvent(new Event('predictionCreated'))
+    } catch (err) {
+      console.warn('[WeatherDashboard] API fetch failed, using local data:', err)
+    }
+  }
 
   useEffect(() => {
-    // If no custom location saved, attempt live GPS reverse-geocoding
-    if (!localStorage.getItem('selected_location') && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords
-          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1&accept-language=en`)
-            .then(res => res.json())
-            .then(data => {
-              const addr = data.address || {}
-              const placeName = addr.village || addr.suburb || addr.town || addr.city || addr.hamlet || 'Your Village'
-              const mapped = resolveAccurateDistrict(placeName)
-              const rawDist = mapped.district || addr.county || addr.state_district || addr.district || 'Unknown District'
-              const cleanDist = rawDist.toLowerCase().includes('district') ? rawDist : `${rawDist} District`
-              const stateName = addr.state || mapped.state || 'India'
-              
-              const realLoc: WeatherLocation = {
-                label: `${placeName}, ${cleanDist}, ${stateName}, India`,
-                state: stateName,
-                temp: 32,
-                humidity: 68,
-                wind: 14,
-                condition: 'Partly Sunny',
-                feelsLike: 38,
-              }
-              setLocation(realLoc)
-              localStorage.setItem('selected_location', realLoc.label)
-            })
-            .catch(() => {})
-        },
-        () => {},
-        { timeout: 8000, enableHighAccuracy: true }
-      )
+    // On mount: if we already have a saved location with coords, fetch real weather immediately
+    const initial = getInitialLocation()
+    if (initial.label && initial.lat && initial.lon) {
+      fetchRealWeather(initial)
+    } else if (initial.label) {
+      fetchRealWeather(initial)
+    } else {
+      // No saved location — trigger geolocation
+      setLoading(true)
+      setLoadingMsg('Detecting your location...')
+      getOrRequestLocation().then(result => {
+        if (result?.label) {
+          const newLoc: WeatherLocation = {
+            label: result.label,
+            state: result.label.split(',')[2]?.trim() || 'India',
+            temp: 0,
+            humidity: 0,
+            wind: 0,
+            condition: '',
+            feelsLike: 0,
+            lat: result.coords?.lat,
+            lon: result.coords?.lon,
+          }
+          setLocation(newLoc)
+          setStoredLocation(result.label, result.coords)
+          fetchRealWeather(newLoc)
+        }
+        setLoading(false)
+      })
     }
+
+    // Listen for external location updates (from other pages)
+    const onLocUpdate = (e: Event) => {
+      const label = (e as CustomEvent).detail?.label || localStorage.getItem('selected_location') || ''
+      if (label && label !== location.label) {
+        const storedCoords = getStoredCoords()
+        const updatedLoc: WeatherLocation = {
+          label,
+          state: label.split(',')[2]?.trim() || 'India',
+          temp: 0,
+          humidity: 0,
+          wind: 0,
+          condition: '',
+          feelsLike: 0,
+          lat: storedCoords?.lat,
+          lon: storedCoords?.lon,
+        }
+        setLocation(updatedLoc)
+        fetchRealWeather(updatedLoc)
+      }
+    }
+    window.addEventListener('locationUpdated', onLocUpdate)
+
+    // Set up auto-refresh interval (every 60 seconds)
+    const intervalId = setInterval(() => {
+      setLocation(prev => {
+        if (prev.label) {
+          fetchRealWeather(prev);
+        }
+        return prev;
+      });
+    }, 60000);
+
+    return () => {
+      window.removeEventListener('locationUpdated', onLocUpdate);
+      clearInterval(intervalId);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // History replay: load location from history page navigation
@@ -895,32 +980,19 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
   const handleLocationSelect = (loc: WeatherLocation) => {
     setShowModal(false)
     setLoading(true)
-    try { 
-      localStorage.setItem('selected_location', loc.label)
-      saveLocalPrediction({
-        type: 'Weather',
-        prediction_type: 'weather',
-        result: `Weather Track: ${loc.label.split(',')[0]}`,
-        input: `Location: ${loc.label} | Temp: ${loc.temp}°C | Condition: ${loc.condition} | Humidity: ${loc.humidity}%`,
-        confidence: 100,
-        status: 'success',
-      })
-      window.dispatchEvent(new Event('storage'))
-      window.dispatchEvent(new Event('predictionCreated'))
-    } catch {}
+    // Save location and broadcast update
+    setStoredLocation(loc.label, loc.lat !== undefined && loc.lon !== undefined ? { lat: loc.lat, lon: loc.lon } : undefined)
+    window.dispatchEvent(new Event('storage'))
     const msgs = ['Fetching weather...', 'Retrieving forecast...', 'Updating weather data...']
     setLoadingMsg(msgs[Math.floor(Math.random() * msgs.length)])
-    setTimeout(() => {
-      setLocation(loc)
-      setHourlyData(generateHourly(loc.temp))
-      setForecast(generateForecast(loc.temp, loc.condition))
-      setLoading(false)
-    }, 1500)
+    setLocation(loc)
+    // Fetch real weather from API for the selected location
+    fetchRealWeather(loc).finally(() => setLoading(false))
   }
 
-  const [hourlyData, setHourlyData] = useState(() => generateHourly(location.temp))
-  const [forecast, setForecast] = useState(() => generateForecast(location.temp, location.condition))
-  const sarvamWeatherLocation = useSarvamLocation(location.label)
+  const [hourlyData, setHourlyData] = useState(() => generateHourly(location.temp || 30))
+  const [forecast, setForecast] = useState(() => generateForecast(location.temp || 30, location.condition || 'Partly Sunny'))
+  const sarvamWeatherLocation = useSarvamLocation(apiWeather?.location || location.label)
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
@@ -1014,23 +1086,23 @@ export function WeatherDashboard({ onNavigate }: { onNavigate?: (page: string) =
           <div>
             <p className="text-white/70 text-sm mb-2">{t('currentConditions')} — {sarvamWeatherLocation || location.label}</p>
             <div className="flex items-end gap-4 mb-3">
-              <WeatherConditionIcon condition={location.condition} />
-              <span className="text-7xl font-bold">{location.temp}°</span>
+              <WeatherConditionIcon condition={location.condition || 'Partly Sunny'} />
+              <span className="text-7xl font-bold">{location.temp ? `${location.temp}°` : '—'}</span>
               <div>
-                <p className="text-xl font-semibold">{t(location.condition) || location.condition}</p>
-                <p className="text-white/70 text-sm">{t('feelsLike')} {location.feelsLike}°C</p>
+                <p className="text-xl font-semibold">{location.condition || '—'}</p>
+                <p className="text-white/70 text-sm">{t('feelsLike')} {location.feelsLike ? `${location.feelsLike}°C` : '—'}</p>
               </div>
             </div>
             <p className="text-white/80 text-sm">🌾 {t('goodFieldPrep')}</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { icon: <Droplets size={16} />, label: t('humidity'), value: `${location.humidity}%` },
-              { icon: <Wind size={16} />, label: t('windSpeed'), value: `${location.wind} km/h` },
-              { icon: <Thermometer size={16} />, label: t('dewPoint'), value: `${Math.round(location.temp - 8)}°C` },
-              { icon: <Cloud size={16} />, label: t('cloudCover'), value: `${Math.round(location.humidity / 2)}%` },
-              { icon: <Sunrise size={16} />, label: t('sunrise'), value: '05:42 AM' },
-              { icon: <Sunset size={16} />, label: t('sunset'), value: '07:18 PM' },
+              { icon: <Droplets size={16} />, label: t('humidity'), value: apiWeather ? `${apiWeather.humidity}%` : (location.humidity ? `${location.humidity}%` : '—') },
+              { icon: <Wind size={16} />, label: t('windSpeed'), value: apiWeather ? `${Math.round(apiWeather.wind_speed * 3.6)} km/h` : (location.wind ? `${location.wind} km/h` : '—') },
+              { icon: <Thermometer size={16} />, label: t('precipitation'), value: apiWeather ? `${apiWeather.precipitation} mm` : '—' },
+              { icon: <Cloud size={16} />, label: t('uvIndex'), value: apiWeather ? `${apiWeather.uv_index}` : '—' },
+              { icon: <Sunrise size={16} />, label: t('visibility'), value: apiWeather ? `${apiWeather.visibility} km` : '—' },
+              { icon: <Sunset size={16} />, label: t('condition'), value: apiWeather ? (apiWeather.condition || location.condition) : (location.condition || '—') },
             ].map(m => (
               <div key={m.label} className="flex items-center gap-2 bg-surface/10 rounded-xl px-3 py-2 backdrop-blur border border-white/10">
                 <span className="text-white/70">{m.icon}</span>
@@ -1226,8 +1298,14 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState('All')
   const [search, setSearch] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [apiHistory, setApiHistory] = useState<any[]>([])
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  const itemsPerPage = 8
 
   const loadHistory = () => {
     getPredictionHistory()
@@ -1249,35 +1327,87 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
     }
   }, [])
 
+  // Reset page on filter changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [activeTab, search, startDate, endDate])
+
   const allPredictions = apiHistory
-  const tabs = ['All', 'Soil', 'Crop', 'Fertilizer', 'Chatbot', 'Weather', 'Profile', ...(FEATURES.DISEASE_DETECTION ? ['Disease'] : [])]
+
+  const tabs = [
+    'All',
+    'Soil',
+    'Crop',
+    'Fertilizer',
+    'Disease',
+    'Weather',
+    'Chatbot',
+    'Reports',
+    'Community',
+    'Profile',
+    'Login Activity',
+    'Notifications'
+  ]
+
+  // Filtering Logic
   const filtered = allPredictions.filter(p => {
     const pType = String(p.type || p.prediction_type || (p.top_crop || p.predicted_crop ? 'Crop' : 'Soil'))
     const pResult = String(p.result || p.top_crop || p.predicted_crop || p.soil_type || p.prediction_result || 'Soil Analysis')
     const pInput = String(p.input || p.input_data || '')
-    const matchesTab = activeTab === 'All' ||
-      pType.toLowerCase().includes(activeTab.toLowerCase()) ||
-      (activeTab === 'Fertilizer' && (pType.toLowerCase().includes('fertilizer') || pType.includes('उर्वरक'))) ||
-      (activeTab === 'Weather' && (pType.toLowerCase().includes('weather') || pType.includes('मौसम'))) ||
-      (activeTab === 'Soil' && (pType.toLowerCase().includes('soil') || pType.includes('मिट्टी'))) ||
-      (activeTab === 'Crop' && (pType.toLowerCase().includes('crop') || pType.includes('फसल'))) ||
-      (activeTab === 'Chatbot' && (pType.toLowerCase().includes('chatbot') || pType.includes('चैटबॉट'))) ||
-      (activeTab === 'Profile' && (pType.toLowerCase().includes('profile') || pType.includes('प्रोफाइल'))) ||
-      (activeTab === 'Disease' && (pType.toLowerCase().includes('disease') || pType.includes('बीमारी') || pType.includes('रोग')))
+    const pTypeLower = pType.toLowerCase()
 
-    const matchesSearch = !search || pResult.toLowerCase().includes(search.toLowerCase()) || pType.toLowerCase().includes(search.toLowerCase()) || pInput.toLowerCase().includes(search.toLowerCase())
-    return matchesTab && matchesSearch
+    const matchesTab = activeTab === 'All' ||
+      (activeTab === 'Soil' && (pTypeLower === 'soil' || pTypeLower.includes('soil'))) ||
+      (activeTab === 'Crop' && (pTypeLower === 'crop' || pTypeLower.includes('crop'))) ||
+      (activeTab === 'Fertilizer' && (pTypeLower === 'fertilizer' || pTypeLower.includes('fertilizer'))) ||
+      (activeTab === 'Disease' && (pTypeLower === 'disease' || pTypeLower.includes('disease'))) ||
+      (activeTab === 'Weather' && (pTypeLower === 'weather' || pTypeLower.includes('weather'))) ||
+      (activeTab === 'Chatbot' && (pTypeLower === 'chatbot' || pTypeLower.includes('chatbot'))) ||
+      (activeTab === 'Reports' && (pTypeLower === 'report' || pTypeLower.includes('report'))) ||
+      (activeTab === 'Community' && (pTypeLower === 'community' || pTypeLower.includes('community'))) ||
+      (activeTab === 'Profile' && (pTypeLower === 'profile' || pTypeLower.includes('profile'))) ||
+      (activeTab === 'Login Activity' && (pTypeLower === 'login_activity' || pTypeLower.includes('login'))) ||
+      (activeTab === 'Notifications' && (pTypeLower === 'notification' || pTypeLower.includes('notification')))
+
+    const matchesSearch = !search ||
+      pResult.toLowerCase().includes(search.toLowerCase()) ||
+      pType.toLowerCase().includes(search.toLowerCase()) ||
+      pInput.toLowerCase().includes(search.toLowerCase())
+
+    const matchesDate = (() => {
+      if (!startDate && !endDate) return true
+      const itemTime = new Date(p.created_at || p.prediction_date || p.date || p.id || 0).getTime()
+      if (startDate) {
+        const startMs = new Date(startDate).getTime()
+        if (itemTime < startMs) return false
+      }
+      if (endDate) {
+        const endMs = new Date(endDate + 'T23:59:59').getTime()
+        if (itemTime > endMs) return false
+      }
+      return true
+    })()
+
+    return matchesTab && matchesSearch && matchesDate
   })
+
+  // Pagination Logic
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const paginatedItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const getBadgeColor = (type: string) => {
     const t = type.toLowerCase()
-    if (t.includes('soil') || t.includes('मिट्टी')) return 'orange'
-    if (t.includes('crop') || t.includes('फसल')) return 'green'
-    if (t.includes('fertilizer') || t.includes('उर्वरक')) return 'blue'
-    if (t.includes('chatbot') || t.includes('चैटबॉट')) return 'purple'
-    if (t.includes('weather') || t.includes('मौसम')) return 'blue'
-    if (t.includes('profile') || t.includes('प्रोफाइल')) return 'green'
-    if (t.includes('disease') || t.includes('बीमारी') || t.includes('रोग')) return 'red'
+    if (t.includes('soil')) return 'orange'
+    if (t.includes('crop')) return 'green'
+    if (t.includes('fertilizer')) return 'blue'
+    if (t.includes('chatbot')) return 'purple'
+    if (t.includes('weather')) return 'blue'
+    if (t.includes('profile')) return 'green'
+    if (t.includes('community')) return 'orange'
+    if (t.includes('report')) return 'gray'
+    if (t.includes('login')) return 'gray'
+    if (t.includes('notification')) return 'red'
+    if (t.includes('disease')) return 'red'
     return 'gray'
   }
 
@@ -1292,13 +1422,85 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
     downloadHistoryFile(buildHistoryPdf(filtered), 'agroai-prediction-history.pdf', 'application/pdf')
   }
 
+  const handleDeleteHistoryItem = async (rowId: string) => {
+    const localizedConfirm = t('confirmDeleteHistory') || 'Are you sure you want to delete this history record?'
+    if (!window.confirm(localizedConfirm)) {
+      return
+    }
+    try {
+      const id = Number(rowId)
+      const token = localStorage.getItem('access_token')
+      if (token) {
+        await api.delete(`/api/history/${id}`)
+      } else {
+        const storageKey = getUserScopedKey('agroai_prediction_history')
+        const existing = JSON.parse(localStorage.getItem(storageKey) || '[]')
+        const updated = existing.filter((item: any) => String(item.id || item.history_id) !== rowId)
+        localStorage.setItem(storageKey, JSON.stringify(updated))
+      }
+      setToastMessage(t('historyDeleted') || 'History item deleted successfully!')
+      setTimeout(() => setToastMessage(null), 3000)
+      loadHistory()
+    } catch (err: any) {
+      console.warn('Failed to delete history item:', err)
+      alert(err.message || 'Failed to delete history item')
+    }
+  }
+
+  const handleDownloadItemReport = (p: any) => {
+    const rawData = p.raw || p
+    const input_params = typeof p.input === 'string' ? {} : (rawData.input_parameters || p.input || {})
+    const result_data = typeof p.result === 'string' ? {} : (rawData.prediction_result || p.result || {})
+
+    // Build ReportData matching pdfReportGenerator specification
+    const reportData = {
+      reportId: String(p.id || p.history_id || 'R101'),
+      userName: localStorage.getItem('user_name') || 'Rahul Ramayanam',
+      generatedOn: p.date || p.prediction_date || new Date().toLocaleString(),
+      soilType: p.soil_type || 'Sandy Loam',
+      confidence: p.confidence || 96,
+      soilHealthScore: p.soil_health_score || 92,
+      soilHealthStatus: p.soil_health || 'Optimal',
+      location: localStorage.getItem('selected_location') || 'Punjab, India',
+      N: p.nitrogen || 90,
+      P: p.phosphorus || 42,
+      K: p.potassium || 43,
+      ph: p.ph || 6.5,
+      oc: p.organic_carbon || 0.62,
+      ec: p.electrical_conductivity || 0.41,
+      topCrop: p.top_crop || p.predicted_crop || 'Rice',
+      crops: p.recommended_crops ? p.recommended_crops.map((c: any, idx: number) => ({
+        rank: String(idx + 1),
+        name: typeof c === 'object' ? c.crop : String(c),
+        score: typeof c === 'object' ? c.score : 90,
+        match: typeof c === 'object' ? `${c.score}% Match` : '90% Match',
+        insight: typeof c === 'object' ? c.insight : 'Suitable matching crop for target soil condition.'
+      })) : [],
+      fertilizers: p.recommended_fertilizers ? p.recommended_fertilizers.map((f: any) => ({
+        category: typeof f === 'object' ? f.category : 'General',
+        product: typeof f === 'object' ? (f.product || f.fertilizer) : String(f),
+        dosage: typeof f === 'object' ? f.dosage : 'As required',
+        method: typeof f === 'object' ? f.method : 'Soil application'
+      })) : []
+    }
+    generatePdfReport(reportData)
+  }
+
   return (
-    <div className="p-4 md:p-6 space-y-6 animate-fade-in">
+    <div className="p-4 md:p-6 space-y-6 animate-fade-in relative">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 animate-scale-in">
+          <span>✨</span>
+          <p className="text-sm font-semibold">{toastMessage}</p>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           {onNavigate && <Breadcrumb items={[{ label: t('dashboard'), page: 'dashboard' }, { label: t('history') }]} onNavigate={onNavigate} />}
           <h2 className="text-2xl font-bold text-text-primary">{t('history')}</h2>
-          <p className="text-sm text-text-muted">{allPredictions.length || 62} {t('totalActivityRecords')}</p>
+          <p className="text-sm text-text-muted">{allPredictions.length} {t('totalActivityRecords')}</p>
         </div>
         {allPredictions.length > 0 && (
           <div className="flex gap-2">
@@ -1316,13 +1518,13 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
             onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all-smooth whitespace-nowrap ${activeTab === tab ? 'bg-surface shadow-soft text-green-700 font-bold' : 'text-text-muted hover:text-text-secondary'}`}
           >
-            {t(tab) || tab}
+            {t(tab.replace(' ', '')) || tab}
           </button>
         ))}
       </div>
 
-      {/* Search */}
-      <div className="flex gap-3">
+      {/* Search & Date Filters */}
+      <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1">
           <SearchInput
             value={search}
@@ -1330,12 +1532,44 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
             placeholder={t('Search predictions, chatbot, weather tracks & profile history...') || t('searchHistoryPlaceholder')}
           />
         </div>
-        <Button variant="ghost" icon={<Filter size={14} />}>{t('Filter')}</Button>
+        <div className="flex flex-wrap items-center gap-3 bg-surface p-2 rounded-xl border border-border">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-muted whitespace-nowrap">{t('From') || 'From'}:</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="px-2 py-1 rounded-lg border border-border bg-background text-xs text-text-primary focus:border-green-500 outline-none"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-muted whitespace-nowrap">{t('To') || 'To'}:</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="px-2 py-1 rounded-lg border border-border bg-background text-xs text-text-primary focus:border-green-500 outline-none"
+            />
+          </div>
+          {(startDate || endDate) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="!p-1 text-red-600 hover:text-red-700 text-xs font-bold"
+              onClick={() => {
+                setStartDate('')
+                setEndDate('')
+              }}
+            >
+              {t('Clear') || 'Clear'}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table / Empty State */}
       <Card className="overflow-hidden">
-        {filtered.length > 0 ? (
+        {paginatedItems.length > 0 ? (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1344,14 +1578,14 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                     <th className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{t('ID')}</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{t('Type')}</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{t('Activity / Result')}</th>
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{t('confidenceAccuracy') || t('Confidence / Accuracy') || t('Confidence')}</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{t('Confidence')}</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{t('Date & Time')}</th>
                     <th className="text-left py-3 px-4 text-xs font-semibold text-text-muted uppercase tracking-wide">{t('Status')}</th>
                     <th className="py-3 px-4"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(p => {
+                  {paginatedItems.map(p => {
                     const rowId = String(p.id || p.history_id || Math.random())
                     const rowType = p.type || (p.prediction_type ? p.prediction_type.charAt(0).toUpperCase() + p.prediction_type.slice(1) : (p.top_crop ? 'Crop' : 'Soil'))
                     const rowResult = p.result || p.top_crop || p.predicted_crop || p.soil_type || 'Analyzed'
@@ -1383,8 +1617,18 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                           <td className="py-3 px-4">
                             <Badge color="green">{p.status || 'success'}</Badge>
                           </td>
-                          <td className="py-3 px-4">
-                            <button onClick={() => setExpandedRow(expandedRow === rowId ? null : rowId)} className="text-text-muted hover:text-text-secondary transition-colors">
+                          <td className="py-3 px-4 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            <button 
+                              onClick={() => handleDeleteHistoryItem(rowId)}
+                              className="text-text-muted hover:text-red-600 transition-colors p-1"
+                              title={t('Delete') || 'Delete'}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            <button 
+                              onClick={() => setExpandedRow(expandedRow === rowId ? null : rowId)} 
+                              className="text-text-muted hover:text-text-secondary transition-colors p-1"
+                            >
                               {expandedRow === rowId ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             </button>
                           </td>
@@ -1404,12 +1648,6 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                                       <span className="text-xs font-bold text-text-secondary bg-green-50 px-2 py-1 rounded-lg whitespace-nowrap">💬 Answer</span>
                                       <p className="text-sm text-text-primary leading-relaxed">{rowResult}</p>
                                     </div>
-                                    {String(rowInput).includes('Language:') && (
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-text-secondary bg-purple-50 px-2 py-1 rounded-lg">🌐 Language</span>
-                                        <span className="text-xs text-text-muted">{String(rowInput).split('Language:')[1]?.split('|')[0]?.trim() || 'English'}</span>
-                                      </div>
-                                    )}
                                   </div>
                                 )}
                                 {rowType.toLowerCase().includes('weather') && (
@@ -1420,7 +1658,7 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                                     </div>
                                     <div className="flex items-start gap-2">
                                       <span className="text-xs font-bold text-text-secondary bg-cyan-50 px-2 py-1 rounded-lg">🌤️ Details</span>
-                                      <p className="text-sm text-text-muted">{typeof rowInput === 'object' ? JSON.stringify(rowInput) : rowInput}</p>
+                                      <p className="text-sm text-text-muted">{rowInput}</p>
                                     </div>
                                   </div>
                                 )}
@@ -1428,11 +1666,27 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                                   <div className="space-y-2">
                                     <div className="flex items-start gap-2">
                                       <span className="text-xs font-bold text-text-secondary bg-emerald-50 px-2 py-1 rounded-lg">👤 Updated Info</span>
-                                      <p className="text-sm text-text-primary">{typeof rowInput === 'object' ? JSON.stringify(rowInput) : rowInput}</p>
+                                      <p className="text-sm text-text-primary">{rowInput}</p>
                                     </div>
                                   </div>
                                 )}
-                                {(rowType.toLowerCase().includes('soil') || rowType.toLowerCase().includes('crop') || rowType.toLowerCase().includes('fertilizer') || rowType.toLowerCase().includes('disease')) && (
+                                {rowType.toLowerCase().includes('community') && (
+                                  <div className="space-y-2">
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-xs font-bold text-text-secondary bg-orange-50 px-2 py-1 rounded-lg">🌾 Community Action</span>
+                                      <p className="text-sm text-text-primary">{rowInput}</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {rowType.toLowerCase().includes('notification') && (
+                                  <div className="space-y-2">
+                                    <div className="flex items-start gap-2">
+                                      <span className="text-xs font-bold text-text-secondary bg-red-50 px-2 py-1 rounded-lg">🔔 Notification</span>
+                                      <p className="text-sm text-text-primary">{rowInput}</p>
+                                    </div>
+                                  </div>
+                                )}
+                                {(rowType.toLowerCase().includes('soil') || rowType.toLowerCase().includes('crop') || rowType.toLowerCase().includes('fertilizer') || rowType.toLowerCase().includes('disease') || rowType.toLowerCase().includes('report')) && (
                                   <div className="space-y-2">
                                     <div className="flex items-start gap-2">
                                       <span className="text-xs font-bold text-text-secondary bg-orange-50 px-2 py-1 rounded-lg">📊 Analysis Result</span>
@@ -1440,16 +1694,16 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                                     </div>
                                     <div className="flex items-start gap-2">
                                       <span className="text-xs font-bold text-text-secondary bg-gray-50 px-2 py-1 rounded-lg">📋 Parameters</span>
-                                      <p className="text-sm text-text-muted font-mono">{typeof rowInput === 'object' ? JSON.stringify(rowInput) : rowInput}</p>
+                                      <p className="text-sm text-text-muted font-mono">{rowInput}</p>
                                     </div>
                                   </div>
                                 )}
-                                {/* Navigation button */}
-                                {onNavigate && (
-                                  <div className="flex items-center gap-2 pt-2 border-t border-border">
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                                  {onNavigate && (
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation()
+                                      onClick={() => {
                                         // Store the history item for the target page to pick up
                                         const replayData = {
                                           type: rowType,
@@ -1475,11 +1729,20 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                                       }}
                                       className="flex items-center gap-1.5 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors"
                                     >
-                                      <ExternalLink size={12} /> Open in Page
+                                      <ExternalLink size={12} /> {t('openInPage') || 'Open in Page'}
                                     </button>
-                                    <span className="text-[10px] text-text-muted">View full details with your original question & AI response</span>
-                                  </div>
-                                )}
+                                  )}
+
+                                  {/* Download Report Button */}
+                                  {(rowType.toLowerCase().includes('soil') || rowType.toLowerCase().includes('crop') || rowType.toLowerCase().includes('fertilizer') || rowType.toLowerCase().includes('disease') || rowType.toLowerCase().includes('report')) && (
+                                    <button
+                                      onClick={() => handleDownloadItemReport(p)}
+                                      className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors"
+                                    >
+                                      <Download size={12} /> {t('downloadReport') || 'Download Report'}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -1490,8 +1753,35 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
                 </tbody>
               </table>
             </div>
-            <div className="px-4 py-3 border-t border-border flex items-center justify-between text-sm text-text-muted">
-              <span>{t('Showing')} {filtered.length} {t('of')} {allPredictions.length} {t('predictions')}</span>
+
+            {/* Pagination Controls */}
+            <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-text-muted">
+              <span>
+                {t('showingRecords') || 'Showing'} {Math.min(filtered.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filtered.length, currentPage * itemsPerPage)} {t('of') || 'of'} {filtered.length} {t('records') || 'records'}
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    {t('Previous') || 'Previous'}
+                  </Button>
+                  <span className="text-xs font-semibold px-2">
+                    {currentPage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outlined"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    {t('Next') || 'Next'}
+                  </Button>
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -1500,15 +1790,15 @@ export function PredictionHistory({ onNavigate }: { onNavigate?: (page: string) 
               🌱
             </div>
             <div>
-              <h3 className="text-lg font-bold text-text-primary mb-1">No Prediction History Found</h3>
+              <h3 className="text-lg font-bold text-text-primary mb-1">{t('noHistoryFound') || 'No History Found'}</h3>
               <p className="text-sm text-text-muted max-w-sm mx-auto">
-                You haven't generated any predictions yet. Run your first analysis to build your farming history!
+                {t('noHistoryFoundDesc') || 'You do not have any matching records in this category. Run an analysis or update settings to build your history.'}
               </p>
             </div>
             {onNavigate && (
               <div className="flex justify-center gap-3 pt-2">
                 <Button variant="primary" size="sm" onClick={() => onNavigate('soil')}>{t("soilAdvice")}</Button>
-                <Button variant="outlined" size="sm" onClick={() => onNavigate('crop')}>Recommend Crop</Button>
+                <Button variant="outlined" size="sm" onClick={() => onNavigate('crop')}>{t('Recommend Crop') || 'Recommend Crop'}</Button>
               </div>
             )}
           </div>
@@ -1704,10 +1994,9 @@ export function Notifications({ onNavigate, readIds: readIdsProp, onMarkRead, on
   useEffect(() => {
     const refreshNotifs = () => setLocalNotifs(generateRealNotifications())
     
-    // Try API first, fall back to local generation
     getNotifications()
       .then(items => {
-        if (Array.isArray(items) && items.length > 0) {
+        if (Array.isArray(items)) {
           setLocalNotifs(items)
           const readSet = new Set(items.filter((it: any) => it.read).map((it: any) => it.id))
           setLocalReadIds(prev => new Set([...prev, ...readSet]))
@@ -2415,14 +2704,19 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
   const { t, currentLanguage } = useTranslation()
   const [user, setUser] = useState<any>(null)
   const [editing, setEditing] = useState(false)
-  const [name, setName] = useState('Sarvam AI')
-  const [bio, setBio] = useState('Active registered farmer profile')
-  const [email, setEmail] = useState('ramyasreer2007@gmail.com')
+  const [name, setName] = useState('')
+  const [bio, setBio] = useState('')
+  const [email, setEmail] = useState('')
   const [role, setRole] = useState('FARMER')
-  const [phone, setPhone] = useState('+91 8008997880')
-  const [region, setRegion] = useState('Andhra Pradesh, Tirupati')
+  const [phone, setPhone] = useState('')
+  const [region, setRegion] = useState('')
+  const [address, setAddress] = useState('')
+  const [district, setDistrict] = useState('')
+  const [stateVal, setStateVal] = useState('')
+  const [langId, setLangId] = useState(1)
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   // Real activity stats from localStorage
@@ -2450,9 +2744,13 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
         if (savedProfile.username) setName(savedProfile.username)
         if (savedProfile.email) setEmail(savedProfile.email)
         if (savedProfile.role) setRole(savedProfile.role.toUpperCase())
-        if (savedProfile.phone) setPhone(savedProfile.phone)
+        if (savedProfile.phone || savedProfile.mobile) setPhone(savedProfile.phone || savedProfile.mobile)
         if (savedProfile.bio) setBio(savedProfile.bio)
         if (savedProfile.region) setRegion(savedProfile.region)
+        if (savedProfile.address) setAddress(savedProfile.address)
+        if (savedProfile.district) setDistrict(savedProfile.district)
+        if (savedProfile.state) setStateVal(savedProfile.state)
+        if (savedProfile.language_id) setLangId(savedProfile.language_id)
       }
     } catch {}
 
@@ -2466,8 +2764,13 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
         if (u?.username) setName(u.username)
         if (u?.email) setEmail(u.email)
         if (u?.role) setRole(u.role.toUpperCase())
-        if ((u as any)?.phone) setPhone((u as any).phone)
+        if ((u as any)?.phone || u?.mobile) setPhone((u as any).phone || u?.mobile || '')
         if (u?.region) setRegion(u.region)
+        if (u?.address) setAddress(u.address)
+        if (u?.district) setDistrict(u.district)
+        if (u?.state) setStateVal(u.state)
+        if (u?.language_id) setLangId(u.language_id)
+        if (u?.profile_picture) setProfilePhoto(u.profile_picture)
       })
       .catch(err => console.warn('Profile fetch note:', err))
 
@@ -2484,6 +2787,7 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
     }
   }, [])
 
+
   const handleDeleteAccount = () => {
     localStorage.clear()
     sessionStorage.clear()
@@ -2499,17 +2803,47 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
         email: email || user?.email || '',
         role: role || 'FARMER',
         phone: phone || '',
+        mobile: phone || '',
         bio: bio,
         region: activeLoc,
+        address: address,
+        district: district,
+        state: stateVal,
+        language_id: Number(langId),
+        profile_picture: profilePhoto,
         updated_at: new Date().toISOString(),
         created_at: user?.created_at || new Date().toISOString()
       }
+      setIsSaving(true)
       setUser(updatedUser)
       setRegion(activeLoc)
+      
+      // Update backend database
+      updateUserProfile({
+        username: updatedUser.username,
+        email: updatedUser.email,
+        language_id: updatedUser.language_id,
+        region: updatedUser.region,
+        mobile: updatedUser.phone,
+        address: updatedUser.address,
+        district: updatedUser.district,
+        state: updatedUser.state,
+        profile_picture: updatedUser.profile_picture,
+      }).then(res => {
+        if (res) {
+          setUser(res)
+        }
+      }).catch(err => console.error("Failed to sync profile changes to backend:", err))
+      .finally(() => {
+        setIsSaving(false)
+        setEditing(false)
+      })
+
       try {
         localStorage.setItem('user', JSON.stringify(updatedUser))
         localStorage.setItem('user_profile', JSON.stringify(updatedUser))
         localStorage.setItem('selected_location', activeLoc)
+        if (profilePhoto) localStorage.setItem('profile_photo', profilePhoto)
         saveLocalPrediction({
           type: 'Profile',
           prediction_type: 'profile',
@@ -2521,7 +2855,6 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
         window.dispatchEvent(new Event('storage'))
         window.dispatchEvent(new Event('predictionCreated'))
       } catch {}
-      setEditing(false)
     } else {
       setEditing(true)
     }
@@ -2540,6 +2873,17 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
       const dataUrl = ev.target?.result as string
       setProfilePhoto(dataUrl)
       try { localStorage.setItem('profile_photo', dataUrl) } catch {}
+      
+      // Sync photo to backend
+      getCurrentUser().then(u => {
+        if (u) {
+          updateUserProfile({
+            email: u.email,
+            language_id: u.language_id || 1,
+            profile_picture: dataUrl,
+          });
+        }
+      });
     }
     reader.readAsDataURL(file)
   }
@@ -2547,7 +2891,17 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
   const handleRemovePhoto = () => {
     setProfilePhoto(null)
     localStorage.removeItem('profile_photo')
+    getCurrentUser().then(u => {
+      if (u) {
+        updateUserProfile({
+          email: u.email,
+          language_id: u.language_id || 1,
+          profile_picture: '',
+        });
+      }
+    });
   }
+
 
   const rawDisplayName = name || user?.username || 'Registered Farmer'
   const displayName = useSarvamUsername(rawDisplayName)
@@ -2564,8 +2918,8 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
           {onNavigate && <Breadcrumb items={[{ label: t('dashboard'), page: 'dashboard' }, { label: t('My Profile') }]} onNavigate={onNavigate} />}
           <h2 className="text-2xl font-bold text-text-primary">{t('My Profile')}</h2>
         </div>
-        <Button variant={editing ? 'primary' : 'outlined'} size="sm" icon={<Edit3 size={13} />} onClick={handleToggleEdit}>
-          {editing ? t('saveChanges') : t('Edit Profile')}
+        <Button variant={editing ? 'primary' : 'outlined'} size="sm" icon={isSaving ? undefined : <Edit3 size={13} />} onClick={handleToggleEdit} loading={isSaving}>
+          {editing ? (isSaving ? <Translate text="Saving Profile..." /> : t('saveChanges')) : t('Edit Profile')}
         </Button>
       </div>
 
@@ -2662,7 +3016,22 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
         {editing ? (
           <div className="grid md:grid-cols-2 gap-4 text-sm">
             <Input label="📧 Email" value={email} onChange={e => setEmail(e.target.value)} placeholder="your@email.com" />
-            <Input label="📱 Phone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
+            <Input label="📱 Mobile" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 XXXXX XXXXX" />
+            <Input label="🏠 Address" value={address} onChange={e => setAddress(e.target.value)} placeholder="Street name / Door No" />
+            <Input label="📍 District" value={district} onChange={e => setDistrict(e.target.value)} placeholder="District name" />
+            <Input label="🏛️ State" value={stateVal} onChange={e => setStateVal(e.target.value)} placeholder="State name" />
+            <SelectInput
+              label="🌐 Preferred Language"
+              value={String(langId)}
+              onChange={e => setLangId(Number(e.target.value))}
+              options={Object.entries(LANGUAGE_ID_TO_CODE).map(([id, code]) => {
+                const match = INITIAL_LANGUAGES.find(l => l.code === code);
+                return {
+                  label: match ? `${match.name} (${match.native})` : code.toUpperCase(),
+                  value: String(id)
+                };
+              })}
+            />
             <SelectInput
               label="🌾 Role"
               value={role}
@@ -2683,7 +3052,16 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
           <div className="grid md:grid-cols-2 gap-4 text-sm">
             {[
               { label: t('Email'), value: email || user?.email || 'Not set — click Edit to add', icon: '📧' },
-              { label: t('Phone'), value: phone || user?.phone || 'Not set — click Edit to add', icon: '📱' },
+              { label: t('Mobile'), value: phone || user?.mobile || user?.phone || 'Not set — click Edit to add', icon: '📱' },
+              { label: t('Address'), value: address || user?.address || 'Not set — click Edit to add', icon: '🏠' },
+              { label: t('District'), value: district || user?.district || 'Not set — click Edit to add', icon: '📍' },
+              { label: t('State'), value: stateVal || user?.state || 'Not set — click Edit to add', icon: '🏛️' },
+              { label: t('Preferred Language'), value: (() => {
+                const code = LANGUAGE_ID_TO_CODE[langId] || 'en';
+                const match = INITIAL_LANGUAGES.find(l => l.code === code);
+                return match ? `${match.name} (${match.native})` : 'English';
+              })(), icon: '🌐' },
+              { label: t('Community'), value: user?.community || 'Not joined any community yet', icon: '🌾' },
               { label: t('Role'), value: t(role.toLowerCase()) || t('farmer') || role || 'FARMER', icon: '🌾' },
               { label: t('Country'), value: t('India'), icon: '🇮🇳' },
               { label: t('Region / State'), value: t(displayRegion) || displayRegion, icon: '📍' },
@@ -2695,12 +3073,13 @@ export function Profile({ onNavigate }: { onNavigate?: (page: string) => void })
                 <span className="text-lg">{f.icon}</span>
                 <div className="min-w-0">
                   <p className="text-xs text-text-muted">{f.label}</p>
-                  <p className={`font-medium truncate ${String(f.value).includes('Not set') ? 'text-text-muted italic' : 'text-text-primary'}`}>{f.value}</p>
+                  <p className={`font-medium truncate ${String(f.value).includes('Not set') || String(f.value).includes('Not joined') ? 'text-text-muted italic' : 'text-text-primary'}`}>{f.value}</p>
                 </div>
               </div>
             ))}
           </div>
         )}
+
       </Card>
 
       {/* Activity Summary — Real Values */}
@@ -2756,12 +3135,11 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
   onNavigate?: (page: string) => void
 }) {
   const { t } = useTranslation()
+  const { currentLanguage, setLanguage } = useLanguage()
   // Load saved settings from localStorage
   const loadSaved = (key: string, fallback: any) => {
     try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback } catch { return fallback }
   }
-
-  const [lang, setLang] = useState(() => loadSaved('settings_language', 'English'))
   const [notifEmail, setNotifEmail] = useState(() => loadSaved('settings_notif_email', true))
   const [notifSMS, setNotifSMS] = useState(() => loadSaved('settings_notif_sms', false))
   const [notifPush, setNotifPush] = useState(() => loadSaved('settings_notif_push', true))
@@ -2834,7 +3212,7 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
   }
 
   const handleSaveAll = () => {
-    localStorage.setItem('settings_language', JSON.stringify(lang))
+    localStorage.setItem('settings_language', JSON.stringify(currentLanguage))
     localStorage.setItem('settings_notif_email', JSON.stringify(notifEmail))
     localStorage.setItem('settings_notif_sms', JSON.stringify(notifSMS))
     localStorage.setItem('settings_notif_push', JSON.stringify(notifPush))
@@ -2883,9 +3261,9 @@ export function Settings({ themeMode = 'light', role, onSetTheme, onNavigate }: 
       <Card className="p-5">
         <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2"><Globe size={16} /> {t('Language')}</h3>
         <SelectInput
-          options={INITIAL_LANGUAGES.map(l => ({ value: l.name, label: `${l.name} (${l.native})` }))}
-          value={lang}
-          onChange={e => setLang(e.target.value)}
+          options={INITIAL_LANGUAGES.map(l => ({ value: l.code, label: `${l.name} (${l.native})` }))}
+          value={currentLanguage}
+          onChange={e => setLanguage(e.target.value)}
         />
       </Card>
       

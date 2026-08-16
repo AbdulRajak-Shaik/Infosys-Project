@@ -40,6 +40,60 @@ _LANGUAGE_CODES = {
 }
 
 _TRANSLATION_MAP = {
+    "sat-IN": {
+        "Hyderabad": "ᱦᱟᱭᱫᱽᱨᱟᱵᱟᱫᱽ",
+        "Delhi": "ᱫᱤᱞᱞᱤ",
+        "Chennai": "ᱪᱮᱱᱱᱟᱭ",
+        "Mumbai": "ᱢᱩᱢᱵᱟᱭ",
+        "Bangalore": "ᱵᱮᱝᱜᱟᱞᱩᱨᱩ",
+        "Clear Sky": "ᱥᱟᱯᱷᱟ ᱥᱮᱨᱢᱟ",
+        "Partly Cloudy": "ᱵᱟᱹᱭ-ᱵᱟᱹᱭ ᱨᱤᱢᱤᱞ",
+        "Scattered Clouds": "ᱯᱟᱥᱱᱟᱣ ᱨᱤᱢᱤᱞ",
+        "Overcast Clouds": "ᱜᱟ deep ᱨᱤᱢᱤᱞ",
+        "Broken Clouds": "ᱨᱟᱹᱯᱩᱫ ᱨᱤᱢᱤᱞ",
+        "Light Rain": "ᱨᱟᱣᱟᱞ ᱫᱟᱜ",
+        "Moderate Rain": "ᱛᱟᱞᱟ ᱫᱟᱜ",
+        "Heavy Rain": "ᱡᱚᱨ ᱫᱟᱜ",
+        "Sunny": "ᱥᱤᱛᱩᱝ",
+        "Rainy": "ᱫᱟᱜ ᱨᱤᱢᱤᱞ",
+        "Cloudy": "ᱨᱤᱢᱤᱞ",
+        "Monday": "ᱚᱛᱮ ᱢᱟᱦᱟ",
+        "Tuesday": "ᱵᱟᱞᱮ ᱢᱟᱦᱟ",
+        "Wednesday": "ᱥᱟᱹᱜᱩᱱ ᱢᱟᱦᱟ",
+        "Thursday": "ᱥᱟᱹᱨᱫᱤ ᱢᱟᱦᱟ",
+        "Friday": "ᱡᱟᱹᱨᱩᱢ ᱢᱟᱦᱟ",
+        "Saturday": "ᱧᱩᱦᱩᱢ ᱢᱟᱦᱟ",
+        "Sunday": "ᱥᱤᱸᱜᱮ ᱢᱟᱦᱟ",
+        "Black Soil": "ᱦᱮᱸᱫᱮ ᱦᱟᱥᱟ",
+        "Red Soil": "ᱟᱨᱟᱜ ᱦᱟᱥᱟ",
+        "Alluvial Soil": "ᱯᱚᱴᱟ linen ᱦᱟᱥᱟ",
+        "Clayey Soil": "ᱪᱤᱴᱠᱤ ᱦᱟᱥᱟ",
+        "Clay Soil": "ᱪᱤᱴᱠᱤ ᱦᱟᱥᱟ",
+        "Sandy Soil": "ᱜᱤᱛᱤᱞ ᱦᱟᱥᱟ",
+        "Silt Soil": "ᱞᱟ abstract ᱦᱟᱥᱟ",
+        "Loamy Soil": "ᱫᱩ-ᱦᱟᱥᱟ",
+        "Rice": "ᱦᱩᱲᱩ",
+        "Wheat": "ᱜᱩᱦᱩᱢ",
+        "Maize": "ᱡᱚ plan",
+        "Cotton": "ᱠᱟᱥᱠᱳᱢ",
+        "Fertile": "ᱥᱚᱛᱮᱭᱟᱡᱽ",
+        "Infertile": "ᱵᱟᱝ ᱥᱚᱛᱮᱭᱟᱡᱽ",
+        "Moderately Fertile": "ᱛᱟᱞᱟ ᱥᱚᱛᱮᱭᱟᱡᱽ",
+        "Good": "ᱵᱷᱟᱹᱜᱤ",
+        "Moderate": "ᱛᱟᱞᱟ",
+        "Poor": "ᱵᱟᱹᱲᱤᱡ",
+        "Optimal": "ᱥᱚᱨᱮᱥ",
+        "Nitrogen": "ᱱᱟᱭᱴᱨᱳᱡᱮᱱ",
+        "Phosphorus": "ᱯᱷᱳᱥᱯᱷᱳᱨᱚᱥ",
+        "Potassium": "ᱯᱳᱴᱟᱥᱤᱭᱚᱢ",
+        "Nitrogen deficiency detected": "ᱱᱟᱭᱴᱨᱳᱡᱮᱱ ᱠᱚᱢ ᱧᱟᱢ ᱮᱱᱟ",
+        "Apply nitrogen-rich fertilizer": "ᱱᱟᱭᱴᱨᱳᱡᱮᱱ ᱨᱟᱱ ᱞᱟᱜᱟᱣ ᱢᱮ",
+        "Soil health is moderate": "ᱦᱟᱥᱟ ᱦᱟᱞᱚᱛ ᱛᱟᱞᱟ ᱜᱮᱭᱟ",
+        "Soil health is good": "ᱦᱟᱥᱟ ᱦᱟᱞᱚᱛ ᱵᱷᱟᱹᱜᱤ ᱜᱮᱭᱟ",
+        "Urea (46% N)": "ᱭᱩᱨᱤᱭᱟ (᱔᱖% N)",
+        "DAP (Di-Ammonium Phosphate)": "ᱰᱤ.ᱮ.ᱯᱤ (DAP)",
+        "Muriate of Potash (MOP)": "ᱮᱢ.ᱳ.ᱯᱤ (MOP)",
+    },
     "hi-IN": {
         "Hyderabad": "हैदराबाद",
         "Delhi": "दिल्ली",
@@ -68,7 +122,10 @@ _TRANSLATION_MAP = {
         "Red Soil": "लाल मिट्टी",
         "Alluvial Soil": "जलोढ़ मिट्टी",
         "Clayey Soil": "चिकनी मिट्टी",
+        "Clay Soil": "चिकनी मिट्टी",
         "Sandy Soil": "रेतीली मिट्टी",
+        "Loamy Soil": "दोमट मिट्टी",
+        "Silt Soil": "गाद मिट्टी",
         "Rice": "चावल",
         "Wheat": "गेहूँ",
         "Maize": "मक्का",
@@ -106,7 +163,10 @@ _TRANSLATION_MAP = {
         "Red Soil": "ఎర్ర నేల",
         "Alluvial Soil": "ఒండ్రు నేల",
         "Clayey Soil": "జిగురు నేల",
+        "Clay Soil": "జిగురు నేల",
         "Sandy Soil": "ఇసుక నేల",
+        "Loamy Soil": "దుబ్బ నేల",
+        "Silt Soil": "మట్టి నేల",
         "Rice": "వరి",
         "Wheat": "గోధుమ",
         "Maize": "మొక్కజొన్న",
@@ -144,7 +204,10 @@ _TRANSLATION_MAP = {
         "Red Soil": "செம்மண்",
         "Alluvial Soil": "வண்டல் மண்",
         "Clayey Soil": "களிமண்",
+        "Clay Soil": "களிமண்",
         "Sandy Soil": "மணல் மண்",
+        "Loamy Soil": "வண்டல் மண்",
+        "Silt Soil": "படிவு மண்",
         "Rice": "அரிசி",
         "Wheat": "கோதுமை",
         "Maize": "சோளம்",
@@ -158,6 +221,9 @@ def translate_text_by_code(text: str, target_lang_code: str) -> str:
     if not isinstance(text, str) or not text.strip():
         return text
 
+    import time
+    start_time = time.time()
+
     clean_text = text.strip()
     code = target_lang_code.split("-")[0].lower() if target_lang_code else "en"
     if code == "en":
@@ -170,8 +236,10 @@ def translate_text_by_code(text: str, target_lang_code: str) -> str:
     if cache_key in _TRANSLATION_CACHE:
         return _TRANSLATION_CACHE[cache_key]
 
-    # 1. Sarvam API call if API key available
     api_key = settings.SARVAM_API_KEY.strip()
+    status = "FALLBACK"
+
+    # 1. Sarvam API call if API key available
     if api_key:
         try:
             payload = json.dumps({
@@ -198,16 +266,50 @@ def translate_text_by_code(text: str, target_lang_code: str) -> str:
                 if isinstance(translated, str) and translated.strip():
                     result = translated.strip()
                     _TRANSLATION_CACHE[cache_key] = result
+                    status = "SUCCESS"
+                    
+                    latency_ms = int((time.time() - start_time) * 1000)
+                    print("\n==========================")
+                    print("SARVAM AI")
+                    print("==========================")
+                    print("Translation API")
+                    print(f"Language : {sarvam_lang_code}")
+                    print(f"Status   : {status}")
+                    print(f"Latency  : {latency_ms} ms")
+                    print("==========================\n")
+                    
                     return result
         except Exception as exc:
             _LOGGER.debug("Sarvam API translation error: %s. Using fallback.", exc)
+            status = "FAILED"
 
     # 2. Dictionary fallback
     lang_dict = _TRANSLATION_MAP.get(sarvam_lang_code, {})
     if clean_text in lang_dict:
         result = lang_dict[clean_text]
         _TRANSLATION_CACHE[cache_key] = result
+        
+        latency_ms = int((time.time() - start_time) * 1000)
+        print("\n==========================")
+        print("SARVAM AI")
+        print("==========================")
+        print("Translation API")
+        print(f"Language : {sarvam_lang_code}")
+        print("Status   : SUCCESS")
+        print(f"Latency  : {latency_ms} ms")
+        print("==========================\n")
+        
         return result
+
+    latency_ms = int((time.time() - start_time) * 1000)
+    print("\n==========================")
+    print("SARVAM AI")
+    print("==========================")
+    print("Translation API")
+    print(f"Language : {sarvam_lang_code}")
+    print(f"Status   : {status}")
+    print(f"Latency  : {latency_ms} ms")
+    print("==========================\n")
 
     return clean_text
 

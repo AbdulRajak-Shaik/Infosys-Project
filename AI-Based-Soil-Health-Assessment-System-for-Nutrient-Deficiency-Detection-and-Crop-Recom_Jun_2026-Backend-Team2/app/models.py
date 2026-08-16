@@ -75,6 +75,13 @@ class User(Base):
     )
     region: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     language_id: Mapped[int | None] = mapped_column(ForeignKey("languages.id"), nullable=True, index=True)
+    mobile: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    district: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    profile_picture: Mapped[str | None] = mapped_column(String, nullable=True)
+    community: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
 
     # Login/logout tracking fields for future logout support.
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -104,6 +111,10 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    general_history: Mapped[list["GeneralHistory"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
 
 class PredictionHistory(Base):
@@ -129,6 +140,7 @@ class PredictionHistory(Base):
     nutrient_deficiencies: Mapped[list] = mapped_column(JSON, nullable=False)
     recommended_crops: Mapped[list] = mapped_column(JSON, nullable=False)
     recommended_fertilizers: Mapped[list] = mapped_column(JSON, nullable=False)
+    prediction_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -171,6 +183,9 @@ class Feedback(Base):
 
     rating: Mapped[int] = mapped_column(nullable=False)
     comment: Mapped[str] = mapped_column(String(500), nullable=False)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    admin_response: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    is_resolved: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -307,3 +322,26 @@ class Translation(Base):
     )
 
     language: Mapped["Language"] = relationship()
+
+
+class GeneralHistory(Base):
+    """Stores predictions across soil, crop, fertilizer, disease, weather, chatbot, translation, and report modules."""
+
+    __tablename__ = "general_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    module_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    prediction_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    input_parameters: Mapped[dict] = mapped_column(JSON, nullable=False)
+    prediction_result: Mapped[dict] = mapped_column(JSON, nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    processing_time: Mapped[float | None] = mapped_column(Float, nullable=True)
+    model_used: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship(back_populates="general_history")

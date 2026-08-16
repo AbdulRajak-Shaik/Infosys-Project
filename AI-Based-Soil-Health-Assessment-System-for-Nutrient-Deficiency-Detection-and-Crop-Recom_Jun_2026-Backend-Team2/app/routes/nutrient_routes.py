@@ -39,7 +39,7 @@ async def analyze_nutrients(
 ) -> Dict[str, Any]:
     """Analyze soil inputs, return predicted nutrient deficiencies and save prediction history."""
     try:
-        request_data = request.dict()
+        request_data = request.model_dump()
         result = predict_nutrient_deficiency(request_data, current_user.language_id)
 
         if current_user and getattr(current_user, "id", None):
@@ -61,8 +61,20 @@ async def analyze_nutrients(
                         "recommended_fertilizers": result.get("recommended_fertilizers", ["NPK 10:26:26", "Urea"]),
                     }
                 )
-            except Exception:
-                pass
+                from app.services.history_service import create_general_history
+                create_general_history(
+                    db=db,
+                    user_id=current_user.id,
+                    module_name="Fertilizer Advisory",
+                    prediction_type="fertilizer",
+                    input_parameters=request_data,
+                    prediction_result=result,
+                    confidence=94.0,
+                    processing_time=0.03,
+                    model_used="Fertilizer Expert System"
+                )
+            except Exception as e:
+                print(f"[ERROR] Failed to save nutrient/fertilizer history: {e}")
 
         return result
     except FileNotFoundError as exc:

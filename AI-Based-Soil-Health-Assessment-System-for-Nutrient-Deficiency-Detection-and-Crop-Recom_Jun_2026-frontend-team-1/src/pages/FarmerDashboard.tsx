@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Leaf, Sprout, FlaskConical, Cloud, Droplets, Thermometer, Sun, Bell, ChevronRight, Activity, Bug, Bot, Download } from 'lucide-react'
 import StatCard from '../components/StatCard'
-import { Card, Badge, Button } from '../components/ui'
+import { Card, Badge, Button, LineSpinner } from '../components/ui'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { FEATURES } from '../config'
 import { getCurrentUser, getPredictionHistory, transliterateTextApi, type UserProfile, type HistoryItem } from '../services/api'
 import { useSarvamUsername, useSarvamLocation } from '../services/sarvamClient'
-import { useTranslation } from '../i18n'
+import { useTranslation, Translate } from '../i18n'
 import { generatePdfReport } from '../utils/pdfReportGenerator'
+import { getStoredLocation, getOrRequestLocation } from '../services/locationService'
 import { formatLocalizedMonth, formatLocalizedDate, formatRelativeTime } from '../utils/dateUtils'
 
 interface AlertItem {
@@ -30,54 +31,79 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
   
   const [user, setUser] = useState<UserProfile | null>(null)
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [loading, setLoading] = useState(true)
 
   const rawUsername = user?.username || 'Valued Farmer'
   const displayName = useSarvamUsername(rawUsername)
 
-  const rawLocation = user?.region || localStorage.getItem('selected_location') || 'Srikalahasthi, Tirupati District, Andhra Pradesh, India'
+  const rawLocation = user?.region || getStoredLocation() || ''
   const sarvamLocation = useSarvamLocation(rawLocation)
 
   const reloadData = () => {
-    getCurrentUser()
-      .then(u => {
-        setUser(u)
-      })
-      .catch(err => {
-        console.warn('User profile note:', err)
-      })
-
-    getPredictionHistory()
-      .then(h => setHistory(h))
-      .catch(err => console.warn('History note:', err))
+    Promise.all([
+      getCurrentUser().then(u => setUser(u)),
+      getPredictionHistory().then(h => setHistory(h))
+    ]).catch(err => {
+      console.warn('Dashboard fetch note:', err)
+    }).finally(() => {
+      setLoading(false)
+    })
   }
 
   useEffect(() => {
     reloadData()
     window.addEventListener('predictionCreated', reloadData)
     window.addEventListener('storage', reloadData)
+    window.addEventListener('locationUpdated', reloadData)
+    // Trigger geolocation silently if no location saved
+    if (!getStoredLocation()) {
+      getOrRequestLocation().catch(() => {})
+    }
     return () => {
       window.removeEventListener('predictionCreated', reloadData)
       window.removeEventListener('storage', reloadData)
+      window.removeEventListener('locationUpdated', reloadData)
     }
   }, [currentLanguage])
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-2.5 text-green-700">
+        <LineSpinner size={24} color="currentColor" strokeWidth={2.4} />
+        <span className="text-sm font-medium"><Translate text="Loading Dashboard..." /></span>
+      </div>
+    )
+  }
+
+
   const handleDownloadCropReport = (e: React.MouseEvent) => {
     e.preventDefault()
+    // Use data from the most recent prediction history entry
+    const lastSoilPrediction: any = history
+      .filter((h: any) => h.soil_type || h.prediction_type === 'soil')
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
+    
+    const lastCropPrediction: any = history
+      .filter((h: any) => h.predicted_crop || h.prediction_type === 'crop')
+      .sort((a: any, b: any) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())[0]
+
+    const soilTypeValue = lastSoilPrediction?.soil_type || t('notAvailable') || '—'
+    const topCropValue = lastCropPrediction?.predicted_crop || t('notAvailable') || '—'
+    const confidenceValue = lastSoilPrediction?.confidence
+      ? (lastSoilPrediction.confidence > 1 ? lastSoilPrediction.confidence : lastSoilPrediction.confidence * 100)
+      : 0
+    
     generatePdfReport({
       userName: rawUsername,
       location: sarvamLocation || rawLocation,
-      topCrop: 'Cotton',
-      soilType: 'Unknown Soil',
-      confidence: 96.2,
-      recommendations: [
-        'Apply NPK 120:60:60 kg/ha in 3 split doses.',
-        'Maintain soil moisture at field capacity during flowering.',
-        'Spray Neem Oil (5ml/L) as a preventive measure against sucking pests.',
-      ],
-      nValue: '120 mg/kg',
-      pValue: '45 mg/kg',
-      kValue: '180 mg/kg',
-      phValue: '6.8',
+      topCrop: topCropValue,
+      soilType: soilTypeValue,
+      confidence: confidenceValue,
+      recommendations: lastCropPrediction?.recommendations || [],
+      nValue: lastSoilPrediction?.nitrogen ? `${lastSoilPrediction.nitrogen} mg/kg` : '—',
+      pValue: lastSoilPrediction?.phosphorus ? `${lastSoilPrediction.phosphorus} mg/kg` : '—',
+      kValue: lastSoilPrediction?.potassium ? `${lastSoilPrediction.potassium} mg/kg` : '—',
+      phValue: lastSoilPrediction?.ph ? String(lastSoilPrediction.ph) : '—',
     })
   }
 
@@ -121,8 +147,8 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
       const d = new Date(h.created_at)
       return d.getMonth() === mIdx
     })
-    const cropCount = monthHistory.filter(h => h.prediction_type === 'crop' || h.predicted_crop).length || [18, 24, 20, 32, 27, 41][i]
-    const soilCount = monthHistory.filter(h => h.prediction_type === 'soil' || h.soil_type).length || [12, 19, 15, 28, 22, 35][i]
+    const cropCount = monthHistory.filter(h => h.prediction_type === 'crop' || h.predicted_crop).length
+    const soilCount = monthHistory.filter(h => h.prediction_type === 'soil' || h.soil_type).length
 
     return {
       month: monthName,
@@ -133,29 +159,31 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
 
   // Dynamic Crop Distribution derived from real prediction history
   const cropCounts: Record<string, number> = {}
+  let hasCropPredictions = false
   history.forEach(h => {
     const crop = h.predicted_crop || (h.prediction_type === 'crop' ? h.result : null)
     if (crop) {
       cropCounts[crop] = (cropCounts[crop] || 0) + 1
+      hasCropPredictions = true
     }
   })
 
-  const baseCropDist = [
-    { rawName: 'Wheat', value: cropCounts['Wheat'] || 35, color: '#F9A825' },
-    { rawName: 'Rice', value: cropCounts['Rice'] || 28, color: '#43A047' },
-    { rawName: 'Maize', value: cropCounts['Maize'] || 18, color: '#FB8C00' },
-    { rawName: 'Cotton', value: cropCounts['Cotton'] || 12, color: '#1565C0' },
-    { rawName: 'Other', value: cropCounts['Other'] || 7, color: '#9E9E9E' },
-  ]
+  const totalCrops = Object.values(cropCounts).reduce((a, b) => a + b, 0)
+
+  const baseCropDist = hasCropPredictions ? Object.entries(cropCounts).map(([cropName, count]) => ({
+    rawName: cropName,
+    value: Math.round((count / totalCrops) * 100),
+    color: cropName === 'Wheat' ? '#F9A825' : cropName === 'Rice' ? '#43A047' : cropName === 'Maize' ? '#FB8C00' : cropName === 'Cotton' ? '#1565C0' : '#9E9E9E'
+  })) : []
 
   const translatedCropDist = baseCropDist.map(c => ({
     ...c,
     name: t(c.rawName) || c.rawName
   }))
 
-  const totalCount = history.length || 62
-  const cropCountTotal = history.filter((p: any) => p.prediction_type === 'crop' || p.predicted_crop).length || 28
-  const soilCountTotal = history.filter((p: any) => p.prediction_type === 'soil' || p.soil_type).length || 34
+  const totalCount = history.length
+  const cropCountTotal = history.filter((p: any) => p.prediction_type === 'crop').length
+  const soilCountTotal = history.filter((p: any) => p.prediction_type === 'soil').length
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
@@ -255,25 +283,35 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
         {/* Crop Distribution */}
         <Card className="p-5 flex flex-col">
           <h3 className="font-bold text-text-primary mb-5">{t('cropDistribution')}</h3>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie data={translatedCropDist} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value" nameKey="name">
-                {translatedCropDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-2 mt-2">
-            {translatedCropDist.map(c => (
-              <div key={c.name} className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
-                  <span className="text-text-secondary">{c.name}</span>
-                </div>
-                <span className="font-semibold text-text-secondary">{c.value}%</span>
+          {translatedCropDist.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={translatedCropDist} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value" nameKey="name">
+                    {translatedCropDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2 mt-2">
+                {translatedCropDist.map(c => (
+                  <div key={c.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
+                      <span className="text-text-secondary">{c.name}</span>
+                    </div>
+                    <span className="font-semibold text-text-secondary">{c.value}%</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+              <span className="text-2xl mb-1">📊</span>
+              <p className="text-xs font-semibold text-text-secondary">{t('noDataAvailable') || 'No Data Available'}</p>
+              <p className="text-[10px] text-text-muted">{t('cropDistPlaceholderDesc') || 'Crop distribution appears after analysis.'}</p>
+            </div>
+          )}
         </Card>
       </div>
 

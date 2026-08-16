@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Bot, Send, Plus, ThumbsUp, ThumbsDown, Copy, RefreshCw, Mic, Image as ImageIcon, Camera, Upload, X, Globe, Trash2, MessageSquare } from 'lucide-react'
 import { Button } from '../components/ui'
 import { sendChatMessage, getAgronomicAiResponse, translateTextApi, saveLocalPrediction } from '../services/api'
-import { useTranslation } from '../i18n'
+import { useTranslation, Translate, useSarvamTranslation } from '../i18n'
 import { useLanguage } from '../contexts/LanguageContext'
 import { FEATURES } from '../config'
 
@@ -202,6 +202,8 @@ export default function AIChatbot() {
   const { t } = useTranslation()
   const { currentLanguage: currentLanguageCode, setLanguage: setGlobalLanguage } = useLanguage()
   const defaultChatLanguage = getLanguageNameFromCode(currentLanguageCode)
+
+  const translatedAnalyzing = useSarvamTranslation("Analyzing query in")
 
   // Real Chat Sessions Persistence State
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
@@ -425,7 +427,7 @@ export default function AIChatbot() {
         time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
       }
 
-      const userLoc = localStorage.getItem('selected_location') || 'Srikalahasthi, Tirupati District, Andhra Pradesh, India'
+      const userLoc = localStorage.getItem('selected_location') || ''
       saveLocalPrediction({
         type: 'Chatbot',
         prediction_type: 'chatbot',
@@ -453,7 +455,7 @@ export default function AIChatbot() {
         time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
       }
 
-      const userLoc = localStorage.getItem('selected_location') || 'Srikalahasthi, Tirupati District, Andhra Pradesh, India'
+      const userLoc = localStorage.getItem('selected_location') || ''
       saveLocalPrediction({
         type: 'Chatbot',
         prediction_type: 'chatbot',
@@ -576,7 +578,7 @@ export default function AIChatbot() {
           <div className="space-y-1">
             {suggestedQuestions.slice(0, 2).map(q => (
               <button key={q} onClick={() => handleSend(q)} className="w-full text-left px-3 py-2 rounded-xl text-xs text-text-muted hover:bg-background hover:text-text-secondary transition-colors leading-relaxed truncate">
-                {q}
+                <Translate text={q} />
               </button>
             ))}
           </div>
@@ -655,7 +657,9 @@ export default function AIChatbot() {
                   {msg.imageUrl && (
                     <img src={msg.imageUrl} alt="Uploaded sample" className="max-w-xs rounded-xl mb-2 border border-white/20 shadow-sm" />
                   )}
-                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
+                  <Translate text={msg.content}>
+                    {(translatedText) => <div dangerouslySetInnerHTML={{ __html: renderMarkdown(translatedText) }} />}
+                  </Translate>
                 </div>
                 <div className={`flex items-center gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                   <span className="text-[10px] text-text-muted">{msg.time}</span>
@@ -708,7 +712,7 @@ export default function AIChatbot() {
                   <circle cx="10" cy="-7" r="1.2" fill="#4DD0E1" className="animate-ai-particle-1" />
                   <circle cx="-10" cy="-7" r="1.2" fill="#4DD0E1" className="animate-ai-particle-2" />
                 </svg>
-                <span className="text-xs text-text-muted italic">Analyzing query in {language}...</span>
+                <span className="text-xs text-text-muted italic">{translatedAnalyzing} {language}...</span>
               </div>
             </div>
           )}

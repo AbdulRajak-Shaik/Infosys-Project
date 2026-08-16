@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Any
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
@@ -54,11 +55,17 @@ def register_user(db: Session, user_data: UserRegisterRequest) -> User:
     print("User Data:", user_data.model_dump())
     print("Username:", user_data.username)
     print("Region:", user_data.region)
+    # Resolve role from request payload, defaulting to FARMER
+    requested_role = (user_data.role or "farmer").lower()
+    if requested_role == "admin":
+        assigned_role = UserRole.ADMIN.value
+    else:
+        assigned_role = UserRole.FARMER.value
     db_user = User(
         username=user_data.username,
         email=normalized_email,
         hashed_password=hashed_password,
-        role=UserRole.FARMER.value,
+        role=assigned_role,
         status=UserStatus.ACTIVE.value,
         region=user_data.region,
         language_id=user_data.language_id,
@@ -133,7 +140,7 @@ def update_user_profile(
     current_user: User,
     user_data: UserUpdateRequest,
 ) -> User:
-    """Update the authenticated user's email and preferred language."""
+    """Update the authenticated user's email and preferred language, logging changes to general_history."""
     existing_user = (
         db.query(User)
         .filter(
@@ -155,11 +162,105 @@ def update_user_profile(
             detail="Invalid language_id. Please provide a valid predefined language id."
         )
 
+    from app.services.history_service import create_general_history
+    import uuid
+
+    def log_change(field: str, old_val: Any, new_val: Any, pred_type: str = "profile"):
+        try:
+            create_general_history(
+                db=db,
+                user_id=current_user.id,
+                module_name="Profile Update" if pred_type == "profile" else "Community",
+                prediction_type=pred_type,
+                input_parameters={"field": field, "previous_value": str(old_val) if old_val is not None else ""},
+                prediction_result={"updated_value": str(new_val) if new_val is not None else ""},
+                confidence=100.0,
+                processing_time=0.01
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed to save history edit: {e}")
+
+    # Track updates
+    if current_user.email != str(user_data.email).strip().casefold():
+        log_change("Email", current_user.email, str(user_data.email).strip().casefold())
+    if current_user.language_id != user_data.language_id:
+        log_change("Language", current_user.language_id, user_data.language_id)
+    if user_data.username is not None and user_data.username.strip() and current_user.username != user_data.username.strip():
+        log_change("Name", current_user.username, user_data.username.strip())
+    if user_data.region is not None and user_data.region.strip() and current_user.region != user_data.region.strip():
+        log_change("Region", current_user.region, user_data.region.strip())
+    if user_data.mobile is not None and current_user.mobile != user_data.mobile.strip():
+        log_change("Phone", current_user.mobile, user_data.mobile.strip())
+    if user_data.address is not None and current_user.address != user_data.address.strip():
+        log_change("Address", current_user.address, user_data.address.strip())
+    if user_data.district is not None and current_user.district != user_data.district.strip():
+        log_change("District", current_user.district, user_data.district.strip())
+    if user_data.state is not None and current_user.state != user_data.state.strip():
+        log_change("State", current_user.state, user_data.state.strip())
+    if user_data.profile_picture is not None and current_user.profile_picture != user_data.profile_picture:
+        log_change("Profile Image", "Uploaded picture", "New picture")
+    if user_data.community is not None and current_user.community != user_data.community.strip():
+        action = "Joined Community" if user_data.community.strip() else "Left Community"
+        log_change("Community", current_user.community, user_data.community.strip(), pred_type="community")
+        # Save community notification
+        try:
+            create_general_history(
+                db=db,
+                user_id=current_user.id,
+                module_name="Notification",
+                prediction_type="notification",
+                input_parameters={
+                    "id": f"notif-{uuid.uuid4().hex[:12]}",
+                    "title": f"Community Update",
+                    "desc": f"You joined/changed community to {user_data.community.strip()}." if user_data.community.strip() else "You left the community.",
+                    "type": "community"
+                },
+                prediction_result={"read": False}
+            )
+        except Exception:
+            pass
+
     current_user.email = str(user_data.email).strip().casefold()
     current_user.language_id = user_data.language_id
+    if user_data.username is not None and user_data.username.strip():
+        current_user.username = user_data.username.strip()
+    if user_data.region is not None:
+        current_user.region = user_data.region.strip() or current_user.region
+    if user_data.mobile is not None:
+        current_user.mobile = user_data.mobile.strip()
+    if user_data.address is not None:
+        current_user.address = user_data.address.strip()
+    if user_data.district is not None:
+        current_user.district = user_data.district.strip()
+    if user_data.state is not None:
+        current_user.state = user_data.state.strip()
+    if user_data.profile_picture is not None:
+        current_user.profile_picture = user_data.profile_picture
+    if user_data.community is not None:
+        current_user.community = user_data.community.strip()
+
+    # Save general profile update notification
+    try:
+        create_general_history(
+            db=db,
+            user_id=current_user.id,
+            module_name="Notification",
+            prediction_type="notification",
+            input_parameters={
+                "id": f"notif-{uuid.uuid4().hex[:12]}",
+                "title": "Profile Updated",
+                "desc": "Your profile details have been updated successfully.",
+                "type": "system"
+            },
+            prediction_result={"read": False}
+        )
+    except Exception:
+        pass
+
     db.commit()
     db.refresh(current_user)
     return current_user
+
 
 
 def _ensure_password_confirmation(new_password: str, confirm_password: str) -> None:
@@ -181,7 +282,6 @@ def _commit_password_update(db: Session) -> None:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to update password.",
         ) from exc
-
 
 def change_user_password(
     db: Session,
@@ -216,6 +316,22 @@ def change_user_password(
     user.hashed_password = get_password_hash(password_data.new_password)
     _commit_password_update(db)
 
+    # Save to history & notify
+    try:
+        from app.services.history_service import create_general_history
+        create_general_history(
+            db=db,
+            user_id=user.id,
+            module_name="Profile Update",
+            prediction_type="profile",
+            input_parameters={"field": "Password", "previous_value": "********"},
+            prediction_result={"updated_value": "********"},
+            confidence=100.0,
+            processing_time=0.01
+        )
+    except Exception:
+        pass
+
 
 def reset_user_password(
     db: Session,
@@ -241,3 +357,19 @@ def reset_user_password(
 
     user.hashed_password = get_password_hash(password_data.new_password)
     _commit_password_update(db)
+
+    # Save to history & notify
+    try:
+        from app.services.history_service import create_general_history
+        create_general_history(
+            db=db,
+            user_id=user.id,
+            module_name="Profile Update",
+            prediction_type="profile",
+            input_parameters={"field": "Password", "previous_value": "********"},
+            prediction_result={"updated_value": "********"},
+            confidence=100.0,
+            processing_time=0.01
+        )
+    except Exception:
+        pass

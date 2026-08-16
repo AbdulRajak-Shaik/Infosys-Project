@@ -70,25 +70,36 @@ async def get_final_recommendation(
             shutil.copyfileobj(image.file, buffer)
 
         task_id = "task_direct_exec"
-        try:
-            task = generate_final_recommendation.delay(
-                str(temp_file_path),
-                nitrogen,
-                phosphorus,
-                potassium,
-                ph,
-                organic_carbon,
-                electrical_conductivity,
-                weather["temperature"],
-                weather["humidity"],
-                current_user.language_id,
-                current_user.id,
-            )
-            task_id = task.id
-            record_task_upload(task.id, image.filename, datetime.now(timezone.utc))
-            recommendation = await run_in_threadpool(lambda: task.get(timeout=2.0))
-        except Exception:
-            # Fallback to direct synchronous execution if Celery worker is not active
+        import os
+        celery_offline = os.getenv("CELERY_OFFLINE", "false").lower() == "true"
+        recommendation = None
+
+        if not celery_offline:
+            try:
+                task = generate_final_recommendation.apply_async(
+                    args=(
+                        str(temp_file_path),
+                        nitrogen,
+                        phosphorus,
+                        potassium,
+                        ph,
+                        organic_carbon,
+                        electrical_conductivity,
+                        weather["temperature"],
+                        weather["humidity"],
+                        current_user.language_id,
+                        current_user.id,
+                    ),
+                    retry=False,
+                )
+                task_id = task.id
+                record_task_upload(task.id, image.filename, datetime.now(timezone.utc))
+                recommendation = await run_in_threadpool(lambda: task.get(timeout=2.0))
+            except Exception:
+                pass
+
+        if recommendation is None:
+            # Fallback to direct synchronous execution if Celery is offline or failed
             recommendation = await run_in_threadpool(
                 generate_final_recommendation.run,
                 str(temp_file_path),

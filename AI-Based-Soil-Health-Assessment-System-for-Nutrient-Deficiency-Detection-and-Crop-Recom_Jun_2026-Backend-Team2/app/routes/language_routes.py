@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Query, status, HTTPException
 from sqlalchemy.orm import Session
 
-from app.dependencies import get_db, get_current_user
+from app.dependencies import get_db, get_current_user, get_current_user_optional
 from app.models import Language, User, TranslationKey, Translation, Multilingual
 from app.schemas import (
     LanguageResponse,
@@ -111,9 +111,32 @@ def delete_translation_value(key: str, language_code: str, db: Session = Depends
 
 @router.post("/translate/", response_model=TranslateResponse)
 @router.post("/translate", response_model=TranslateResponse)
-def translate_single_text(req: TranslateRequest):
+def translate_single_text(
+    req: TranslateRequest,
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
+):
     """Dynamic single text translation using Sarvam AI."""
     translated = translate_text_by_code(req.text, req.target_language)
+
+    # Save translation to GeneralHistory
+    if current_user and getattr(current_user, "id", None):
+        try:
+            from app.services.history_service import create_general_history
+            create_general_history(
+                db=db,
+                user_id=current_user.id,
+                module_name="AI Translation",
+                prediction_type="translation",
+                input_parameters={"original_text": req.text, "target_language": req.target_language},
+                prediction_result={"translated_text": translated},
+                confidence=100.0,
+                processing_time=0.05,
+                model_used="Sarvam AI"
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed to save translation history: {e}")
+
     return TranslateResponse(
         original_text=req.text,
         translated_text=translated,
@@ -222,6 +245,8 @@ def download_multilingual_pdf(
     language_code: str = Query("en", description="Target language code for PDF"),
     farmer_name: str = Query("Rahul Ramayanam"),
     soil_type: str = Query("Clay Soil"),
+    current_user: User | None = Depends(get_current_user_optional),
+    db: Session = Depends(get_db),
 ):
     """Generate and return a complete PDF report translated into the selected language."""
     from fastapi.responses import Response
@@ -240,6 +265,25 @@ def download_multilingual_pdf(
         "recommended_crops": ["Wheat", "Rice", "Maize"],
     }
     pdf_bytes = generate_multilingual_pdf(data, language_code)
+
+    # Save report generation to GeneralHistory
+    if current_user and getattr(current_user, "id", None):
+        try:
+            from app.services.history_service import create_general_history
+            create_general_history(
+                db=db,
+                user_id=current_user.id,
+                module_name="Report Downloads",
+                prediction_type="report",
+                input_parameters={"language_code": language_code, "farmer_name": farmer_name, "soil_type": soil_type},
+                prediction_result={"report_name": f"Soil_Report_{language_code}.pdf"},
+                confidence=100.0,
+                processing_time=0.45,
+                model_used="PDF Report Generator"
+            )
+        except Exception as e:
+            print(f"[ERROR] Failed to save report history: {e}")
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

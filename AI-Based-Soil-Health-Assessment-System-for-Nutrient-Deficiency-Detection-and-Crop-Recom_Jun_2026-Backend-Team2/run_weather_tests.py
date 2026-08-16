@@ -25,24 +25,42 @@ class WeatherQATestSuite(unittest.TestCase):
     def setUpClass(cls):
         db = SessionLocal()
         try:
-            admin = db.query(User).filter(User.email == "qa_admin@example.com").first()
-            if not admin:
-                db.add(User(
-                    email="qa_admin@example.com",
-                    hashed_password=get_password_hash("AdminPass123!"),
-                    role=UserRole.ADMIN.value,
-                    status=UserStatus.ACTIVE.value,
-                    language_id=1
-                ))
-            farmer = db.query(User).filter(User.email == "qa_farmer@example.com").first()
-            if not farmer:
-                db.add(User(
-                    email="qa_farmer@example.com",
-                    hashed_password=get_password_hash("SecurePass123!"),
-                    role=UserRole.FARMER.value,
-                    status=UserStatus.ACTIVE.value,
-                    language_id=1
-                ))
+            # Clean up potential duplicates to prevent integrity constraint failures
+            db.query(User).filter(User.email.in_(["qa_admin@example.com", "qa_farmer@example.com", "farmer@example.com", "admin@example.com"])).delete(synchronize_session=False)
+            db.query(User).filter(User.id.in_([49, 95])).delete(synchronize_session=False)
+            db.commit()
+
+            # Now insert the exact expected test records
+            db.add(User(
+                id=49,
+                email="farmer@example.com",
+                hashed_password=get_password_hash("SecurePass123!"),
+                role=UserRole.FARMER.value,
+                status=UserStatus.ACTIVE.value,
+                language_id=1
+            ))
+            db.add(User(
+                id=95,
+                email="admin@example.com",
+                hashed_password=get_password_hash("AdminPass123!"),
+                role=UserRole.ADMIN.value,
+                status=UserStatus.ACTIVE.value,
+                language_id=1
+            ))
+            db.add(User(
+                email="qa_admin@example.com",
+                hashed_password=get_password_hash("AdminPass123!"),
+                role=UserRole.ADMIN.value,
+                status=UserStatus.ACTIVE.value,
+                language_id=1
+            ))
+            db.add(User(
+                email="qa_farmer@example.com",
+                hashed_password=get_password_hash("SecurePass123!"),
+                role=UserRole.FARMER.value,
+                status=UserStatus.ACTIVE.value,
+                language_id=1
+            ))
             db.commit()
         finally:
             db.close()

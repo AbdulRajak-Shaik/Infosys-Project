@@ -27,6 +27,20 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+@router.get(
+    "",
+    response_model=list[AdminUserResponse],
+    summary="Get all users",
+    description="Returns a list of all registered users."
+)
+def list_admin_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+) -> list[User]:
+    """Retrieve all user accounts."""
+    return db.query(User).all()
+
+
 @router.post(
     "",
     response_model=AdminUserResponse,

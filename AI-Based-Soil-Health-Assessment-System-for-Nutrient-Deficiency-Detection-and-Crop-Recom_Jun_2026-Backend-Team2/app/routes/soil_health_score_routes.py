@@ -22,7 +22,7 @@ async def predict_soil_health_score_endpoint(
 ) -> Dict[str, Any]:
     """Predict a numeric soil health score and save prediction history."""
     try:
-        result = predict_soil_health_score(request.dict())
+        result = predict_soil_health_score(request.model_dump())
 
         if current_user and getattr(current_user, "id", None):
             try:
@@ -30,14 +30,17 @@ async def predict_soil_health_score_endpoint(
                     db,
                     {
                         "user_id": current_user.id,
+                        "soil_type": request.soil_type,
                         "nitrogen": request.nitrogen,
                         "phosphorus": request.phosphorus,
                         "potassium": request.potassium,
                         "ph": request.ph,
+                        "organic_carbon": request.organic_carbon,
+                        "electrical_conductivity": request.electrical_conductivity,
                         "temperature": request.temperature,
                         "humidity": request.humidity,
-                        "rainfall": request.rainfall,
                         "soil_health_score": result.get("soil_health_score", 85.0),
+                        "prediction_type": "soil_health_score",
                     }
                 )
             except Exception:
