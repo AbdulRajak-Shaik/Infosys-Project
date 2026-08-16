@@ -210,7 +210,10 @@ export interface UserProfile {
 export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
   const theme = localStorage.getItem('agroai_theme');
   const lang = localStorage.getItem('selected_language');
-  localStorage.clear();
+  
+  // Wipe stale legacy prediction caches across all accounts
+  localStorage.removeItem('agroai_prediction_history');
+  localStorage.removeItem('agroai_prediction_history_guest');
   sessionStorage.clear();
   if (theme) localStorage.setItem('agroai_theme', theme);
   if (lang) localStorage.setItem('selected_language', lang);
@@ -227,7 +230,8 @@ export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
 export async function loginAdmin(payload: LoginPayload): Promise<TokenResponse> {
   const theme = localStorage.getItem('agroai_theme');
   const lang = localStorage.getItem('selected_language');
-  localStorage.clear();
+  localStorage.removeItem('agroai_prediction_history');
+  localStorage.removeItem('agroai_prediction_history_guest');
   sessionStorage.clear();
   if (theme) localStorage.setItem('agroai_theme', theme);
   if (lang) localStorage.setItem('selected_language', lang);
@@ -980,60 +984,74 @@ function normalizeHistoryItem(item: any): HistoryItem {
 
 export function saveLocalPrediction(item: Partial<HistoryItem>) {
   try {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      window.dispatchEvent(new Event('predictionCreated'));
+    const token = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+    const storageKey = token ? getUserScopedKey('agroai_prediction_history') : 'agroai_prediction_history_guest';
+    
+    // Don't save to unscoped legacy key if authenticated without valid user ID
+    if (token && storageKey === 'agroai_prediction_history') {
       return;
     }
-    const storageKey = getUserScopedKey('agroai_prediction_history');
-    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]')
+    
+    const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
     const rawItem: HistoryItem = {
       id: Date.now(),
       created_at: new Date().toISOString(),
       ...item,
-    }
-    const newItem = normalizeHistoryItem(rawItem)
-    const updated = [newItem, ...existing]
-    localStorage.setItem(storageKey, JSON.stringify(updated))
-    window.dispatchEvent(new Event('predictionCreated'))
+    };
+    const newItem = normalizeHistoryItem(rawItem);
+    const updated = [newItem, ...existing];
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    window.dispatchEvent(new Event('predictionCreated'));
   } catch (err) {
-    console.warn('saveLocalPrediction error:', err)
+    console.warn('saveLocalPrediction error:', err);
   }
 }
 
 export async function getPredictionHistory(): Promise<HistoryItem[]> {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
   const storageKey = getUserScopedKey('agroai_prediction_history');
+  
+  // If authenticated, ONLY read that specific user's scoped predictions
   const localItems: HistoryItem[] = (() => {
     try {
-      const raw = JSON.parse(localStorage.getItem(storageKey) || '[]')
-      return Array.isArray(raw) ? raw.map(normalizeHistoryItem) : []
+      if (!token) {
+        const raw = JSON.parse(localStorage.getItem('agroai_prediction_history_guest') || '[]');
+        return Array.isArray(raw) ? raw.map(normalizeHistoryItem) : [];
+      }
+      if (storageKey === 'agroai_prediction_history') {
+        return [];
+      }
+      const raw = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      return Array.isArray(raw) ? raw.map(normalizeHistoryItem) : [];
     } catch {
-      return []
+      return [];
     }
-  })()
+  })();
 
-  let combined: HistoryItem[] = [...localItems]
+  let combined: HistoryItem[] = [...localItems];
 
   try {
-    const serverItems = await request<HistoryItem[]>('/history', { method: 'GET' })
-    if (Array.isArray(serverItems) && serverItems.length > 0) {
-      const normalizedServer = serverItems.map(normalizeHistoryItem)
-      const localIds = new Set(localItems.map((i: any) => String(i.id || i.history_id)))
-      const filteredServer = normalizedServer.filter((i: any) => !localIds.has(String(i.id || i.history_id)))
-      combined = [...localItems, ...filteredServer]
+    if (token) {
+      const serverItems = await request<HistoryItem[]>('/history', { method: 'GET' });
+      if (Array.isArray(serverItems)) {
+        const normalizedServer = serverItems.map(normalizeHistoryItem);
+        const localIds = new Set(localItems.map((i: any) => String(i.id || i.history_id)));
+        const filteredServer = normalizedServer.filter((i: any) => !localIds.has(String(i.id || i.history_id)));
+        combined = [...localItems, ...filteredServer];
+      }
     }
-  } catch {
-    // If server history API unavailable or empty, use local items
+  } catch (err) {
+    console.warn('Server history fetch note:', err);
   }
 
   // Sort descending by date (newest prediction on top)
   combined.sort((a, b) => {
-    const timeA = new Date(a.created_at || a.prediction_date || a.date || a.id || 0).getTime()
-    const timeB = new Date(b.created_at || b.prediction_date || b.date || b.id || 0).getTime()
-    return timeB - timeA
-  })
+    const timeA = new Date(a.created_at || a.prediction_date || a.date || a.id || 0).getTime();
+    const timeB = new Date(b.created_at || b.prediction_date || b.date || b.id || 0).getTime();
+    return timeB - timeA;
+  });
 
-  return combined
+  return combined;
 }
 
 export async function getHistoryDetail(id: number): Promise<any> {
