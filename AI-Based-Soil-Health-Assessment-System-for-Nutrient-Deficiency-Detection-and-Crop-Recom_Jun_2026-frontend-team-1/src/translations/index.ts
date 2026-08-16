@@ -1,5 +1,13 @@
 export const TRANSLATIONS: Record<string, Record<string, string>> = {
   "en": {
+    "Alluvial Soil": "Alluvial Soil",
+    "Silt Soil": "Silt Soil",
+    "Slit Soil": "Silt Soil",
+    "Alluvial soil": "Alluvial Soil",
+    "Silt soil": "Silt Soil",
+    "Slit soil": "Silt Soil",
+    "Clayey Soil": "Clay  soil",
+    "Clayey soil": "Clay  soil",
     "registeredFarmers": "Registered Farmers",
     "feedbackReceived": "Feedback Received",
     "languagesSupported": "Languages Supported",
@@ -831,6 +839,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "noContributorsYet": "No contributors yet."
   },
   "hi": {
+    "Alluvial Soil": "जलोढ़ मिट्टी",
+    "Silt Soil": "गाद मिट्टी",
+    "Slit Soil": "गाद मिट्टी",
+    "Alluvial soil": "जलोढ़ मिट्टी",
+    "Silt soil": "गाद मिट्टी",
+    "Slit soil": "गाद मिट्टी",
+    "Clayey Soil": "चिकनी मिट्टी",
+    "Clayey soil": "चिकनी मिट्टी",
     "registeredFarmers": "पंजीकृत किसान",
     "feedbackReceived": "प्राप्त प्रतिक्रिया",
     "languagesSupported": "समर्थित भाषाएँ",
@@ -1681,6 +1697,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सटीक जिला सेट करें"
   },
   "te": {
+    "Alluvial Soil": "ఒండ్రు నేల",
+    "Silt Soil": "సిల్ట్ నేల",
+    "Slit Soil": "సిల్ట్ నేల",
+    "Alluvial soil": "ఒండ్రు నేల",
+    "Silt soil": "సిల్ట్ నేల",
+    "Slit soil": "సిల్ట్ నేల",
+    "Clayey Soil": "జిగట నేల",
+    "Clayey soil": "జిగట నేల",
     "registeredFarmers": "నమోదిత రైతులు",
     "feedbackReceived": "అందిన అభిప్రాయాలు",
     "languagesSupported": "మద్దతు ఉన్న భాషలు",
@@ -2526,6 +2550,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ఖచ్చితమైన జిల్లాను సెట్ చేయండి"
   },
   "ta": {
+    "Alluvial Soil": "வண்டல் மண்",
+    "Silt Soil": "வண்டல் மண்",
+    "Slit Soil": "வண்டல் மண்",
+    "Alluvial soil": "வண்டல் மண்",
+    "Silt soil": "வண்டல் மண்",
+    "Slit soil": "வண்டல் மண்",
+    "Clayey Soil": "களிமண்",
+    "Clayey soil": "களிமண்",
     "registeredFarmers": "பதிவு செய்யப்பட்ட விவசாயிகள்",
     "feedbackReceived": "பெறப்பட்ட கருத்துக்கள்",
     "languagesSupported": "ஆதரிக்கப்படும் மொழிகள்",
@@ -3371,6 +3403,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "துல்லியமான மாவட்டத்தை அமைக்கவும்"
   },
   "kn": {
+    "Alluvial Soil": "ಸಾರ್ವತ್ರಿಕ ಮಣ್ಣು",
+    "Silt Soil": "ಪೂರಿ ಮಣ್ಣು",
+    "Slit Soil": "ಪೂರಿ ಮಣ್ಣು",
+    "Alluvial soil": "ಸಾರ್ವತ್ರಿಕ ಮಣ್ಣು",
+    "Silt soil": "ಪೂರಿ ಮಣ್ಣು",
+    "Slit soil": "ಪೂರಿ ಮಣ್ಣು",
+    "Clayey Soil": "ಜಿಗಿಮಣ್ಣು",
+    "Clayey soil": "ಜಿಗಿಮಣ್ಣು",
     "registeredFarmers": "ನೊಂದಾಯಿತ ರೈತರು",
     "feedbackReceived": "ಸ್ವೀಕರಿಸಿದ ಪ್ರತಿಕ್ರಿಯೆ",
     "languagesSupported": "ಬೆಂಬಲಿತ ಭಾಷೆಗಳು",
@@ -4215,6 +4255,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ನಿಖರವಾದ ಜಿಲ್ಲೆಯನ್ನು ಹೊಂದಿಸಿ"
   },
   "ml": {
+    "Alluvial Soil": "എക്കൽ മണ്ണ്",
+    "Silt Soil": "പോളി മണ്ണ്",
+    "Slit Soil": "പോളി മണ്ണ്",
+    "Alluvial soil": "എക്കൽ മണ്ണ്",
+    "Silt soil": "പോളി മണ്ണ്",
+    "Slit soil": "പോളി മണ്ണ്",
+    "Clayey Soil": "കളിമണ്ണ്",
+    "Clayey soil": "കളിമണ്ണ്",
     "registeredFarmers": "രജിസ്റ്റർ ചെയ്ത കർഷകർ",
     "feedbackReceived": "ലഭിച്ച ഫീഡ്‌ബാക്ക്",
     "languagesSupported": "പിന്തുണയ്ക്കുന്ന ഭാഷകൾ",
@@ -5059,6 +5107,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "കൃത്യമായ ജില്ല നൽകുക"
   },
   "mr": {
+    "Alluvial Soil": "गाळाची माती",
+    "Silt Soil": "गाळाची माती",
+    "Slit Soil": "गाळाची माती",
+    "Alluvial soil": "गाळाची माती",
+    "Silt soil": "गाळाची माती",
+    "Slit soil": "गाळाची माती",
+    "Clayey Soil": "चिखलाची माती",
+    "Clayey soil": "चिखलाची माती",
     "registeredFarmers": "नोंदणीकृत शेतकरी",
     "feedbackReceived": "मिळालेला अभिप्राय",
     "languagesSupported": "समर्थित भाषा",
@@ -5903,6 +5959,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "अचूक जिल्हा सेट करा"
   },
   "bn": {
+    "Alluvial Soil": "পলি মাটি",
+    "Silt Soil": "পলি মাটি",
+    "Slit Soil": "পলি মাটি",
+    "Alluvial soil": "পলি মাটি",
+    "Silt soil": "পলি মাটি",
+    "Slit soil": "পলি মাটি",
+    "Clayey Soil": "কাদামাটি",
+    "Clayey soil": "কাদামাটি",
     "registeredFarmers": "নিবন্ধিত কৃষক",
     "feedbackReceived": "প্রাপ্ত প্রতিক্রিয়া",
     "languagesSupported": "সমর্থিত ভাষা",
@@ -6747,6 +6811,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "সঠিক জেলা সেট করুন"
   },
   "gu": {
+    "Alluvial Soil": "કાંપવાળી જમીન",
+    "Silt Soil": "કાંપ જમીન",
+    "Slit Soil": "કાંપ જમીન",
+    "Alluvial soil": "કાંપવાળી જમીન",
+    "Silt soil": "કાંપ જમીન",
+    "Slit soil": "કાંપ જમીન",
+    "Clayey Soil": "માટીની જમીન",
+    "Clayey soil": "માટીની જમીન",
     "registeredFarmers": "નોંધાયેલા ખેડૂતો",
     "feedbackReceived": "મળેલ પ્રતિસાદ",
     "languagesSupported": "સમર્થિત ભાષાઓ",
@@ -7591,6 +7663,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ચોક્કસ જિલ્લો સેટ કરો"
   },
   "pa": {
+    "Alluvial Soil": "ਜਲੋੜ ਮਿੱਟੀ",
+    "Silt Soil": "ਗਾਦ ਵਾਲੀ ਮਿੱਟੀ",
+    "Slit Soil": "ਗਾਦ ਵਾਲੀ ਮਿੱਟੀ",
+    "Alluvial soil": "ਜਲੋੜ ਮਿੱਟੀ",
+    "Silt soil": "ਗਾਦ ਵਾਲੀ ਮਿੱਟੀ",
+    "Slit soil": "ਗਾਦ ਵਾਲੀ ਮਿੱਟੀ",
+    "Clayey Soil": "ਚਿਕਣੀ ਮਿੱਟੀ",
+    "Clayey soil": "ਚਿਕਣੀ ਮਿੱਟੀ",
     "registeredFarmers": "ਰਜਿਸਟਰਡ ਕਿਸਾਨ",
     "feedbackReceived": "ਪ੍ਰਾਪਤ ਫੀਡਬੈਕ",
     "languagesSupported": "ਸਮਰਥਿਤ ਭਾਸ਼ਾਵਾਂ",
@@ -8435,6 +8515,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ਸਟੀਕ ਜ਼ਿਲ੍ਹਾ ਸੈੱਟ ਕਰੋ"
   },
   "or": {
+    "Alluvial Soil": "ପଟୁ ମାଟି",
+    "Silt Soil": "ପଟୁ ମାଟି",
+    "Slit Soil": "ପଟୁ ମାଟି",
+    "Alluvial soil": "ପଟୁ ମାଟି",
+    "Silt soil": "ପଟୁ ମାଟି",
+    "Slit soil": "ପଟୁ ମାଟି",
+    "Clayey Soil": "କାଦୁଅ ମାଟି",
+    "Clayey soil": "କାଦୁଅ ମାଟି",
     "registeredFarmers": "ପଞ୍ջୀକୃତ କୃଷକ",
     "feedbackReceived": "ପ୍ରତିକ୍ରିୟା ଗ୍ରହଣ କରାଯାଇଛି",
     "languagesSupported": "ସମର୍ଥିତ ଭାଷା",
@@ -9279,6 +9367,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "ସଠିକ୍ ଜିଲ୍ଲା ସେଟ୍ କରନ୍ତୁ"
   },
   "as": {
+    "Alluvial Soil": "পলি মাটি",
+    "Silt Soil": "পলি মাটি",
+    "Slit Soil": "পলি মাটি",
+    "Alluvial soil": "পলি মাটি",
+    "Silt soil": "পলি মাটি",
+    "Slit soil": "পলি মাটি",
+    "Clayey Soil": "বোকা মাটি",
+    "Clayey soil": "বোকা মাটি",
     "registeredFarmers": "পঞ্জীয়নভুক্ত কৃষক",
     "feedbackReceived": "প্ৰাপ্ত মতামত",
     "languagesSupported": "সমৰ্থিত ভাষাসমূহ",
@@ -10123,6 +10219,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "সঠিক জিলা ছেট কৰক"
   },
   "ur": {
+    "Alluvial Soil": "زرخیز مٹی",
+    "Silt Soil": "سلٹ مٹی",
+    "Slit Soil": "سلٹ مٹی",
+    "Alluvial soil": "زرخیز مٹی",
+    "Silt soil": "سلٹ مٹی",
+    "Slit soil": "سلٹ مٹی",
+    "Clayey Soil": "चिकنی مٹی",
+    "Clayey soil": "चिकنی مٹی",
     "registeredFarmers": "رجسٹرڈ کسان",
     "feedbackReceived": "موصولہ رائے",
     "languagesSupported": "حمایت یافتہ زبانیں",
@@ -10967,6 +11071,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "صحیح ضلع قائم کریں"
   },
   "mai": {
+    "Alluvial Soil": "जलोढ़ माटी",
+    "Silt Soil": "गाद मिट्टी",
+    "Slit Soil": "गाद मिट्टी",
+    "Alluvial soil": "जलोढ़ माटी",
+    "Silt soil": "गाद मिट्टी",
+    "Slit soil": "गाद मिट्टी",
+    "Clayey Soil": "चिकनी माटी",
+    "Clayey soil": "चिकनी माटी",
     "registeredFarmers": "पंजीकृत किसान",
     "feedbackReceived": "प्राप्त प्रतिक्रिया",
     "languagesSupported": "समर्थित भाषा",
@@ -11811,6 +11923,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सटीक जिला सेट करू"
   },
   "mni": {
+    "Alluvial Soil": "পলি লাইবাক",
+    "Silt Soil": "লৈবাক সিল্ত",
+    "Slit Soil": "লৈবাক সিল্ত",
+    "Alluvial soil": "পলি লাইবাক",
+    "Silt soil": "লৈবাক সিল্ত",
+    "Slit soil": "লৈবাক সিল্ত",
+    "Clayey Soil": "ચીકનબા মাটি",
+    "Clayey soil": "ચીકનબા মাটি",
     "registeredFarmers": "রেজিস্তার তৌরবা লৌমীশিং",
     "feedbackReceived": "ফংলবা ফীদবেক",
     "languagesSupported": "শৌগৎপা লোনশিং",
@@ -12655,6 +12775,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "অચুম্বা জিল্লা সেৎ তৌবীয়ু"
   },
  "sat": {
+    "Alluvial Soil": "ᱯᱚᱴᱟ linen ᱦᱟᱥᱟ",
+    "Silt Soil": "ᱜᱟᱫᱽ ᱦᱟᱥᱟ",
+    "Slit Soil": "ᱜᱟᱫᱽ ᱦᱟᱥᱟ",
+    "Alluvial soil": "ᱯᱚᱴᱟ linen ᱦᱟᱥᱟ",
+    "Silt soil": "ᱜᱟᱫᱽ ᱦᱟᱥᱟ",
+    "Slit soil": "ᱜᱟᱫᱽ ᱦᱟᱥᱟ",
+    "Clayey Soil": " ᱦᱟᱥᱟ",
+    "Clayey soil": " ᱦᱟᱥᱟ",
     "registeredFarmers": "ᱨᱮᱡᱤᱥᱴᱟᱨ ᱟᱠᱟᱱ ᱪᱟᱹᱥᱤ",
     "feedbackReceived": "ᱧᱟᱢ ᱟᱠᱟᱱ ᱯᱷᱤᱰᱵᱮᱠ",
     "languagesSupported": "ᱜᱚᱲᱚ ᱟᱠᱟᱱ ᱯᱟᱹᱨᱥᱤ ᱠᱚ",
@@ -13499,6 +13627,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
  "setExactDistrict": "Set District"
  },
   "brx": {
+    "Alluvial Soil": "हासा",
+    "Silt Soil": "हाब सिल्ट",
+    "Slit Soil": "हाब सिल्ट",
+    "Alluvial soil": "हासा",
+    "Silt soil": "हाब सिल्ट",
+    "Slit soil": "हाब सिल्ट",
+    "Clayey Soil": "हासिना हाబాंसा",
+    "Clayey soil": "हासिना हाబాंसा",
     "registeredFarmers": "रेजिस्टार खालामजानाय आबादारीफोर",
     "feedbackReceived": "मोननाय फिननाय",
     "languagesSupported": "मदद होनाय रावफोर",
@@ -14343,6 +14479,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "गेबें जिल्ला फज'"
   },
   "doi": {
+    "Alluvial Soil": "जलोढ़ मिट्टी",
+    "Silt Soil": "गाद मिट्टी",
+    "Slit Soil": "गाद मिट्टी",
+    "Alluvial soil": "जलोढ़ मिट्टी",
+    "Silt soil": "गाद मिट्टी",
+    "Slit soil": "गाद मिट्टी",
+    "Clayey Soil": "चिकनी मिट्टी",
+    "Clayey soil": "चिकनी मिट्टी",
     "registeredFarmers": "पंजीकृत किसान",
     "feedbackReceived": "मिल्ली दी राय",
     "languagesSupported": "समर्थित बोलियां",
@@ -15188,6 +15332,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सटीक जिला सेट करो"
   },
   "ks": {
+    "Alluvial Soil": "زَرخیٖز زَمِیٖن",
+    "Silt Soil": "زمیٖن سِلٹ",
+    "Slit Soil": "زمیٖن سِلٹ",
+    "Alluvial soil": "زَرخیٖز زَمِیٖن",
+    "Silt soil": "زمیٖن سِلٹ",
+    "Slit soil": "زمیٖن سِلٹ",
+    "Clayey Soil": "سِخ زمیٖن",
+    "Clayey soil": "سِخ زمیٖن",
     "registeredFarmers": "رجسٹرڈ زمیندار",
     "feedbackReceived": "رائے موصول",
     "languagesSupported": "حمایت یافتہ زبانیں",
@@ -16032,6 +16184,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "جان ضلعہٕ سیٹ کٔریو"
   },
   "kok": {
+    "Alluvial Soil": "गाळाची माती",
+    "Silt Soil": "गाळाची माती",
+    "Slit Soil": "गाळाची माती",
+    "Alluvial soil": "गाळाची माती",
+    "Silt soil": "गाळाची माती",
+    "Slit soil": "गाळाची माती",
+    "Clayey Soil": "चिकट माती",
+    "Clayey soil": "चिकट माती",
     "registeredFarmers": "नोंदणी केल्ले शेतकार",
     "feedbackReceived": "मेळिल्ली प्रतिक्रिया",
     "languagesSupported": "फाटबळ आशिल्ल्यो भासो",
@@ -16876,6 +17036,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सारको जिल्हो थारायात"
   },
   "ne": {
+    "Alluvial Soil": "पङ्क माटो",
+    "Silt Soil": "पाँगो माटो",
+    "Slit Soil": "पाँगो माटो",
+    "Alluvial soil": "पङ्क माटो",
+    "Silt soil": "पाँगो माटो",
+    "Slit soil": "पाँगो माटो",
+    "Clayey Soil": "चिकनी माटो",
+    "Clayey soil": "चिकनी माटो",
     "registeredFarmers": "दर्ता भएका कृषकहरू",
     "feedbackReceived": "प्राप्त प्रतिक्रिया",
     "languagesSupported": "समर्थित भाषाहरू",
@@ -17720,6 +17888,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "सही जिल्ला सेट गर्नुहोस्"
   },
   "sa": {
+    "Alluvial Soil": "जलोढमृत्तिका",
+    "Silt Soil": "सिकता",
+    "Slit Soil": "सिकता",
+    "Alluvial soil": "जलोढमृत्तिका",
+    "Silt soil": "सिकता",
+    "Slit soil": "सिकता",
+    "Clayey Soil": "मृण्मया-मृत्तिका",
+    "Clayey soil": "मृण्मया-मृत्तिका",
     "registeredFarmers": "पञ्जीकृताः कृषकाः",
     "feedbackReceived": "प्राप्ता प्रतिक्रिया",
     "languagesSupported": "समर्थिताः भाषाः",
@@ -18564,6 +18740,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     "setExactDistrict": "यथार्थमण्डलं निर्धारयतु"
   },
   "sd": {
+    "Alluvial Soil": "زرخيز مٽي",
+    "Silt Soil": "سلٽ مٽي",
+    "Slit Soil": "سلٽ مٽي",
+    "Alluvial soil": "زرخيز مٽي",
+    "Silt soil": "سلٽ مٽي",
+    "Slit soil": "سلٽ مٽي",
+    "Clayey Soil": "چڪڻي مٽي",
+    "Clayey soil": "چڪڻي مٽي",
     "registeredFarmers": "رجسٽرڊ هاري",
     "feedbackReceived": "رايا حاصل ڪيا ويا",
     "languagesSupported": "مدد ڪيل ٻوليون",

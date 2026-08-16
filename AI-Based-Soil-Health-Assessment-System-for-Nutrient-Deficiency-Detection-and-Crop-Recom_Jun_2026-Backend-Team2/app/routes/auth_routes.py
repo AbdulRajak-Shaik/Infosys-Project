@@ -1,9 +1,11 @@
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
 from app.schemas import (
     UserRegisterRequest,
     UserRegisterResponse,
@@ -39,6 +41,72 @@ from app.services.password_reset_service import (
 # Create the router for authentication
 router = APIRouter(tags=["Authentication"])
 
+
+def parse_user_agent(user_agent: str | None) -> dict:
+    """Parse user agent string to identify device and browser type."""
+    if not user_agent:
+        return {"device": "Unknown Device", "browser": "Unknown Browser"}
+    
+    ua = user_agent.lower()
+    if "chrome" in ua:
+        browser = "Chrome"
+    elif "firefox" in ua:
+        browser = "Firefox"
+    elif "safari" in ua:
+        browser = "Safari"
+    elif "edge" in ua:
+        browser = "Edge"
+    else:
+        browser = "Mobile Browser" if "mobile" in ua else "Desktop Browser"
+        
+    if "android" in ua:
+        device = "Android Device"
+    elif "iphone" in ua or "ipad" in ua:
+        device = "iOS Device"
+    elif "windows" in ua:
+        device = "Windows PC"
+    elif "macintosh" in ua or "mac os" in ua:
+        device = "Mac"
+    elif "linux" in ua:
+        device = "Linux PC"
+    else:
+        device = "Mobile" if "mobile" in ua else "Desktop"
+        
+    return {"device": device, "browser": browser}
+
+
+def _record_login_activity(db: Session, user: User, request: Optional[Request]) -> None:
+    """Log the user login details into general_history."""
+    try:
+        from app.services.history_service import create_general_history
+        ua_str = None
+        ip_addr = "127.0.0.1"
+        if request:
+            ua_str = request.headers.get("user-agent")
+            ip_addr = request.client.host if request.client else "127.0.0.1"
+            
+        ua_info = parse_user_agent(ua_str)
+        
+        create_general_history(
+            db=db,
+            user_id=user.id,
+            module_name="Login Activity",
+            prediction_type="login_activity",
+            input_parameters={
+                "device": ua_info["device"],
+                "browser": ua_info["browser"],
+                "ip_address": ip_addr
+            },
+            prediction_result={
+                "login_time": datetime.now(timezone.utc).isoformat(),
+                "logout_time": None,
+                "session_duration": None
+            }
+        )
+    except Exception as e:
+        print(f"[ERROR] Failed to save login history: {e}")
+
+
 @router.post(
     "/register",
     response_model=UserRegisterResponse,
@@ -53,6 +121,7 @@ def register(
     register_user(db, user_data)
     return {"message": "User registered successfully"}
 
+
 @router.post(
     "/login",
     response_model=TokenResponse,
@@ -62,6 +131,7 @@ def register(
 )
 def login(
     login_data: UserLoginRequest,
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
     # Business logic layer authentication
@@ -79,11 +149,20 @@ def login(
     access_token = create_access_token(payload)
     refresh_token = create_refresh_token(payload)
     
+    # Save login activity to database
+    _record_login_activity(db, user, request)
+    
+    # Update last_login_at timestamp
+    user.last_login_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+    
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "Bearer"
     }
+
 
 @router.post(
     "/admin/login",
@@ -94,6 +173,7 @@ def login(
 )
 def admin_login(
     login_data: UserLoginRequest,
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
     """Admin portal login endpoint enforcing strict administrator role check."""
@@ -109,11 +189,21 @@ def admin_login(
     access_token = create_access_token(payload)
     refresh_token = create_refresh_token(payload)
     
+    # Save login activity to database
+    _record_login_activity(db, user, request)
+    
+    # Update last_login_at timestamp
+    user.last_login_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+    
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "Bearer"
     }
+
+
 @router.post(
     "/token",
     response_model=TokenResponse,
@@ -121,6 +211,7 @@ def admin_login(
 )
 def token(
     form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request = None,
     db: Session = Depends(get_db)
 ):
     login_data = UserLoginRequest(
@@ -140,11 +231,20 @@ def token(
     access_token = create_access_token(payload)
     refresh_token = create_refresh_token(payload)
 
+    # Save login activity to database
+    _record_login_activity(db, user, request)
+    
+    # Update last_login_at timestamp
+    user.last_login_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
+
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "Bearer"
     }
+
 
 @router.get(
     "/me",
@@ -255,6 +355,42 @@ def logout(
     """Record a successful logout for the authenticated user."""
     current_user.last_logout_at = datetime.now(timezone.utc)
     db.add(current_user)
+    
+    # Update latest login activity with logout_time and session_duration
+    try:
+        from app.models import GeneralHistory
+        latest_login = (
+            db.query(GeneralHistory)
+            .filter(
+                GeneralHistory.user_id == current_user.id,
+                GeneralHistory.prediction_type == "login_activity"
+            )
+            .order_by(GeneralHistory.created_at.desc())
+            .first()
+        )
+        if latest_login:
+            res = dict(latest_login.prediction_result)
+            logout_dt = datetime.now(timezone.utc)
+            res["logout_time"] = logout_dt.isoformat()
+            
+            login_str = res.get("login_time")
+            if login_str:
+                login_dt = datetime.fromisoformat(login_str)
+                duration_sec = int((logout_dt - login_dt).total_seconds())
+                if duration_sec < 60:
+                    res["session_duration"] = f"{duration_sec}s"
+                elif duration_sec < 3600:
+                    res["session_duration"] = f"{duration_sec // 60}m {duration_sec % 60}s"
+                else:
+                    res["session_duration"] = f"{duration_sec // 3600}h {(duration_sec % 3600) // 60}m"
+            else:
+                res["session_duration"] = "Unknown"
+                
+            latest_login.prediction_result = res
+            db.add(latest_login)
+    except Exception as e:
+        print(f"[ERROR] Failed to update logout history: {e}")
+
     db.commit()
     db.refresh(current_user)
 

@@ -31,6 +31,16 @@ const SARVAM_LANG_MAP: Record<string, string> = {
 // Pre-configured dictionary for instant offline Sarvam AI name & location transliterated output
 const LOCAL_SARVAM_MAP: Record<string, Record<string, string>> = {
   "hi": {
+    "Analyzing soil...": "मिट्टी का विश्लेषण किया जा रहा है...",
+    "Analyzing Soil Image...": "मिट्टी की छवि का विश्लेषण किया जा रहा है...",
+    "Loading AI model...": "एआई मॉडल लोड हो रहा है...",
+    "Fetching weather data...": "मौसम का डेटा प्राप्त किया जा रहा है...",
+    "Predicting crops...": "फसलों का अनुमान लगाया जा रहा है...",
+    "Preparing fertilizer recommendation...": "उर्वरक सिफारिश तैयार की जा रही है...",
+    "Generating report...": "रिपोर्ट तैयार की जा रही है...",
+    "Downloading PDF...": "पीडीएफ डाउनलोड हो रहा है...",
+    "Prediction completed.": "अनुमान पूरा हुआ।",
+    "Recommendation ready.": "सिफारिश तैयार है।",
     "Ramyasree Ramayanam": "रम्याश्री रामायणम",
     "Ramyasree": "रम्याश्री",
     "Rahul Ramayanam": "राहुल रामायणम",
@@ -79,6 +89,16 @@ const LOCAL_SARVAM_MAP: Record<string, Record<string, string>> = {
     "Punjab": "पंजाब"
   },
   "te": {
+    "Analyzing soil...": "నేల విశ్లేషించబడుతోంది...",
+    "Analyzing Soil Image...": "నేల చిత్రం విశ్లేషించబడుతోంది...",
+    "Loading AI model...": "AI మోడల్ లోడ్ అవుతోంది...",
+    "Fetching weather data...": "వాతావరణ డేటా సేకరించబడుతోంది...",
+    "Predicting crops...": "పంటలను అంచనా వేస్తోంది...",
+    "Preparing fertilizer recommendation...": "ఎరువుల సిఫార్సు సిద్ధం చేయబడుతోంది...",
+    "Generating report...": "నివేదిక తయారు చేయబడుతోంది...",
+    "Downloading PDF...": "PDF డౌన్‌లోడ్ అవుతోంది...",
+    "Prediction completed.": "అంచనా పూర్తయింది.",
+    "Recommendation ready.": "సిఫార్సు సిద్ధంగా ఉంది.",
     "Ramyasree Ramayanam": "రమ్యాశ్రీ రామాయణం",
     "Ramyasree": "రమ్యాశ్రీ",
     "Rahul Ramayanam": "రాహుల్ రామాయణం",
@@ -127,6 +147,16 @@ const LOCAL_SARVAM_MAP: Record<string, Record<string, string>> = {
     "Punjab": "పంజాబ్"
   },
   "ta": {
+    "Analyzing soil...": "மண் பகுப்பாய்வு செய்யப்படுகிறது...",
+    "Analyzing Soil Image...": "மண் படம் பகுப்பாய்வு செய்யப்படுகிறது...",
+    "Loading AI model...": "AI மாதிரி ஏற்றப்படுகிறது...",
+    "Fetching weather data...": "வானிலை தரவு பெறப்படுகிறது...",
+    "Predicting crops...": "பயிர்கள் கணிக்கப்படுகின்றன...",
+    "Preparing fertilizer recommendation...": "உரப் பரிந்துரை தயார் செய்யப்படுகிறது...",
+    "Generating report...": "அறிக்கை உருவாக்கப்படுகிறது...",
+    "Downloading PDF...": "PDF பதிவிறக்கம் செய்யப்படுகிறது...",
+    "Prediction completed.": "கணிப்பு முடிந்தது.",
+    "Recommendation ready.": "பரிந்துரை தயாராக உள்ளது.",
     "Ramyasree Ramayanam": "ரம்யாஸ்ரீ இராமாயணம்",
     "Ramyasree": "ரம்யாஸ்ரீ",
     "Rahul Ramayanam": "ராகுல் இராமாயணம்",
@@ -175,6 +205,16 @@ const LOCAL_SARVAM_MAP: Record<string, Record<string, string>> = {
     "Punjab": "பஞ்சாப்"
   },
   "kn": {
+    "Analyzing soil...": "ಮಣ್ಣಿನ ವಿಶ್ಲೇಷಣೆ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    "Analyzing Soil Image...": "ಮಣ್ಣಿನ ಚಿತ್ರ ವಿಶ್ಲೇಷಣೆ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    "Loading AI model...": "AI ಮಾದರಿಯನ್ನು ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    "Fetching weather data...": "ಹವಾಮಾನ ಡೇಟಾವನ್ನು ಪಡೆಯಲಾಗುತ್ತಿದೆ...",
+    "Predicting crops...": "ಬೆಳೆಗಳನ್ನು ಅಂದಾಜು ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    "Preparing fertilizer recommendation...": "ರಸಗೊಬ್ಬರ ಶಿಫಾರಸು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ...",
+    "Generating report...": "ವರದಿಯನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ...",
+    "Downloading PDF...": "PDF ಡೌನ್‌ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    "Prediction completed.": "ಅಂದಾಜು ಪೂರ್ಣಗೊಂಡಿದೆ.",
+    "Recommendation ready.": "ಶಿಫಾರಸು ಸಿದ್ಧವಾಗಿದೆ.",
     "Ramyasree Ramayanam": "ರಮ್ಯಾಶ್ರೀ ರಾಮಾಯಣಂ",
     "Ramyasree": "ರಮ್ಯಾಶ್ರೀ",
     "Rahul Ramayanam": "ರಾಹುಲ್ ರಾಮಾಯಣಂ",
@@ -223,6 +263,16 @@ const LOCAL_SARVAM_MAP: Record<string, Record<string, string>> = {
     "Punjab": "ಪಂಜಾಬ್"
   },
   "ml": {
+    "Analyzing soil...": "മണ്ണ് വിശകലനം ചെയ്യുന്നു...",
+    "Analyzing Soil Image...": "മണ്ണ് ചിത്രം വിശകലനം ചെയ്യുന്നു...",
+    "Loading AI model...": "AI മോഡൽ ലോഡ് ചെയ്യുന്നു...",
+    "Fetching weather data...": "കാലാവസ്ഥാ ഡാറ്റ ശേഖരിക്കുന്നു...",
+    "Predicting crops...": "വിളകൾ പ്രവചിക്കുന്നു...",
+    "Preparing fertilizer recommendation...": "വള ശുപാർശ തയ്യാറാക്കുന്നു...",
+    "Generating report...": "റിപ്പോർട്ട് തയ്യാറാക്കുന്നു...",
+    "Downloading PDF...": "PDF ഡൗൺലോഡ് ചെയ്യുന്നു...",
+    "Prediction completed.": "പ്രവചനം പൂർത്തിയായി.",
+    "Recommendation ready.": "ശുപാर्ശ തയ്യാറാണ്.",
     "Ramyasree Ramayanam": "രമ്യാശ്രീ രാമായണം",
     "Ramyasree": "രമ്യാശ്രീ",
     "Rahul Ramayanam": "രാഹുൽ രാമായണം",
@@ -271,6 +321,16 @@ const LOCAL_SARVAM_MAP: Record<string, Record<string, string>> = {
     "Punjab": "പഞ്ചാബ്"
   },
   "mr": {
+    "Analyzing soil...": "मातीचे विश्लेषण केले जात आहे...",
+    "Analyzing Soil Image...": "मातीचे चित्राचे विश्लेषण केले जात आहे...",
+    "Loading AI model...": "एआय मॉडेल लोड होत आहे...",
+    "Fetching weather data...": "हवामानाचा डेटा मिळवला जात आहे...",
+    "Predicting crops...": "पिकांचा अंदाज लावला जात आहे...",
+    "Preparing fertilizer recommendation...": "खतांची शिफारस तयार केली जात आहे...",
+    "Generating report...": "अहवाल तयार केला जात आहे...",
+    "Downloading PDF...": "पीडीएफ डाउनलोड होत आहे...",
+    "Prediction completed.": "अंदाज पूर्ण झाला.",
+    "Recommendation ready.": "शिफारस तयार आहे.",
     "Ramyasree Ramayanam": "रम्याश्री रामायणम",
     "Ramyasree": "रम्याश्री",
     "Rahul Ramayanam": "राहुल रामायणम",
@@ -703,6 +763,16 @@ const LOCAL_SARVAM_MAP: Record<string, Record<string, string>> = {
     "Punjab": "પંજાબ"
   },
   "sat": {
+    "Analyzing soil...": "ᱦᱟᱥᱟ ᱵᱤᱰᱟᱹᱣᱜ ᱠᱟᱱᱟ...",
+    "Analyzing Soil Image...": "ᱦᱟᱥᱟ ᱪᱤᱛᱟᱹᱨ ᱵᱤᱰᱟᱹᱣᱜ ᱠᱟᱱᱟ...",
+    "Loading AI model...": "ᱮ.ᱟᱭ. ᱢᳳᱰᱮᱞ ᱞᳳᱰᱚᱜ ᱠᱟᱱᱟ...",
+    "Fetching weather data...": "ᱦᱚᱭ-ᱦᱤᱥᱤᱫ ᱛᱮᱛᱮᱫ ᱦᱟᱛाᱣᱜ ᱠᱟᱱᱟ...",
+    "Predicting crops...": "ᱪᱟᱥ ᱟᱸᱥᱚᱜ ᱠᱟᱱᱟ...",
+    "Preparing fertilizer recommendation...": "ᱥᱟᱨ ᱮᱢ ᱥᱚᱞᱦᱟ ᱥᱟᱯᱲᱟᱣᱜ ᱠᱟᱱᱟ...",
+    "Generating report...": "ᱨᱤᱯᱳᱨᱴ ᱛᱮᱭᱟᱨᱚᱜ ᱠᱟᱱᱟ...",
+    "Downloading PDF...": "PDF ᱰᱟᱣᱩᱱᱞᳳᱰᱚᱜ ᱠᱟᱱᱟ...",
+    "Prediction completed.": "ᱟᱸᱥ ᱥᱟᱹᱛ ᱮᱱᱟ ᱾",
+    "Recommendation ready.": "ᱥᱚᱞᱦᱟ ᱥᱟᱯᱲᱟᱣ ᱮᱱᱟ ᱾",
     "Ramyasree Ramayanam": " ᱨ ᱟ ᱢ ᱭ ᱟ ᱥ ᱨ ᱤ ᱨ ᱟ ᱢ ᱟ ᱭ ᱟ ᱱ ᱟ ᱢ",
     "Ramyasree": " ᱨ ᱟ ᱢ ᱭ ᱟ ᱥ ᱨ ᱤ",
     "Rahul Ramayanam": " ᱨ ᱟ ᱦ ᱩ ᱞ ᱨ ᱟ ᱢ ᱟ ᱭ ᱟ ᱱ ᱟ ᱢ",
@@ -1150,7 +1220,9 @@ export async function translateWithSarvam(
   // 2. Call Sarvam AI backend service
   try {
     const endpoint = mode === 'transliterate' ? '/api/transliterate/' : '/api/translate/';
-    const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+    const base = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+    const response = await fetch(`${base}${endpoint}`, {
+
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

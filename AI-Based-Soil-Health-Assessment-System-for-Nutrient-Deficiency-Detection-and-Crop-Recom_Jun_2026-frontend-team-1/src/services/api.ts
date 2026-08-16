@@ -174,7 +174,14 @@ export interface UserProfile {
   language_id?: number | null;
   created_at: string;
   last_login_at?: string | null;
+  mobile?: string | null;
+  address?: string | null;
+  district?: string | null;
+  state?: string | null;
+  profile_picture?: string | null;
+  community?: string | null;
 }
+
 
 export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
   const theme = localStorage.getItem('agroai_theme');
@@ -252,6 +259,12 @@ export async function updateUserProfile(params: {
   email: string;
   language_id: number;
   region?: string;
+  mobile?: string | null;
+  address?: string | null;
+  district?: string | null;
+  state?: string | null;
+  profile_picture?: string | null;
+  community?: string | null;
 }): Promise<UserProfile | null> {
   const token = localStorage.getItem('access_token');
   if (!token) return null;
@@ -265,6 +278,7 @@ export async function updateUserProfile(params: {
     return null;
   }
 }
+
 
 export async function updateUserLanguage(langCode: string, email?: string): Promise<UserProfile | null> {
   const token = localStorage.getItem('access_token');
@@ -370,13 +384,15 @@ export async function predictSoil(payload: PredictSoilPayload): Promise<PredictS
 }
 
 export interface CropRecommendPayload {
+  soil_type: string;
   nitrogen: number;
   phosphorus: number;
   potassium: number;
   temperature: number;
   humidity: number;
   ph: number;
-  rainfall: number;
+  organic_carbon: number;
+  electrical_conductivity: number;
 }
 
 export interface CropRecommendResponse {
@@ -390,16 +406,67 @@ export async function recommendCrop(payload: CropRecommendPayload): Promise<Crop
   return request<CropRecommendResponse>('/recommend-crop', {
     method: 'POST',
     body: JSON.stringify(payload),
-  });
+  })
+}
+
+export interface FertilizerRecommendPayload {
+  soil_type: string
+  nitrogen: number
+  phosphorus: number
+  potassium: number
+  ph: number
+  organic_carbon: number
+  electrical_conductivity: number
+  temperature: number
+  humidity: number
+}
+
+export interface FertilizerRecommendResponse {
+  deficiencies: Array<{ nutrient: string }>
+  recommended_fertilizers: Array<{
+    category: string
+    fertilizer: string
+    dosage: string
+    method: string
+  }>
+  fertilizer_schedule?: Array<{
+    category: string
+    product: string
+    dosage: string
+    stage: string
+    method: string
+    nutrient_deficiency?: string
+    reason?: string
+  }>
+  advisory_notes?: string[]
+}
+
+export async function recommendFertilizer(payload: FertilizerRecommendPayload): Promise<FertilizerRecommendResponse> {
+  return request<FertilizerRecommendResponse>('/fertilizer-recommendation', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function predictDisease(file: File): Promise<any> {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request<any>('/predict-disease', {
+    method: 'POST',
+    body: formData,
+  })
 }
 
 export interface SoilHealthScorePayload {
+  soil_type: string;
   nitrogen: number;
   phosphorus: number;
   potassium: number;
   ph: number;
-  organic_carbon?: number;
-  electrical_conductivity?: number;
+  organic_carbon: number;
+  electrical_conductivity: number;
+  temperature: number;
+  humidity: number;
 }
 
 export interface SoilHealthScoreResponse {
@@ -425,10 +492,28 @@ export async function calculateSoilHealthScore(payload: SoilHealthScorePayload):
   });
 }
 
-export async function getFinalRecommendation(payload: any): Promise<any> {
+export async function getFinalRecommendation(payload: {
+  image: File;
+  nitrogen: number;
+  phosphorus: number;
+  potassium: number;
+  ph: number;
+  organic_carbon: number;
+  electrical_conductivity: number;
+  location: string;
+}): Promise<any> {
+  const formData = new FormData();
+  formData.append('image', payload.image);
+  formData.append('nitrogen', payload.nitrogen.toString());
+  formData.append('phosphorus', payload.phosphorus.toString());
+  formData.append('potassium', payload.potassium.toString());
+  formData.append('ph', payload.ph.toString());
+  formData.append('organic_carbon', payload.organic_carbon.toString());
+  formData.append('electrical_conductivity', payload.electrical_conductivity.toString());
+  formData.append('location', payload.location);
   return request<any>('/final-recommendation', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: formData,
   });
 }
 
@@ -843,7 +928,7 @@ export interface HistoryItem {
   soil_health?: string;
   soil_health_score?: number;
   soil_fertility_status?: string;
-  prediction_result?: string;
+  prediction_result?: any;
   status?: string;
 }
 
@@ -871,6 +956,11 @@ function normalizeHistoryItem(item: any): HistoryItem {
 
 export function saveLocalPrediction(item: Partial<HistoryItem>) {
   try {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      window.dispatchEvent(new Event('predictionCreated'));
+      return;
+    }
     const storageKey = getUserScopedKey('agroai_prediction_history');
     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]')
     const rawItem: HistoryItem = {
@@ -1054,7 +1144,7 @@ export async function deleteAdminUser(userId: number): Promise<any> {
 }
 
 export async function getUserAnalytics(): Promise<any> {
-  return request<any>('/analytics/dashboard', { method: 'GET' });
+  return request<any>('/analytics', { method: 'GET' });
 }
 
 // ── Notification APIs ──────────────────────────────────────

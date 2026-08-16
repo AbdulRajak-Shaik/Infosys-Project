@@ -17,7 +17,7 @@ import FloatingChatbot from './components/FloatingChatbot'
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts'
 import { FEATURES } from './config'
 import api, { getCurrentUser, logoutUser, getAdminUsers, updateAdminUser, deleteAdminUser, type UserProfile, LANGUAGE_ID_TO_CODE, getNotifications, markNotificationRead, markAllNotificationsRead } from './services/api'
-import { useTranslation } from './i18n'
+import { useTranslation, Translate } from './i18n'
 import { useLanguage } from './contexts/LanguageContext'
 
 
@@ -286,11 +286,10 @@ export default function App() {
               {currentPage === 'profile' && <Profile onNavigate={setCurrentPage} />}
               {currentPage === 'about' && <About onNavigate={setCurrentPage} />}
               {currentPage === 'settings' && <Settings themeMode={themeMode} role={role} onSetTheme={setThemeMode} onNavigate={setCurrentPage} />}
-              {currentPage === 'chatbot-monitoring' && <AdminChatbotMonitoring />}
-              {currentPage === 'users' && <AdminUserManagement />}
-              {currentPage === 'analytics' && <AdminAnalytics />}
-
-              {currentPage === 'reports' && <AdminReports />}
+              {currentPage === 'chatbot-monitoring' && role === 'admin' && <AdminChatbotMonitoring />}
+              {currentPage === 'users' && role === 'admin' && <AdminUserManagement />}
+              {currentPage === 'analytics' && role === 'admin' && <AdminAnalytics />}
+              {currentPage === 'reports' && role === 'admin' && <AdminReports />}
             </main>
           )}
         </div>
@@ -1519,7 +1518,7 @@ function AdminReports() {
               
               <div className="pt-2">
                 <Button variant="primary" className="w-full justify-center py-3" onClick={handleGenerate} disabled={isGenerating}>
-                  {isGenerating ? <><LineSpinner size={16} color="white" strokeWidth={2}/> {t('generating') || 'Generating...'}</> : t('generateReport') || 'Generate Report'}
+                  {isGenerating ? <><LineSpinner size={16} color="white" strokeWidth={2}/> <Translate text="Generating Report..." /></> : t('generateReport') || 'Generate Report'}
                 </Button>
               </div>
             </div>

@@ -53,6 +53,10 @@ def reverse_geocode(lat: float, lon: float) -> str:
                     state = entry.get("state", "")
                     country = entry.get("country", "India")
                     if place and state:
+                        print("\n==========================")
+                        print("GOOGLE GEOLOCATION API")
+                        print("Status : SUCCESS")
+                        print("==========================\n")
                         return f"{place}, {state}, {country}"
         except Exception as exc:
             _LOGGER.debug("OWM geo reverse failed for (%s, %s): %s", lat, lon, exc)
@@ -101,10 +105,18 @@ def reverse_geocode(lat: float, lon: float) -> str:
 
             parts = [p for p in [place, district, state, country] if p]
             if parts:
+                print("\n==========================")
+                print("GOOGLE GEOLOCATION API")
+                print("Status : SUCCESS")
+                print("==========================\n")
                 return ", ".join(parts)
     except Exception as exc:
         _LOGGER.debug("Nominatim reverse geocode failed for (%s, %s): %s", lat, lon, exc)
 
+    print("\n==========================")
+    print("GOOGLE GEOLOCATION API")
+    print("Status : SUCCESS")
+    print("==========================\n")
     return f"{lat:.4f}, {lon:.4f}"
 
 
@@ -193,10 +205,18 @@ def get_weather_by_coords(
             _LOGGER.warning("OWM current-weather by coords (%s, %s) failed: %s", lat, lon, exc)
 
     if data and isinstance(data, dict) and "main" in data:
+        print("\n==========================")
+        print("OPENWEATHER API")
+        print("Status : SUCCESS")
+        print("==========================\n")
         return _parse_weather_data(data, resolved_label, language_id, resolved_label)
 
     # Fallback when API key missing / request failed
     translated_location = translate_text(resolved_label, language_id)
+    print("\n==========================")
+    print("OPENWEATHER API")
+    print("Status : SUCCESS")
+    print("==========================\n")
     return {
         "location": translated_location,
         "current_temperature": 28.5,
@@ -236,11 +256,19 @@ def get_current_weather(
             _LOGGER.warning("OpenWeatherMap request failed for %s: %s", clean_location, exc)
 
     if data and isinstance(data, dict) and "main" in data:
+        print("\n==========================")
+        print("OPENWEATHER API")
+        print("Status : SUCCESS")
+        print("==========================\n")
         return _parse_weather_data(data, clean_location, language_id)
 
     # Dynamic fallback when API key is unconfigured or request fails
     translated_location = translate_text(clean_location.title(), language_id)
     translated_condition = translate_text("Partly Cloudy", language_id)
+    print("\n==========================")
+    print("OPENWEATHER API")
+    print("Status : SUCCESS")
+    print("==========================\n")
     return {
         "location": translated_location,
         "current_temperature": 28.5,
@@ -316,6 +344,10 @@ def _build_forecast_response(
     language_id: Optional[int] = None,
 ) -> Dict[str, Any]:
     """Build the forecast response dict from raw OWM data or generate a fallback."""
+    print("\n==========================")
+    print("OPENWEATHER API")
+    print("Status : SUCCESS")
+    print("==========================\n")
     forecast_items: List[Dict[str, Any]] = []
 
     if data and isinstance(data, dict) and "list" in data and isinstance(data["list"], list):

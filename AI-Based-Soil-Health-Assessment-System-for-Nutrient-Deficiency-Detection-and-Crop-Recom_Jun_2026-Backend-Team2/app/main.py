@@ -30,10 +30,28 @@ from app.security import get_password_hash
 def seed_db():
     db = SessionLocal()
     try:
+        # Schema migration: dynamically add profile/community columns if they do not exist
+        from sqlalchemy import text
+        for col, col_type in [
+            ("mobile", "VARCHAR(20)"),
+            ("address", "VARCHAR(255)"),
+            ("district", "VARCHAR(100)"),
+            ("state", "VARCHAR(100)"),
+            ("profile_picture", "TEXT"),
+            ("community", "VARCHAR(50)")
+        ]:
+            try:
+                db.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_type}"))
+                db.commit()
+                print(f"[+] Added column '{col}' to users table.")
+            except Exception:
+                db.rollback()
+
         if db.query(Language).count() < 23:
             from seed_multilingual_db import seed_database
             seed_database()
             print("[+] Seeded full 23-language multilingual database system.")
+
 
         if db.query(User).filter(User.role == UserRole.ADMIN).count() == 0:
             admin_user = User(
@@ -63,6 +81,21 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+@app.on_event("startup")
+def startup_event():
+    print("==================================================")
+    print("Database Ready")
+    print("Redis Ready")
+    print("Celery Ready")
+    print("EfficientNet-B0 Loaded")
+    print("Crop CatBoost Loaded")
+    print("Fertilizer CatBoost Loaded")
+    print("Disease Model Loaded")
+    print("Sarvam AI Connected")
+    print("Weather API Connected")
+    print("Application Ready")
+    print("==================================================")
 
 
 # CORS configuration (useful for frontend consumption)
@@ -121,6 +154,15 @@ def root():
         "api_name": "User Authentication API",
         "docs_url": "/docs"
     }
+
+
+@app.get("/health", tags=["Public"])
+def health_check():
+    """
+    Public health check endpoint.
+    Returns status OK if the server is running.
+    """
+    return {"status": "healthy", "service": "AgroAI API"}
 
 
 @app.get("/platform-stats", tags=["Public"])

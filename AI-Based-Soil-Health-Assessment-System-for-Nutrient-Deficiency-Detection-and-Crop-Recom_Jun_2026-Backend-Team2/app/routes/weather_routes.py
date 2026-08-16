@@ -3,8 +3,9 @@
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, get_db
 from app.models import User
 from app.schemas import CurrentWeatherResponse, WeatherForecastResponse
 from app.services.weather_service import (
@@ -77,6 +78,7 @@ def get_current_weather_endpoint(
     lon: Optional[float] = Query(None, description="Longitude for coordinate-based lookup", ge=-180, le=180),
     language_id: Optional[int] = Query(None, description="Optional language ID for multilingual support"),
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> CurrentWeatherResponse:
     """Fetch current weather. Prefers lat/lon when provided, falls back to location name."""
     effective_language_id = language_id or (current_user.language_id if current_user else None)
@@ -102,6 +104,33 @@ def get_current_weather_endpoint(
             result = get_weather_by_coords(lat, lon, effective_language_id)
         else:
             result = get_current_weather(location, effective_language_id)
+
+        # Save to GeneralHistory
+        if current_user and getattr(current_user, "id", None):
+            try:
+                from app.services.history_service import create_general_history
+                cond_list = result.get("weather", [])
+                cond = cond_list[0].get("description", "Clear") if cond_list else "Clear"
+                create_general_history(
+                    db=db,
+                    user_id=current_user.id,
+                    module_name="Weather Forecast",
+                    prediction_type="weather",
+                    input_parameters={"location": location or f"GPS {lat},{lon}"},
+                    prediction_result={
+                        "temp": result.get("main", {}).get("temp", 25.0),
+                        "humidity": result.get("main", {}).get("humidity", 60.0),
+                        "conditions": cond,
+                        "wind": result.get("wind", {}).get("speed", 0.0),
+                        "pressure": result.get("main", {}).get("pressure", 1013.0)
+                    },
+                    confidence=100.0,
+                    processing_time=0.08,
+                    model_used="OpenWeather API"
+                )
+            except Exception as e:
+                print(f"[ERROR] Failed to save weather history: {e}")
+
         return CurrentWeatherResponse(**result)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -125,6 +154,7 @@ def get_weather_forecast_endpoint(
     lon: Optional[float] = Query(None, description="Longitude for coordinate-based lookup", ge=-180, le=180),
     language_id: Optional[int] = Query(None, description="Optional language ID for multilingual support"),
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> WeatherForecastResponse:
     """Fetch 5-day forecast. Prefers lat/lon when provided, falls back to location name."""
     effective_language_id = language_id or (current_user.language_id if current_user else None)
@@ -149,6 +179,35 @@ def get_weather_forecast_endpoint(
             result = get_forecast_by_coords(lat, lon, effective_language_id)
         else:
             result = get_weather_forecast(location, effective_language_id)
+
+        # Save to GeneralHistory
+        if current_user and getattr(current_user, "id", None):
+            try:
+                from app.services.history_service import create_general_history
+                # Extract first list item for current conditions
+                first_item = result.get("list", [{}])[0] if result.get("list") else {}
+                cond_list = first_item.get("weather", [])
+                cond = cond_list[0].get("description", "Clear") if cond_list else "Clear"
+                create_general_history(
+                    db=db,
+                    user_id=current_user.id,
+                    module_name="Weather Forecast",
+                    prediction_type="weather",
+                    input_parameters={"location": location or f"GPS {lat},{lon}", "forecast": True},
+                    prediction_result={
+                        "temp": first_item.get("main", {}).get("temp", 25.0),
+                        "humidity": first_item.get("main", {}).get("humidity", 60.0),
+                        "conditions": cond,
+                        "wind": first_item.get("wind", {}).get("speed", 0.0),
+                        "pressure": first_item.get("main", {}).get("pressure", 1013.0)
+                    },
+                    confidence=100.0,
+                    processing_time=0.08,
+                    model_used="OpenWeather API"
+                )
+            except Exception as e:
+                print(f"[ERROR] Failed to save weather history: {e}")
+
         return WeatherForecastResponse(**result)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

@@ -160,6 +160,13 @@ class UserUpdateRequest(BaseModel):
     language_id: int
     username: str | None = Field(default=None, min_length=2, max_length=50, description="Updated display name.")
     region: str | None = Field(default=None, max_length=100, description="Updated region or location.")
+    mobile: str | None = Field(default=None, max_length=20)
+    address: str | None = Field(default=None, max_length=255)
+    district: str | None = Field(default=None, max_length=100)
+    state: str | None = Field(default=None, max_length=100)
+    profile_picture: str | None = Field(default=None)
+    community: str | None = Field(default=None, max_length=50)
+
 
 
 class UserLoginRequest(BaseModel):
@@ -181,6 +188,20 @@ class UserResponse(BaseModel):
     """
     Schema representing user profile details returned by API.
     """
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_schema_extra={
+            "example": {
+                "id": 1,
+                "email": "user@example.com",
+                "language_id": 1,
+                "created_at": "2026-07-21T10:30:00Z",
+                "last_login_at": "2026-07-21T10:30:00Z",
+                "last_logout_at": "2026-07-21T12:00:00Z",
+            }
+        },
+    )
+
     id: int
     username: str | None = None
     email: EmailStr
@@ -191,31 +212,23 @@ class UserResponse(BaseModel):
     created_at: datetime
     last_login_at: datetime | None
     last_logout_at: datetime | None
-
-    class Config:
-        from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "id": 1,
-                "email": "user@example.com",
-                "language_id": 1,
-                "created_at": "2026-07-21T10:30:00Z",
-                "last_login_at": "2026-07-21T10:30:00Z",
-                "last_logout_at": "2026-07-21T12:00:00Z"
-            }
-        }
+    mobile: str | None = None
+    address: str | None = None
+    district: str | None = None
+    state: str | None = None
+    profile_picture: str | None = None
+    community: str | None = None
 class LanguageResponse(BaseModel):
     """
     Schema representing a supported language.
     """
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     language_name: str
     language_code: str
     is_default: bool = False
     is_active: bool = True
-
-    class Config:
-        from_attributes = True
 
 class PredictionHistorySummaryResponse(BaseModel):
     """Lightweight prediction history response."""
@@ -238,8 +251,7 @@ class PredictionHistorySummaryResponse(BaseModel):
     input: str | None = None
     status: str | None = "success"
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class PredictionHistoryDetailResponse(BaseModel):
@@ -263,6 +275,8 @@ class PredictionHistoryDetailResponse(BaseModel):
     deficiencies: list[Any]
     recommended_crops: list[Any]
     recommended_fertilizers: list[Any]
+
+    model_config = ConfigDict(extra="allow")
 
 
 class AnalyticsResponse(BaseModel):
@@ -340,8 +354,7 @@ class ChatHistoryResponse(BaseModel):
     assistant_response: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskStatusResponse(BaseModel):
@@ -410,8 +423,7 @@ class FeedbackResponse(BaseModel):
     user_name: str | None = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CurrentWeatherResponse(BaseModel):
@@ -487,8 +499,7 @@ class TranslationKeyResponse(BaseModel):
     category: str | None = None
     description: str | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LanguageResponse(BaseModel):
@@ -499,8 +510,7 @@ class LanguageResponse(BaseModel):
     language_name: str
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TranslateRequest(BaseModel):
@@ -536,7 +546,7 @@ class TransliterateResponse(BaseModel):
 class BulkTranslateRequest(BaseModel):
     """Request schema for bulk text translation."""
 
-    texts: list[str] = Field(..., min_items=1)
+    texts: list[str] = Field(..., min_length=1)
     target_language: str = Field("hi")
 
 

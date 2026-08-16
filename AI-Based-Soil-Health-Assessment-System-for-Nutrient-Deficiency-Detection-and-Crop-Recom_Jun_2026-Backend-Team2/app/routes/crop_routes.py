@@ -37,32 +37,48 @@ async def predict_crop(
 ) -> Dict[str, Any]:
     """Recommend a crop based on soil and environmental conditions and save to history."""
     try:
-        request_data = request.dict()
+        request_data = request.model_dump()
         result = recommend_crop(request_data, current_user.language_id)
 
-        # Save prediction into prediction_history table
+        # Trigger nutrient/fertilizer analysis and merge results
+        from app.services.nutrient_service import predict_nutrient_deficiency
+        try:
+            fert_res = predict_nutrient_deficiency(request_data, current_user.language_id)
+            result["recommended_fertilizers"] = fert_res.get("recommended_fertilizers", [])
+            result["fertilizer_schedule"] = fert_res.get("fertilizer_schedule", [])
+            result["deficiencies"] = fert_res.get("deficiencies", [])
+            result["advisory_notes"] = fert_res.get("advisory_notes", [])
+        except Exception as e:
+            print(f"[ERROR] Crop recommendation fertilizer analysis failed: {e}")
+            result["recommended_fertilizers"] = []
+            result["fertilizer_schedule"] = []
+            result["deficiencies"] = []
+            result["advisory_notes"] = []
+
+        # Save prediction into general_history table
         if current_user and getattr(current_user, "id", None):
             try:
-                rec_crops = result.get("recommended_crops", [result.get("recommended_crop", "Wheat")])
-                create_prediction_history(
+                from app.services.history_service import create_general_history
+                # Save as crop module prediction
+                create_general_history(
                     db,
-                    {
-                        "user_id": current_user.id,
-                        "soil_type": request.soil_type,
-                        "nitrogen": request.nitrogen,
-                        "phosphorus": request.phosphorus,
-                        "potassium": request.potassium,
-                        "ph": request.ph,
-                        "organic_carbon": request.organic_carbon,
-                        "electrical_conductivity": request.electrical_conductivity,
-                        "temperature": request.temperature,
-                        "humidity": request.humidity,
-                        "recommended_crops": rec_crops,
-                        "prediction_type": "crop",
-                    }
+                    user_id=current_user.id,
+                    module_name="Crop Recommendation",
+                    prediction_type="crop",
+                    input_parameters=request_data,
+                    prediction_result={
+                        "recommended_crops": result.get("recommended_crops", []),
+                        "recommended_crop": result.get("recommended_crop", "Cotton"),
+                        "confidence": result.get("confidence", 0.96),
+                        "recommended_fertilizers": result["recommended_fertilizers"],
+                        "fertilizer_schedule": result["fertilizer_schedule"]
+                    },
+                    confidence=result.get("confidence", 0.96),
+                    processing_time=0.05,
+                    model_used="CatBoost"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[ERROR] Failed to save crop prediction history: {e}")
 
         return result
     except FileNotFoundError as exc:

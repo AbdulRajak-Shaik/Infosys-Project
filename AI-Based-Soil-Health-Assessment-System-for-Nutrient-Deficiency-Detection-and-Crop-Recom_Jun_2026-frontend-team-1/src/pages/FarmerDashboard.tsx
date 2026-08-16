@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Leaf, Sprout, FlaskConical, Cloud, Droplets, Thermometer, Sun, Bell, ChevronRight, Activity, Bug, Bot, Download } from 'lucide-react'
 import StatCard from '../components/StatCard'
-import { Card, Badge, Button } from '../components/ui'
+import { Card, Badge, Button, LineSpinner } from '../components/ui'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { FEATURES } from '../config'
 import { getCurrentUser, getPredictionHistory, transliterateTextApi, type UserProfile, type HistoryItem } from '../services/api'
 import { useSarvamUsername, useSarvamLocation } from '../services/sarvamClient'
-import { useTranslation } from '../i18n'
+import { useTranslation, Translate } from '../i18n'
 import { generatePdfReport } from '../utils/pdfReportGenerator'
 import { getStoredLocation, getOrRequestLocation } from '../services/locationService'
 import { formatLocalizedMonth, formatLocalizedDate, formatRelativeTime } from '../utils/dateUtils'
@@ -31,6 +31,7 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
   
   const [user, setUser] = useState<UserProfile | null>(null)
   const [history, setHistory] = useState<HistoryItem[]>([])
+  const [loading, setLoading] = useState(true)
 
   const rawUsername = user?.username || 'Valued Farmer'
   const displayName = useSarvamUsername(rawUsername)
@@ -39,17 +40,14 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
   const sarvamLocation = useSarvamLocation(rawLocation)
 
   const reloadData = () => {
-    getCurrentUser()
-      .then(u => {
-        setUser(u)
-      })
-      .catch(err => {
-        console.warn('User profile note:', err)
-      })
-
-    getPredictionHistory()
-      .then(h => setHistory(h))
-      .catch(err => console.warn('History note:', err))
+    Promise.all([
+      getCurrentUser().then(u => setUser(u)),
+      getPredictionHistory().then(h => setHistory(h))
+    ]).catch(err => {
+      console.warn('Dashboard fetch note:', err)
+    }).finally(() => {
+      setLoading(false)
+    })
   }
 
   useEffect(() => {
@@ -67,6 +65,16 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
       window.removeEventListener('locationUpdated', reloadData)
     }
   }, [currentLanguage])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-2.5 text-green-700">
+        <LineSpinner size={24} color="currentColor" strokeWidth={2.4} />
+        <span className="text-sm font-medium"><Translate text="Loading Dashboard..." /></span>
+      </div>
+    )
+  }
+
 
   const handleDownloadCropReport = (e: React.MouseEvent) => {
     e.preventDefault()
