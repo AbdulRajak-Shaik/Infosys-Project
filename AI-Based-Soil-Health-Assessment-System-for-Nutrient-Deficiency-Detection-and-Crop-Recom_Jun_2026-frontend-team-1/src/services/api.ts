@@ -211,9 +211,15 @@ export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
   const theme = localStorage.getItem('agroai_theme');
   const lang = localStorage.getItem('selected_language');
   
-  // Wipe stale legacy prediction caches across all accounts
-  localStorage.removeItem('agroai_prediction_history');
-  localStorage.removeItem('agroai_prediction_history_guest');
+  // Wipe all legacy prediction history caches so new logins start completely fresh
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('agroai_prediction_history') || key.startsWith('agroai_analytics'))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
   sessionStorage.clear();
   if (theme) localStorage.setItem('agroai_theme', theme);
   if (lang) localStorage.setItem('selected_language', lang);
@@ -230,8 +236,14 @@ export async function loginUser(payload: LoginPayload): Promise<TokenResponse> {
 export async function loginAdmin(payload: LoginPayload): Promise<TokenResponse> {
   const theme = localStorage.getItem('agroai_theme');
   const lang = localStorage.getItem('selected_language');
-  localStorage.removeItem('agroai_prediction_history');
-  localStorage.removeItem('agroai_prediction_history_guest');
+  const keysToRemove: string[] = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('agroai_prediction_history') || key.startsWith('agroai_analytics'))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
   sessionStorage.clear();
   if (theme) localStorage.setItem('agroai_theme', theme);
   if (lang) localStorage.setItem('selected_language', lang);
@@ -1009,49 +1021,39 @@ export function saveLocalPrediction(item: Partial<HistoryItem>) {
 
 export async function getPredictionHistory(): Promise<HistoryItem[]> {
   const token = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
-  const storageKey = getUserScopedKey('agroai_prediction_history');
   
-  // If authenticated, ONLY read that specific user's scoped predictions
-  const localItems: HistoryItem[] = (() => {
+  // For authenticated users: Backend database is the SOLE source of truth
+  if (token) {
     try {
-      if (!token) {
-        const raw = JSON.parse(localStorage.getItem('agroai_prediction_history_guest') || '[]');
-        return Array.isArray(raw) ? raw.map(normalizeHistoryItem) : [];
-      }
-      if (storageKey === 'agroai_prediction_history') {
-        return [];
-      }
-      const raw = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      return Array.isArray(raw) ? raw.map(normalizeHistoryItem) : [];
-    } catch {
-      return [];
-    }
-  })();
-
-  let combined: HistoryItem[] = [...localItems];
-
-  try {
-    if (token) {
       const serverItems = await request<HistoryItem[]>('/history', { method: 'GET' });
       if (Array.isArray(serverItems)) {
         const normalizedServer = serverItems.map(normalizeHistoryItem);
-        const localIds = new Set(localItems.map((i: any) => String(i.id || i.history_id)));
-        const filteredServer = normalizedServer.filter((i: any) => !localIds.has(String(i.id || i.history_id)));
-        combined = [...localItems, ...filteredServer];
+        normalizedServer.sort((a, b) => {
+          const timeA = new Date(a.created_at || a.prediction_date || a.date || a.id || 0).getTime();
+          const timeB = new Date(b.created_at || b.prediction_date || b.date || b.id || 0).getTime();
+          return timeB - timeA;
+        });
+        return normalizedServer;
       }
+    } catch (err) {
+      console.warn('Server history fetch note:', err);
     }
-  } catch (err) {
-    console.warn('Server history fetch note:', err);
+    return [];
   }
 
-  // Sort descending by date (newest prediction on top)
-  combined.sort((a, b) => {
-    const timeA = new Date(a.created_at || a.prediction_date || a.date || a.id || 0).getTime();
-    const timeB = new Date(b.created_at || b.prediction_date || b.date || b.id || 0).getTime();
-    return timeB - timeA;
-  });
-
-  return combined;
+  // Only unauthenticated guest sessions read from guest localStorage
+  try {
+    const raw = JSON.parse(localStorage.getItem('agroai_prediction_history_guest') || '[]');
+    const localItems = Array.isArray(raw) ? raw.map(normalizeHistoryItem) : [];
+    localItems.sort((a, b) => {
+      const timeA = new Date(a.created_at || a.prediction_date || a.date || a.id || 0).getTime();
+      const timeB = new Date(b.created_at || b.prediction_date || b.date || b.id || 0).getTime();
+      return timeB - timeA;
+    });
+    return localItems;
+  } catch {
+    return [];
+  }
 }
 
 export async function getHistoryDetail(id: number): Promise<any> {
