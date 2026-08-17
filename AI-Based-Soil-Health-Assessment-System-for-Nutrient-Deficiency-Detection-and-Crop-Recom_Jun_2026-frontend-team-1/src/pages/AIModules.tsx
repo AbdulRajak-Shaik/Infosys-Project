@@ -1322,7 +1322,7 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
     setUploadProgress(0)
     const iv = setInterval(() => setUploadProgress(p => { if (p >= 100) { clearInterval(iv); return 100 } return p + 8 }), 40)
     try {
-      const res = await predictSoil({ image: file })
+      const res = await predictSoil({ image: file }, true)  // classify_only: no history save
       if (res?.soil_type) setSoilApiResult(res)
     } catch (e) {
       console.warn('Soil image predict note:', e)
@@ -1338,7 +1338,7 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
     try {
       if (imageFile && !soilApiResult) {
         try {
-          const sRes = await predictSoil({ image: imageFile })
+          const sRes = await predictSoil({ image: imageFile }, true)  // classify_only: no history save
           if (sRes?.soil_type) {
             setSoilApiResult(sRes)
             currentSoilType = sRes.soil_type

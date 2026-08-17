@@ -1,4 +1,4 @@
-"""Image prediction API routes for soil classification."""
+﻿"""Image prediction API routes for soil classification."""
 
 import os
 import shutil
@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from app.dependencies import get_current_user_optional, get_db
 from app.models import User
@@ -25,13 +25,18 @@ _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 @router.post("/predict-image", tags=["Prediction"])
 async def predict_image(
     file: UploadFile | None = File(None),
+    classify_only: bool = Query(False, description="If true, skip saving to history"),
     current_user: User | None = Depends(get_current_user_optional),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Accept an uploaded soil image and return a prediction payload."""
+    """Accept an uploaded soil image and return a prediction payload.
+
+    Set classify_only=true to get soil type without recording to prediction history.
+    Used by Crop Recommendation to detect soil type without creating a Soil Analysis entry.
+    """
     if not file or not file.filename:
         soil_type = "Black Soil"
-        if current_user and getattr(current_user, "id", None):
+        if not classify_only and current_user and getattr(current_user, "id", None):
             try:
                 create_prediction_history(
                     db,
@@ -62,8 +67,8 @@ async def predict_image(
         lang_id = getattr(current_user, "language_id", 1) if current_user else 1
         result = predict_soil(str(temp_file_path), lang_id)
 
-        # Save to prediction_history in database if user is authenticated
-        if current_user and getattr(current_user, "id", None):
+        # Save to history ONLY when classify_only=False (direct Soil Classification page)
+        if not classify_only and current_user and getattr(current_user, "id", None):
             try:
                 create_prediction_history(
                     db,

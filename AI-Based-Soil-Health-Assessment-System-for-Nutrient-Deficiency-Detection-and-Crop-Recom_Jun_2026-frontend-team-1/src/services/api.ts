@@ -366,7 +366,7 @@ export interface PredictSoilResponse {
   message?: string;
 }
 
-export async function predictSoil(payload: PredictSoilPayload): Promise<PredictSoilResponse> {
+export async function predictSoil(payload: PredictSoilPayload, classifyOnly = false): Promise<PredictSoilResponse> {
   const formData = new FormData();
   if (payload.image) {
     formData.append('file', payload.image);
@@ -380,7 +380,9 @@ export async function predictSoil(payload: PredictSoilPayload): Promise<PredictS
   if (payload.temperature !== undefined) formData.append('temperature', payload.temperature.toString());
   if (payload.humidity !== undefined) formData.append('humidity', payload.humidity.toString());
 
-  return request<PredictSoilResponse>('/predict', {
+  // classify_only=true skips saving to history (used by Crop Recommendation to detect soil type)
+  const endpoint = classifyOnly ? '/predict-image?classify_only=true' : '/predict-image';
+  return request<PredictSoilResponse>(endpoint, {
     method: 'POST',
     body: formData,
   });
