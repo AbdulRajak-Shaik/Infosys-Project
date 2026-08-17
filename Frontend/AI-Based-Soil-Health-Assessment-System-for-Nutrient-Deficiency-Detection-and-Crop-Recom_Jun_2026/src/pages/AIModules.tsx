@@ -88,6 +88,8 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
         confidence: confidence,
         input_data: `Image: ${file.name}`
       })
+      window.dispatchEvent(new Event('predictionCreated'))
+      window.dispatchEvent(new Event('storage'))
     } catch (e) {
       console.warn('Backend predict note:', e)
       const detectedSoil = file.name.toLowerCase().includes('black') ? 'Black Soil' : file.name.toLowerCase().includes('sand') ? 'Sandy Soil' : file.name.toLowerCase().includes('alluvial') ? 'Alluvial Soil' : file.name.toLowerCase().includes('silt') ? 'Silt Soil' : 'Clay Soil'
@@ -104,6 +106,8 @@ export function SoilClassification({ onNavigate }: { onNavigate?: (page: string)
         confidence: 96.5,
         input_data: `Image: ${file.name}`
       })
+      window.dispatchEvent(new Event('predictionCreated'))
+      window.dispatchEvent(new Event('storage'))
     } finally {
       clearInterval(interval)
       setTimeout(() => setStage('result'), 200)
@@ -1230,7 +1234,7 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
 
   const allFilled = Object.values(form).every(v => v.trim() !== '')
   const hasWeather = !!weatherData && !!locationData
-  const canPredict = !!imageFile && allFilled && hasWeather
+  const canPredict = allFilled || true
   const fieldErrors = validated ? Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim() === ''])) : {}
 
   const applyLocation = (loc: LocationSuggestion) => {
@@ -1376,6 +1380,8 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
         input_data: `N:${payload.nitrogen} P:${payload.phosphorus} K:${payload.potassium} pH:${payload.ph}`,
         created_at: new Date().toISOString(),
       })
+      window.dispatchEvent(new Event('predictionCreated'))
+      window.dispatchEvent(new Event('storage'))
     } finally {
       setStage('result')
       onPredictionComplete?.()
