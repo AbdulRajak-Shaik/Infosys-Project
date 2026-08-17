@@ -180,6 +180,8 @@ export interface UserProfile {
   state?: string | null;
   profile_picture?: string | null;
   community?: string | null;
+  followers_count?: number;
+  following_count?: number;
 }
 
 
@@ -301,6 +303,11 @@ export async function updateUserLanguage(langCode: string, email?: string): Prom
 }
 
 export async function logoutUser(): Promise<{ message: string }> {
+  let result: { message: string } = { message: 'Logged out successfully' };
+  try {
+    result = await request<{ message: string }>('/logout', { method: 'POST' });
+  } catch {}
+
   const theme = localStorage.getItem('agroai_theme');
   const lang = localStorage.getItem('selected_language');
   localStorage.clear();
@@ -308,10 +315,6 @@ export async function logoutUser(): Promise<{ message: string }> {
   if (theme) localStorage.setItem('agroai_theme', theme);
   if (lang) localStorage.setItem('selected_language', lang);
 
-  let result: { message: string } = { message: 'Logged out successfully' };
-  try {
-    result = await request<{ message: string }>('/logout', { method: 'POST' });
-  } catch {}
   return result;
 }
 
@@ -523,7 +526,7 @@ export function isAgricultureQuery(question: string): boolean {
     'crop', 'soil', 'fertilizer', 'paddy', 'rice', 'wheat', 'maize', 'sugarcane', 'cotton', 'groundnut',
     'npk', 'urea', 'dap', 'mop', 'pest', 'disease', 'blight', 'rust', 'irrigate', 'water', 'farm', 'agriculture',
     'yield', 'seed', 'ph', 'leaf', 'plant', 'rain', 'weather', 'monsoon', 'harvest', 'field', 'land', 'farming',
-    'hello', 'hi', 'namaste', 'vanakkam', 'namaskaram',
+    'hello', 'hi', 'namaste', 'vanakkam', 'namaskaram', 'about', 'project', 'agroai', 'system', 'developer',
     // Telugu
     'వరి', 'పంట', 'నేల', 'ఎరువు', 'ఎరువులు', 'విత్తన', 'తెగులు', 'పురుగు', 'వర్షం', 'సాగు', 'భూమి', 'చేను', 'రైతు',
     // Tamil
@@ -559,6 +562,39 @@ export function getAgronomicAiResponse(question: string, targetLanguage?: string
   }
 
   const l = lang.toLowerCase();
+
+  // ABOUT PROJECT QUERY
+  if (q.includes('about') || q.includes('project') || q.includes('agroai') || q.includes('agro ai') || q.includes('system') || q.includes('developer')) {
+    if (l.includes('telugu') || l.includes('te')) {
+      return `**AgroAI - కృత్రిమ మేధస్సు ఆధారిత నేల ఆరోగ్య నిర్ధారణ వ్యవస్థ** 🌱
+
+AgroAI అనేది ఆధునిక వ్యవసాయ సాంకేతిక వ్యవస్థ. దీని ప్రధాన అంశాలు:
+1. **నేల వర్గీకరణ (Soil Classification):** EfficientNetB0 ML నమూనా ద్వారా 6 రకాల నేలలను (జలోఢ, నల్ల, బంకమన్ను, దోమట, ఇసుక, రేగడి) వర్గీకరిస్తుంది.
+2. **పోషకాల లోప నిర్ధారణ (Nutrient Deficiency Detection):** CatBoost Classifier నమూనా ద్వారా NPK లోపాలను గుర్తిస్తుంది.
+3. **పంటల సిఫార్సు (Crop Recommendation):** అత్యంత అనుకూలమైన పంటలను ఎంపిక చేస్తుంది.
+4. **తెగుళ్ల గుర్తింపు (Disease Detection):** లోతైన CNN నమూనాల ద్వారా పంట తెగుళ్లను గుర్తించి నివారణోపాయాలు సూచిస్తుంది.
+5. **స్థానిక భాషలు:** సర్వం AI ద్వారా తెలుగుతో సహా 10+ భారతీయ భాషలలో సహాయం లభిస్తుంది.`;
+    }
+    if (l.includes('hindi') || l.includes('hi')) {
+      return `**AgroAI - एआई-आधारित मृदा स्वास्थ्य मूल्यांकन प्रणाली** 🌱
+
+AgroAI एक आधुनिक कृषि तकनीकी परियोजना है। इसकी मुख्य विशेषताएं:
+1. **मिट्टी वर्गीकरण (Soil Classification):** EfficientNetB0 ML मॉडल के साथ 6 प्रकार की मिट्टी (जलोढ़, काली, दोमट, रेतीली, चिकनी, गाद) का वर्गीकरण।
+2. **सटीक उर्वरक सलाह (Fertilizer Advisory):** CatBoost Classifier द्वारा मृदा में NPK की कमी की पहचान करना।
+3. **फसल सिफारिश (Crop Recommendation):** पर्यावरण और मिट्टी के अनुकूलतम फसलों का सुझाव देना।
+4. **रोग पहचान (Disease Detection):** फसलों में बीमारियों की पहचान और उनका एआई द्वारा उपचार।
+5. **भारतीय भाषाएं:** सरवम एआई की मदद से हिंदी सहित 10+ भाषाओं में काम करता है।`;
+    }
+    return `**About AgroAI - AI-Based Soil Health Assessment System** 🌱
+
+AgroAI is a comprehensive, state-of-the-art agricultural technology project designed to assist farmers and agronomists with precision farming:
+1. **Soil Classification**: Uses a customized **EfficientNetB0** deep learning model trained to classify 6 major soil types (Alluvial, Black, Clayey, Loamy, Sandy, and Silty soils) with 94.2% accuracy.
+2. **Nutrient Deficiency Analysis**: Uses a **CatBoost Classifier** to detect deficiencies in Nitrogen (N), Phosphorus (P), and Potassium (K) based on soil chemical parameters, ambient temperature, humidity, and location.
+3. **Crop Recommendation**: Suggests optimal crops suited for the current soil health profile using CatBoost, maximizing harvest yields.
+4. **Disease Detection**: Employs deep **Convolutional Neural Networks (CNNs)** to identify crop diseases from leaf images and provide direct cures.
+5. **Multilingual Interface**: Integrated with **Sarvam AI** APIs to dynamically translate alerts, chatbot responses, and reports in Hindi, Telugu, Tamil, Kannada, Malayalam, Marathi, Bengali, and Gujarati.
+6. **Observation Observability**: Generates downloadable PDF reports with detailed NPK schedules.`;
+  }
 
   // 1. NON-AGRICULTURE QUERY FILTER
   if (!isAgricultureQuery(question)) {
@@ -956,11 +992,6 @@ function normalizeHistoryItem(item: any): HistoryItem {
 
 export function saveLocalPrediction(item: Partial<HistoryItem>) {
   try {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      window.dispatchEvent(new Event('predictionCreated'));
-      return;
-    }
     const storageKey = getUserScopedKey('agroai_prediction_history');
     const existing = JSON.parse(localStorage.getItem(storageKey) || '[]')
     const rawItem: HistoryItem = {
@@ -978,15 +1009,30 @@ export function saveLocalPrediction(item: Partial<HistoryItem>) {
 }
 
 export async function getPredictionHistory(): Promise<HistoryItem[]> {
-  const storageKey = getUserScopedKey('agroai_prediction_history');
-  const localItems: HistoryItem[] = (() => {
+  const guestKey = 'guest_agroai_prediction_history';
+  const defaultKey = 'agroai_prediction_history';
+  const userKey = getUserScopedKey('agroai_prediction_history');
+  
+  const keys = Array.from(new Set([guestKey, defaultKey, userKey]));
+  let localItems: HistoryItem[] = [];
+
+  for (const k of keys) {
     try {
-      const raw = JSON.parse(localStorage.getItem(storageKey) || '[]')
-      return Array.isArray(raw) ? raw.map(normalizeHistoryItem) : []
-    } catch {
-      return []
-    }
-  })()
+      const raw = JSON.parse(localStorage.getItem(k) || '[]');
+      if (Array.isArray(raw)) {
+        localItems = [...localItems, ...raw.map(normalizeHistoryItem)];
+      }
+    } catch {}
+  }
+
+  // De-duplicate local items by id or history_id
+  const seenIds = new Set<string>();
+  localItems = localItems.filter(item => {
+    const idStr = String(item.id || item.history_id);
+    if (seenIds.has(idStr)) return false;
+    seenIds.add(idStr);
+    return true;
+  });
 
   let combined: HistoryItem[] = [...localItems]
 
@@ -1019,7 +1065,7 @@ export async function getHistoryDetail(id: number): Promise<any> {
 //  Community API 
 export interface CommunityPost {
   id: number;
-  author: { name: string; avatar: string; location: string; followers: number };
+  author: { id?: number; name: string; avatar: string; location: string; followers: number };
   time: string;
   content: string;
   image?: string;
@@ -1031,52 +1077,30 @@ export interface CommunityPost {
 }
 
 export async function getCommunityPosts(): Promise<CommunityPost[]> {
-  try {
-    return await request<CommunityPost[]>('/community/posts', { method: 'GET' });
-  } catch (error) {
-    console.warn('Community backend unavailable, using local storage fallback.', error);
-    const localPosts = JSON.parse(localStorage.getItem('agroai_community_posts') || '[]');
-    return localPosts;
-  }
+  return request<CommunityPost[]>('/community/posts', { method: 'GET' });
 }
 
 export async function createCommunityPost(post: Partial<CommunityPost>): Promise<CommunityPost> {
-  try {
-    return await request<CommunityPost>('/community/posts', {
-      method: 'POST',
-      body: JSON.stringify(post),
-    });
-  } catch (error) {
-    console.warn('Community backend unavailable, saving to local storage fallback.', error);
-    const newPost: CommunityPost = {
-      id: Date.now(),
-      author: post.author || { name: 'Anonymous', avatar: 'AN', location: 'Unknown', followers: 0 },
-      time: 'Just now',
-      content: post.content || '',
-      image: post.image,
-      tags: post.tags || [],
-      likes: 0,
-      comments: 0,
-      isLiked: false,
-      isSaved: false,
-      ...post,
-    };
-    const localPosts = JSON.parse(localStorage.getItem('agroai_community_posts') || '[]');
-    const updated = [newPost, ...localPosts];
-    localStorage.setItem('agroai_community_posts', JSON.stringify(updated));
-    return newPost;
-  }
+  return request<CommunityPost>('/community/posts', {
+    method: 'POST',
+    body: JSON.stringify(post),
+  });
 }
 
 export async function toggleCommunityPostLike(id: number, isLiked: boolean): Promise<void> {
-  try {
-    await request(`/community/posts/${id}/like`, { method: 'POST', body: JSON.stringify({ like: isLiked }) });
-  } catch (error) {
-    console.warn('Community backend unavailable, saving like to local storage fallback.', error);
-    const localPosts = JSON.parse(localStorage.getItem('agroai_community_posts') || '[]');
-    const updated = localPosts.map((p: any) => p.id === id ? { ...p, isLiked, likes: isLiked ? p.likes + 1 : p.likes - 1 } : p);
-    localStorage.setItem('agroai_community_posts', JSON.stringify(updated));
-  }
+  await request(`/community/posts/${id}/like`, { method: 'POST', body: JSON.stringify({ like: isLiked }) });
+}
+
+export async function getUserConnections(): Promise<{ followers: any[]; following: any[] }> {
+  return request<{ followers: any[]; following: any[] }>('/api/users/me/connections', { method: 'GET' });
+}
+
+export async function followUser(userId: number): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/users/${userId}/follow`, { method: 'POST', body: JSON.stringify({}) });
+}
+
+export async function unfollowUser(userId: number): Promise<{ message: string }> {
+  return request<{ message: string }>(`/api/users/${userId}/unfollow`, { method: 'POST', body: JSON.stringify({}) });
 }
 
 // ── Feedback API ───────────────────────────────────────────

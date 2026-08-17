@@ -59,6 +59,7 @@ async def analyze_nutrients(
                         "humidity": request.humidity,
                         "nutrient_deficiencies": result.get("deficiencies", []),
                         "recommended_fertilizers": result.get("recommended_fertilizers", ["NPK 10:26:26", "Urea"]),
+                        "prediction_type": "FERTILIZER_RECOMMENDATION",
                     }
                 )
                 from app.services.history_service import create_general_history
@@ -66,7 +67,7 @@ async def analyze_nutrients(
                     db=db,
                     user_id=current_user.id,
                     module_name="Fertilizer Advisory",
-                    prediction_type="fertilizer",
+                    prediction_type="FERTILIZER_RECOMMENDATION",
                     input_parameters=request_data,
                     prediction_result=result,
                     confidence=94.0,
@@ -74,7 +75,12 @@ async def analyze_nutrients(
                     model_used="Fertilizer Expert System"
                 )
             except Exception as e:
-                print(f"[ERROR] Failed to save nutrient/fertilizer history: {e}")
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save nutrient/fertilizer history: {str(e)}"
+                )
 
         return result
     except FileNotFoundError as exc:

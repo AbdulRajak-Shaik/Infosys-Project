@@ -293,11 +293,10 @@ export default function App() {
             </main>
           )}
         </div>
-
+        {currentPage !== 'chatbot' && <FloatingChatbot />}
         {themeToast && (
           <Toast message={themeToast} type="success" onClose={() => setThemeToast(null)} />
         )}
-
       </div>
   )
 }

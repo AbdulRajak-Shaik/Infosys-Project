@@ -18,6 +18,9 @@ _BASE_DIR = Path(__file__).resolve().parents[1] / "ml_models"
 _MODEL_KERAS_PATH = _BASE_DIR / "soil_classification_model.keras"
 _CLASS_NAMES_PATH = _BASE_DIR / "class_names.json"
 
+import threading
+_PREDICT_LOCK = threading.Lock()
+
 _MODEL: Optional[tf.keras.Model] = None
 _CLASS_NAMES: Optional[List[str]] = None
 
@@ -161,7 +164,8 @@ def predict_soil(image_path: str, language_id: int | None = None) -> Dict[str, A
     print(f"[DEBUG] Input tensor shape: {processed_image.shape}")
     print(f"[DEBUG] Image preprocessing: loaded as RGB, resized to (224, 224) using bilinear interpolation, cast to float32, and batched.")
 
-    raw_preds = model.predict(processed_image, verbose=0)[0]
+    with _PREDICT_LOCK:
+        raw_preds = model(processed_image, training=False)[0].numpy()
     # Ensure raw_preds is a 1D probability distribution
     if raw_preds.ndim > 1:
         raw_preds = raw_preds.flatten()
@@ -203,34 +207,29 @@ def predict_soil(image_path: str, language_id: int | None = None) -> Dict[str, A
     print("Input Shape:")
     print("224 x 224 x 3\n")
     print("Loaded Classes\n")
-    print("0 Black Soil")
-    print("1 Alluvial Soil")
-    print("2 Clayey Soil")
-    print("3 Sandy Soil")
-    print("4 Loamy Soil")
-    print("5 Silty Soil\n")
+    display_names = {
+        "Alluvial Soil": "Alluvial Soil",
+        "Black Soil": "Black Soil",
+        "Clay Soil": "Clayey Soil",
+        "Sandy Soil": "Sandy Soil",
+        "Loamy Soil": "Loamy Soil",
+        "Silt Soil": "Silty Soil",
+    }
+    for idx, c in enumerate(class_names):
+        disp = display_names.get(c, c)
+        print(f"{idx} {disp}")
+    print()
     print("Preprocessing\n")
     print("Resize : 224x224")
     print("Color : RGB")
     print("Normalization :")
     print("image / 255.0\n")
     print("Prediction Vector\n")
-    print(f"Black Soil : {probs[1]:.2f}\n")
-    print(f"Alluvial Soil : {probs[0]:.2f}\n")
-    print(f"Clay Soil : {probs[2]:.2f}\n")
-    print(f"Sandy Soil : {probs[4]:.2f}\n")
-    print(f"Loamy Soil : {probs[3]:.2f}\n")
-    print(f"Silty Soil : {probs[5]:.2f}\n")
+    for idx, c in enumerate(class_names):
+        disp = display_names.get(c, c)
+        print(f"{disp} : {probs[idx]:.2f}\n")
     print("Final Prediction\n")
-    display_names_mapping = {
-        0: "Alluvial Soil",
-        1: "Black Soil",
-        2: "Clayey Soil",
-        3: "Loamy Soil",
-        4: "Sandy Soil",
-        5: "Silty Soil",
-    }
-    final_disp = display_names_mapping.get(predicted_index, canonical_soil_type)
+    final_disp = display_names.get(canonical_soil_type, canonical_soil_type)
     print(f"{final_disp}\n")
     print("Confidence\n")
     print(f"{int(round(confidence_score))}%\n")

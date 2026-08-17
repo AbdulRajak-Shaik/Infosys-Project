@@ -94,15 +94,20 @@ def api_dashboard_stats(
 ):
     """Return live database aggregates matching key statistics card metrics."""
     from datetime import date
-    total_users = db.query(func.count(User.id)).scalar() or 0
+    from app.models import UserStatus
+    total_users = db.query(func.count(User.id)).filter(User.status == UserStatus.ACTIVE.value).scalar() or 0
     active_today = (
         db.query(func.count(User.id))
+        .filter(User.status == UserStatus.ACTIVE.value)
         .filter(func.date(User.last_login_at) == date.today())
         .scalar()
         or 0
     )
     total_predictions = db.query(func.count(PredictionHistory.id)).scalar() or 0
-    farmer_count = db.query(User).filter(User.role == UserRole.FARMER.value).count()
+    farmer_count = db.query(User).filter(
+        User.role == UserRole.FARMER.value,
+        User.status == UserStatus.ACTIVE.value,
+    ).count()
     feedback_received = db.query(func.count(Feedback.id)).scalar() or 0
 
     return {
@@ -123,7 +128,11 @@ def api_user_growth(
     # Use SQLite compatible strftime
     month_str = func.strftime("%Y-%m", User.created_at).label("month_str")
     registrations = (
-        db.query(month_str, func.count(User.id).label("users"))
+        db.query(
+            month_str,
+            func.count(User.id).label("users"),
+            func.sum(func.case((User.role == UserRole.FARMER.value, 1), else_=0)).label("farmers"),
+        )
         .group_by(month_str)
         .order_by(month_str)
         .all()
@@ -143,7 +152,7 @@ def api_user_growth(
         result.append({
             "month": month_name,
             "users": reg.users,
-            "farmers": max(1, int(reg.users * 0.8))
+            "farmers": int(reg.farmers or 0)
         })
     return result
 

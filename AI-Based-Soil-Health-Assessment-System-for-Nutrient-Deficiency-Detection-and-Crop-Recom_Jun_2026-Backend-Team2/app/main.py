@@ -19,6 +19,7 @@ from app.routes.feedback_routes import router as feedback_router
 from app.routes.language_routes import router as language_router
 from app.routes.weather_routes import router as weather_router
 from app.routes.notification_routes import router as notification_router
+from app.routes.community_routes import router as community_router
 
 # Dynamic table creation fallback (useful for dev/test before running migrations)
 Base.metadata.create_all(bind=engine)
@@ -141,6 +142,7 @@ app.include_router(feedback_router)
 app.include_router(language_router)
 app.include_router(weather_router)
 app.include_router(notification_router)
+app.include_router(community_router)
 
 
 

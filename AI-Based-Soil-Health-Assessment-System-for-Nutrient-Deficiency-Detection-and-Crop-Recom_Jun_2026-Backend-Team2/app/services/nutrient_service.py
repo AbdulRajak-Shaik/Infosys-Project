@@ -166,38 +166,66 @@ def predict_nutrient_deficiency(
                 raise RuntimeError(f"Unknown nutrient deficiency class: {predicted_value}")
 
         nutrient_labels = [nutrient.strip() for nutrient in str(predicted_deficiencies).split(",") if nutrient.strip() != "No_deficiencies"]
-        
+
+        n_in = float(normalized_data.get("nitrogen", 90))
+        p_in = float(normalized_data.get("phosphorus", 42))
+        k_in = float(normalized_data.get("potassium", 43))
+
+        # Safeguard: if input nutrients are below standard agricultural thresholds, ensure they are flagged as deficient
+        if n_in < 80.0 and "Nitrogen" not in nutrient_labels:
+            nutrient_labels.append("Nitrogen")
+        if p_in < 30.0 and "Phosphorus" not in nutrient_labels:
+            nutrient_labels.append("Phosphorus")
+        if k_in < 30.0 and "Potassium" not in nutrient_labels:
+            nutrient_labels.append("Potassium")
+
         deficiencies = [
             {"nutrient": translate_text(nutrient.strip(), language_id)}
             for nutrient in nutrient_labels
         ]
 
+        # Calculate NPK ratio based on deficient target needs (120:60:50)
+        n_need = max(0.0, 120.0 - n_in)
+        p_need = max(0.0, 60.0 - p_in)
+        k_need = max(0.0, 50.0 - k_in)
+        if not nutrient_labels or (n_need == 0 and p_need == 0 and k_need == 0):
+            npk_ratio = "4:2:1 (Balanced Maintenance)"
+        else:
+            parts = [n_need, p_need, k_need]
+            non_zeros = [v for v in parts if v > 0]
+            if non_zeros:
+                min_val = min(non_zeros)
+                r_n = round(n_need / min_val, 1)
+                r_p = round(p_need / min_val, 1)
+                r_k = round(k_need / min_val, 1)
+                npk_ratio = f"{r_n}:{r_p}:{r_k}"
+            else:
+                npk_ratio = "4:2:1"
+
         # Build recommendations scientifically
         recommended_fertilizers = []
         fertilizer_schedule = []
-        
-        n_in = float(normalized_data.get("nitrogen", 90))
-        p_in = float(normalized_data.get("phosphorus", 42))
-        k_in = float(normalized_data.get("potassium", 43))
 
-        # Always include Farm Yard Manure (FYM)
-        organic_rec = {
-            "category": translate_text("Organic", language_id),
-            "product": translate_text("Farm Yard Manure", language_id),
-            "fertilizer": translate_text("Farm Yard Manure (FYM) / Compost", language_id),
-            "nutrient_deficiency": translate_text("None", language_id),
-            "dosage": "2 tons/acre",
-            "stage": translate_text("Before Sowing", language_id),
-            "method": translate_text("Soil Mix", language_id),
-            "reason": translate_text("To improve soil organic matter, water retention, and microbial activity.", language_id)
-        }
-        recommended_fertilizers.append({
-            "category": organic_rec["category"],
-            "fertilizer": organic_rec["fertilizer"],
-            "dosage": organic_rec["dosage"],
-            "method": organic_rec["method"]
-        })
-        fertilizer_schedule.append(organic_rec)
+        # Only recommend fertilizers if there are deficiencies detected
+        if nutrient_labels:
+            # Always include Farm Yard Manure (FYM)
+            organic_rec = {
+                "category": translate_text("Organic", language_id),
+                "product": translate_text("Farm Yard Manure", language_id),
+                "fertilizer": translate_text("Farm Yard Manure (FYM) / Compost", language_id),
+                "nutrient_deficiency": translate_text("None", language_id),
+                "dosage": "2 tons/acre",
+                "stage": translate_text("Before Sowing", language_id),
+                "method": translate_text("Soil Mix", language_id),
+                "reason": translate_text("To improve soil organic matter, water retention, and microbial activity.", language_id)
+            }
+            recommended_fertilizers.append({
+                "category": organic_rec["category"],
+                "fertilizer": organic_rec["fertilizer"],
+                "dosage": organic_rec["dosage"],
+                "method": organic_rec["method"]
+            })
+            fertilizer_schedule.append(organic_rec)
 
         for nutrient in nutrient_labels:
             nut_lower = nutrient.lower()
@@ -338,7 +366,8 @@ def predict_nutrient_deficiency(
             "deficiencies": deficiencies,
             "recommended_fertilizers": recommended_fertilizers,
             "fertilizer_schedule": fertilizer_schedule,
-            "advisory_notes": advisory_notes
+            "advisory_notes": advisory_notes,
+            "npk_ratio": npk_ratio
         }
 
     except Exception as exc:

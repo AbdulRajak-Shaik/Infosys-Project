@@ -43,8 +43,13 @@ async def predict_soil_health_score_endpoint(
                         "prediction_type": "soil_health_score",
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save prediction history: {str(e)}"
+                )
 
         return result
     except FileNotFoundError as exc:

@@ -170,19 +170,34 @@ export default function LandingPage({ onLogin, onRegister, onGuestTrial }: Landi
             <h2 className="text-3xl md:text-4xl font-bold text-text-primary mb-4">{t('everythingFarmSmarter')}</h2>
             <p className="text-text-muted text-lg max-w-2xl mx-auto">{t('fromSoilToHarvest')}</p>
           </div>
-          <div id="modules" className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f, i) => (
-              <div key={i} className="bg-surface rounded-2xl p-6 shadow-card border border-border hover:shadow-elevated hover:-translate-y-1 transition-all-smooth group">
-                <div className="w-12 h-12 rounded-xl bg-background flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  {f.icon}
+          <div id="modules" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((f, i) => {
+              // Click action redirects: Crop Recommendation (i === 1) triggers the free trial,
+              // others trigger the registration flow.
+              const targetAction = i === 1 ? handleTrialClick : onRegister;
+              return (
+                <div
+                  key={i}
+                  onClick={targetAction}
+                  className="bg-surface rounded-2xl p-6 shadow-card border border-border hover:shadow-elevated hover:-translate-y-1 transition-all-smooth group cursor-pointer hover:border-green-300"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-background flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    {f.icon}
+                  </div>
+                  <h3 className="font-bold text-text-primary mb-2 group-hover:text-green-700 transition-colors">{t(f.title) || f.title}</h3>
+                  <p className="text-sm text-text-muted leading-relaxed">{t(f.desc) || f.desc}</p>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      targetAction();
+                    }}
+                    className="mt-4 flex items-center gap-1 text-sm font-semibold text-green-700 hover:gap-2 transition-all"
+                  >
+                    {t('learnMore')} <ChevronRight size={14} />
+                  </button>
                 </div>
-                <h3 className="font-bold text-text-primary mb-2">{t(f.title) || f.title}</h3>
-                <p className="text-sm text-text-muted leading-relaxed">{t(f.desc) || f.desc}</p>
-                <button className="mt-4 flex items-center gap-1 text-sm font-semibold text-green-700 hover:gap-2 transition-all">
-                  {t('learnMore')} <ChevronRight size={14} />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

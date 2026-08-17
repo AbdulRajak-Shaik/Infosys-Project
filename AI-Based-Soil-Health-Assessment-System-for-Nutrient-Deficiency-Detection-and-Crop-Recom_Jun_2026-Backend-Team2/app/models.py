@@ -116,6 +116,26 @@ class User(Base):
         cascade="all, delete-orphan",
     )
 
+    followers: Mapped[list["Follow"]] = relationship(
+        "Follow",
+        primaryjoin="User.id == Follow.followed_id",
+        cascade="all, delete-orphan",
+    )
+    following: Mapped[list["Follow"]] = relationship(
+        "Follow",
+        primaryjoin="User.id == Follow.follower_id",
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def followers_count(self) -> int:
+        return len(self.followers)
+
+    @property
+    def following_count(self) -> int:
+        return len(self.following)
+
+
 
 class PredictionHistory(Base):
     """Stores a completed final recommendation for a user."""
@@ -345,3 +365,52 @@ class GeneralHistory(Base):
     )
 
     user: Mapped[User] = relationship(back_populates="general_history")
+
+
+class Follow(Base):
+    """Stores follows/followers relationships between users."""
+    __tablename__ = "follows"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    follower_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    followed_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+
+class CommunityPost(Base):
+    """Stores community updates and discussion posts."""
+    __tablename__ = "community_posts"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    content: Mapped[str] = mapped_column(String, nullable=False)
+    tags: Mapped[list] = mapped_column(JSON, nullable=False, default=[])
+    image: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    user: Mapped[User] = relationship("User")
+    likes: Mapped[list["PostLike"]] = relationship("PostLike", back_populates="post", cascade="all, delete-orphan")
+
+
+class PostLike(Base):
+    """Stores user likes on community posts."""
+    __tablename__ = "post_likes"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("community_posts.id", ondelete="CASCADE"), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    post: Mapped[CommunityPost] = relationship("CommunityPost", back_populates="likes")

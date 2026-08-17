@@ -2,7 +2,7 @@ import { ArrowRight, Brain, Cloud, Shield, Leaf, TrendingUp, Users, Target, Acti
 import { Button, Card, Breadcrumb } from '../components/ui'
 import { useTranslation } from '../i18n'
 import { useState, useEffect } from 'react'
-import { getAdminStats, getPredictionHistory, getPlatformStats } from '../services/api'
+import { getPlatformStats } from '../services/api'
 
 export function About({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { t } = useTranslation()
@@ -10,13 +10,13 @@ export function About({ onNavigate }: { onNavigate?: (page: string) => void }) {
   // Real stats from backend — no hardcoded fallbacks
   const [realStats, setRealStats] = useState({ predictions: 0, farmers: 0, avgRating: 0, languageCount: 0 })
   useEffect(() => {
-    Promise.all([getPredictionHistory(), getAdminStats(), getPlatformStats()])
-      .then(([history, adminStats, platformStats]) => {
+    getPlatformStats()
+      .then((platformStats) => {
         setRealStats({
-          predictions: history.length,
-          farmers: adminStats.farmer_count,
-          avgRating: platformStats.avg_rating,
-          languageCount: platformStats.language_count,
+          predictions: platformStats?.total_predictions || 0,
+          farmers: platformStats?.farmer_count || 0,
+          avgRating: platformStats?.avg_rating || 0,
+          languageCount: platformStats?.language_count || 0,
         })
       })
       .catch(() => setRealStats({ predictions: 0, farmers: 0, avgRating: 0, languageCount: 0 }))

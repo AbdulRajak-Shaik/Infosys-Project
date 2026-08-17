@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Search, Image as ImageIcon, MapPin, Tag, Heart, MessageCircle, Share2, Bookmark, Plus, TrendingUp, Star, MoreHorizontal, Bell, Pin, Info } from 'lucide-react'
+import { Search, Image as ImageIcon, MapPin, Tag, Heart, MessageCircle, Share2, Bookmark, Plus, TrendingUp, Star, MoreHorizontal, Bell, Pin, Info, X } from 'lucide-react'
 import { Button, Input, LineSpinner } from '../components/ui'
 import { useTranslation, Translate } from '../i18n'
-import { getCommunityPosts, createCommunityPost, toggleCommunityPostLike, CommunityPost, updateUserProfile, getCurrentUser } from '../services/api'
+import { getCommunityPosts, createCommunityPost, toggleCommunityPostLike, CommunityPost, updateUserProfile, getCurrentUser, getUserConnections, followUser, unfollowUser } from '../services/api'
 
 
 export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: string) => void }) {
@@ -27,14 +27,91 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
           name: displayName,
           avatar: displayName.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase(),
           location: loc,
-          followers: u.followers || 15,
-          following: u.following || 23,
+          followers: 0,
+          following: 0,
         }
       }
     } catch {}
-    return { name: 'Farmer', avatar: 'F', location: 'India', followers: 15, following: 23 }
+    return { name: 'Farmer', avatar: 'F', location: 'India', followers: 0, following: 0 }
   })
+  const [connections, setConnections] = useState<{ followers: any[]; following: any[] }>({ followers: [], following: [] })
+  const [selectedThread, setSelectedThread] = useState<{
+    title: string;
+    category: string;
+    messages: { author: string; avatar: string; location: string; content: string; time: string; likes: number }[];
+  } | null>(null)
+  const [connectionsModal, setConnectionsModal] = useState<'followers' | 'following' | null>(null)
 
+  const handleOpenThread = (topic: string, type: 'discussion' | 'category' | 'announcement') => {
+    let title = topic
+    let category = type === 'category' ? 'Category Advice' : type === 'announcement' ? 'Announcement Update' : 'Recent Discussion'
+    let messages: any[] = []
+
+    const topicLower = topic.toLowerCase()
+    if (topicLower.includes('urea') || topicLower.includes('fertilizer') || topicLower.includes('fertilizeradvice')) {
+      title = 'Which urea brand is best during heavy rainfall?'
+      category = 'Fertilizer Advice'
+      messages = [
+        { author: 'Ramesh Gowda', avatar: 'RG', location: 'Mandya, Karnataka', content: 'Neem-coated Urea is best because it releases nitrogen slowly and prevents leaching during heavy rains.', time: '2 hours ago', likes: 12 },
+        { author: 'Srinivas Rao', avatar: 'SR', location: 'Guntur, Andhra Pradesh', content: 'Always check the local weather forecast before broadcasting. Try to apply during a dry spell of 24-48 hours.', time: '1 hour ago', likes: 9 },
+        { author: 'Kishan Kumar', avatar: 'KK', location: 'Kadapa, Andhra Pradesh', content: 'Agreed! Split doses also minimize loss. I use IFFCO Neem Urea with great success.', time: '30 mins ago', likes: 4 }
+      ]
+    } else if (topicLower.includes('ph') || topicLower.includes('soil') || topicLower.includes('sandy') || topicLower.includes('smartfarming')) {
+      title = 'Optimal pH for tomato yield in sandy clay?'
+      category = 'Soil Health'
+      messages = [
+        { author: 'Kishan Kumar', avatar: 'KK', location: 'Kadapa, Andhra Pradesh', content: 'Tomatoes grow best in pH 6.0 to 6.8. Sandy clay holds moisture well but keep organic manure content high.', time: '1 day ago', likes: 15 },
+        { author: 'Srinivas Rao', avatar: 'SR', location: 'Guntur, Andhra Pradesh', content: 'If pH is above 7.8, apply elemental sulfur or gypsum to buffer it. Avoid high alkaline conditions as it locks nutrients.', time: '18 hours ago', likes: 11 }
+      ]
+    } else if (topicLower.includes('leaf') || topicLower.includes('maize') || topicLower.includes('disease') || topicLower.includes('pest') || topicLower.includes('pestmanagement')) {
+      title = 'Leaf spot pathology advice for maize leaves'
+      category = 'Disease Detection'
+      messages = [
+        { author: 'Rahul Ramayanam', avatar: 'RR', location: 'Anantapur, AP', content: 'This looks like Northern Corn Leaf Blight. Use Mancozeb fungicide spray at 2g/liter of water.', time: '3 hours ago', likes: 8 },
+        { author: 'Kishan Kumar', avatar: 'KK', location: 'Kadapa, Andhra Pradesh', content: 'Ensure you clear previous crop residue and rotate crops next season to prevent the spores from surviving.', time: '2 hours ago', likes: 5 }
+      ]
+    } else if (topicLower.includes('insurance') || topicLower.includes('kharif')) {
+      title = '📢 Kharif Crop Insurance Registry Extension'
+      category = 'Announcement'
+      messages = [
+        { author: 'District Nodal Officer', avatar: 'NO', location: 'State Department', content: 'The registration deadline has been extended to August 30, 2026. Register online via PMFBY portal or local banks.', time: '1 day ago', likes: 25 },
+        { author: 'Anand Verma', avatar: 'AV', location: 'Nashik, MH', content: 'Are crop cutting experiment reports required for non-loanee farmers?', time: '20 hours ago', likes: 3 },
+        { author: 'District Nodal Officer', avatar: 'NO', location: 'State Department', content: 'No, self-declaration forms with land records are sufficient for non-loanee farmers.', time: '18 hours ago', likes: 7 }
+      ]
+    } else if (topicLower.includes('organic') || topicLower.includes('manure')) {
+      title = '📌 Organic Manure Guidelines for Soil Prep'
+      category = 'Guide'
+      messages = [
+        { author: 'Srinivas Rao', avatar: 'SR', location: 'Guntur, Andhra Pradesh', content: 'We suggest incorporating 5-10 tons of decomposed Farm Yard Manure per acre during final plowing.', time: '2 days ago', likes: 18 },
+        { author: 'Ramesh Gowda', avatar: 'RG', location: 'Mandya, Karnataka', content: 'Does vermicompost provide the same organic carbon boost?', time: '1 day ago', likes: 4 },
+        { author: 'Srinivas Rao', avatar: 'SR', location: 'Guntur, Andhra Pradesh', content: 'Yes, vermicompost is even richer in microbial activity. Apply at 2 tons per acre.', time: '12 hours ago', likes: 9 }
+      ]
+    } else if (topicLower.includes('weather') || topicLower.includes('weathertopic')) {
+      title = '☁️ Weather Forecast & Farm Operations'
+      category = 'Weather Advice'
+      messages = [
+        { author: 'Rahul Ramayanam', avatar: 'RR', location: 'Anantapur, AP', content: 'Heavy rainfall expected this Friday. Postpone any fertilizer or pesticide applications to avoid washout.', time: '5 hours ago', likes: 14 },
+        { author: 'Kishan Kumar', avatar: 'KK', location: 'Kadapa, AP', content: 'Thanks for the warning! I will check the drainage channels in the low-lying field sections.', time: '4 hours ago', likes: 8 }
+      ]
+    } else if (topicLower.includes('success') || topicLower.includes('successstories')) {
+      title = '🏆 Crop Yield Milestone Success Story'
+      category = 'Success Stories'
+      messages = [
+        { author: 'Ramesh Gowda', avatar: 'RG', location: 'Mandya, Karnataka', content: 'Using AgroAI CatBoost crop advisory and soil test suggestions, my cotton crop yield increased by 22% this season!', time: '1 day ago', likes: 38 },
+        { author: 'Anand Verma', avatar: 'AV', location: 'Nashik, MH', content: 'Outstanding! Did you follow the organic manure guidelines too?', time: '20 hours ago', likes: 12 },
+        { author: 'Ramesh Gowda', avatar: 'RG', location: 'Mandya, Karnataka', content: 'Yes, incorporated FYM and maintained NPK split dosage exactly as advised.', time: '18 hours ago', likes: 16 }
+      ]
+    } else {
+      title = `${topic} Messages`
+      category = type === 'category' ? 'Category Forum' : 'General'
+      messages = [
+        { author: 'Rahul Ramayanam', avatar: 'RR', location: 'Anantapur, AP', content: `Welcome to the ${topic} community messages! Ask questions or share tips with other farmers.`, time: 'Just now', likes: 2 },
+        { author: 'Kishan Kumar', avatar: 'KK', location: 'Kadapa, Andhra Pradesh', content: `Looking forward to exchanging knowledge about ${topic} here.`, time: 'Just now', likes: 0 }
+      ]
+    }
+
+    setSelectedThread({ title, category, messages })
+  }
   const BASE_CATEGORIES = [
     { name: t('wheat'), icon: '🌾' },
     { name: t('maize'), icon: '🌽' },
@@ -49,7 +126,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
   
   const CATEGORIES = BASE_CATEGORIES.map(c => {
     const activeMembers = new Set(posts.filter(p => p.tags.some(t => t.toLowerCase() === c.name.toLowerCase() || t.toLowerCase() === c.name.replace(' ', '').toLowerCase())).map(p => p.author.name)).size
-    return { ...c, members: (activeMembers + 5).toString() }
+    return { ...c, members: activeMembers.toString() }
   })
 
   useEffect(() => {
@@ -64,8 +141,8 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
             name: displayName,
             avatar: displayName.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase(),
             location: loc,
-            followers: u.followers || 15,
-            following: u.following || 23,
+            followers: u.followers_count ?? 0,
+            following: u.following_count ?? 0,
           })
         }
         if (u.community) {
@@ -91,11 +168,14 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
           ...prev,
           name: displayName,
           avatar: displayName.split(' ').map((n: string) => n[0]).join('').substring(0,2).toUpperCase(),
-          location: u.region || prev.location
+          location: u.region || prev.location,
+          followers: u.followers_count ?? 0,
+          following: u.following_count ?? 0
         }))
       }
     }).catch(() => {})
 
+    getUserConnections().then(setConnections).catch(() => {})
     getCommunityPosts().then(setPosts).catch(() => {})
   }, [])
 
@@ -233,9 +313,6 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
   }
 
   const TRENDING_TAGS = Array.from(new Set(posts.flatMap(p => p.tags))).slice(0, 5).map(t => `#${t}`)
-  if (TRENDING_TAGS.length === 0) {
-    TRENDING_TAGS.push('#Wheat', '#Irrigation', '#OrganicPest', '#CatBoost', '#SarvamAI')
-  }
   
   const authorPoints: Record<string, number> = {}
   posts.forEach(p => {
@@ -246,24 +323,18 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([name, points]) => ({ name, role: 'Community Contributor', points }))
-  if (TOP_CONTRIBUTORS.length === 0) {
-    TOP_CONTRIBUTORS.push(
-      { name: 'Rahul Ramayanam', role: 'Community Expert', points: 280 },
-      { name: 'Kishan Kumar', role: 'Smart Farmer', points: 195 },
-      { name: 'Srinivas Rao', role: 'Soil Consultant', points: 140 }
-    )
-  }
 
   const PINNED_ANNOUNCEMENTS = [
     { id: 'ann-1', title: '📢 Kharif Crop Insurance Registry', desc: 'Deadline to register Kharif crops is extended to Aug 30. Contact district nodal office.', type: 'alert' },
     { id: 'ann-2', title: '📌 Organic Manure Guidelines', desc: 'Maintain 5:1 nitrogen ratio for wheat soil prepping. Consult fertilizer advisory guides.', type: 'guide' }
   ]
 
-  const RECENT_DISCUSSIONS = [
-    { id: 'd-1', title: 'Which urea brand is best during heavy rainfall?', replies: 14, category: 'Fertilizer' },
-    { id: 'd-2', title: 'Optimal pH for tomato yield in sandy clay?', replies: 9, category: 'Soil' },
-    { id: 'd-3', title: 'Leaf spot pathology advice for maize leaves', replies: 22, category: 'Disease' }
-  ]
+  const RECENT_DISCUSSIONS = posts.slice(0, 3).map((p) => ({
+    id: `d-${p.id}`,
+    title: p.content.length > 50 ? `${p.content.substring(0, 50)}...` : p.content,
+    replies: p.comments || 0,
+    category: p.tags[0] || 'General'
+  }))
 
   const filteredPosts = posts.filter(post => {
     if (!searchQuery.trim()) return true
@@ -348,7 +419,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {PINNED_ANNOUNCEMENTS.map(ann => (
-                <div key={ann.id} className="bg-surface rounded-xl p-3 border border-green-100 shadow-soft space-y-1">
+                <div key={ann.id} onClick={() => handleOpenThread(ann.title, 'announcement')} className="bg-surface rounded-xl p-3 border border-green-100 shadow-soft space-y-1 cursor-pointer hover:border-green-300 hover:shadow-soft transition-all">
                   <h4 className="text-xs font-bold text-text-primary">{ann.title}</h4>
                   <p className="text-[11px] text-text-secondary leading-relaxed">{ann.desc}</p>
                 </div>
@@ -361,7 +432,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
             {CATEGORIES.map(c => (
               <div 
                 key={c.name} 
-                onClick={() => setSearchQuery(c.name)}
+                onClick={() => handleOpenThread(c.name, 'category')}
                 className="flex-shrink-0 bg-surface border border-border rounded-xl p-3 flex items-center gap-3 hover:border-green-300 hover:shadow-soft transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-lg bg-background flex items-center justify-center text-xl group-hover:scale-110 transition-transform">{c.icon}</div>
@@ -495,12 +566,12 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
                   <p className="font-bold text-text-primary text-sm">{posts.filter(p => p.author.name === userProfile.name).length}</p>
                   <p className="text-[10px] text-text-muted uppercase font-semibold">{t('posts') || 'Posts'}</p>
                 </div>
-                <div>
-                  <p className="font-bold text-text-primary text-sm">{userProfile.followers}</p>
+                <div onClick={() => setConnectionsModal('followers')} className="cursor-pointer hover:bg-background/80 rounded-lg p-1.5 transition-colors group">
+                  <p className="font-bold text-text-primary text-sm group-hover:text-green-600 transition-colors">{userProfile.followers}</p>
                   <p className="text-[10px] text-text-muted uppercase font-semibold">{t('followers') || 'Followers'}</p>
                 </div>
-                <div>
-                  <p className="font-bold text-text-primary text-sm">{userProfile.following}</p>
+                <div onClick={() => setConnectionsModal('following')} className="cursor-pointer hover:bg-background/80 rounded-lg p-1.5 transition-colors group">
+                  <p className="font-bold text-text-primary text-sm group-hover:text-green-600 transition-colors">{userProfile.following}</p>
                   <p className="text-[10px] text-text-muted uppercase font-semibold">{t('following') || 'Following'}</p>
                 </div>
               </div>
@@ -516,7 +587,7 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
               {RECENT_DISCUSSIONS.map(disc => (
                 <div 
                   key={disc.id} 
-                  onClick={() => setSearchQuery(disc.category)}
+                  onClick={() => handleOpenThread(disc.title, 'discussion')}
                   className="space-y-0.5 cursor-pointer hover:bg-background p-1.5 rounded-lg transition-colors"
                 >
                   <span className="text-[9px] font-bold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded">
@@ -591,8 +662,8 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
                   <p className="font-bold text-text-primary text-lg">{posts.filter(p => p.author.name === selectedAuthorProfile.name).length}</p>
                   <p className="text-xs text-text-muted uppercase font-semibold">{t('Posts') || 'Posts'}</p>
                 </div>
-                <div>
-                  <p className="font-bold text-text-primary text-lg">{selectedAuthorProfile.followers}</p>
+                <div onClick={() => { setConnectionsModal('followers'); setSelectedAuthorProfile(null); }} className="cursor-pointer hover:bg-background/85 rounded-xl p-1 transition-colors group">
+                  <p className="font-bold text-text-primary text-lg group-hover:text-green-600 transition-colors">{selectedAuthorProfile.followers}</p>
                   <p className="text-xs text-text-muted uppercase font-semibold">{t('Followers') || 'Followers'}</p>
                 </div>
                 <div>
@@ -600,6 +671,62 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
                   <p className="text-xs text-text-muted uppercase font-semibold">{t('Total Likes') || 'Total Likes'}</p>
                 </div>
               </div>
+
+              {selectedAuthorProfile.id && selectedAuthorProfile.name !== userProfile.name && (
+                <div className="mt-4 flex justify-center">
+                  {connections.following.some(f => f.id === selectedAuthorProfile.id) ? (
+                    <Button 
+                      variant="outlined" 
+                      className="border-red-200 text-red-600 hover:bg-red-50 w-full justify-center"
+                      onClick={async () => {
+                        try {
+                          await unfollowUser(selectedAuthorProfile.id!);
+                          const u = await getCurrentUser();
+                          if (u) {
+                            setUserProfile(prev => ({
+                              ...prev,
+                              followers: u.followers_count ?? 0,
+                              following: u.following_count ?? 0
+                            }));
+                          }
+                          const c = await getUserConnections();
+                          setConnections(c);
+                          setSelectedAuthorProfile(prev => prev ? { ...prev, followers: Math.max(0, prev.followers - 1) } : null);
+                        } catch (err) {
+                          console.warn(err);
+                        }
+                      }}
+                    >
+                      Unfollow
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="primary" 
+                      className="w-full justify-center"
+                      onClick={async () => {
+                        try {
+                          await followUser(selectedAuthorProfile.id!);
+                          const u = await getCurrentUser();
+                          if (u) {
+                            setUserProfile(prev => ({
+                              ...prev,
+                              followers: u.followers_count ?? 0,
+                              following: u.following_count ?? 0
+                            }));
+                          }
+                          const c = await getUserConnections();
+                          setConnections(c);
+                          setSelectedAuthorProfile(prev => prev ? { ...prev, followers: prev.followers + 1 } : null);
+                        } catch (err) {
+                          console.warn(err);
+                        }
+                      }}
+                    >
+                      Follow
+                    </Button>
+                  )}
+                </div>
+              )}
 
               <div className="mt-6 pt-6 border-t border-border">
                 <h4 className="font-bold text-sm text-text-primary mb-3">{t('Recent Posts') || 'Recent Posts'}</h4>
@@ -613,6 +740,97 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Discussion Thread Modal */}
+      {selectedThread && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedThread(null)}>
+          <div className="bg-surface border border-border w-full max-w-lg rounded-2xl shadow-card flex flex-col max-h-[85vh] overflow-hidden animate-scale-up" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="p-4 border-b border-border bg-background/50 flex justify-between items-start">
+              <div>
+                <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded uppercase tracking-wider">
+                  {selectedThread.category}
+                </span>
+                <h3 className="text-sm font-bold text-text-primary mt-1.5 leading-snug">{selectedThread.title}</h3>
+              </div>
+              <button onClick={() => setSelectedThread(null)} className="p-1.5 text-text-muted hover:bg-background rounded-lg transition-colors flex-shrink-0"><X size={18} /></button>
+            </div>
+            
+            {/* Messages Thread List */}
+            <div className="p-4 overflow-y-auto space-y-4 flex-1 custom-scrollbar bg-zinc-50/30">
+              {selectedThread.messages.map((m, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center font-bold text-green-700 text-xs flex-shrink-0 mt-0.5">
+                    {m.avatar}
+                  </div>
+                  <div className="flex-1 bg-surface border border-border/85 rounded-xl p-3 space-y-1 shadow-soft">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-semibold text-xs text-text-primary">{m.author}</span>
+                        <span className="text-[9px] text-text-muted ml-2">{m.location}</span>
+                      </div>
+                      <span className="text-[9px] text-text-muted">{m.time}</span>
+                    </div>
+                    <p className="text-xs text-text-secondary leading-relaxed font-medium">{m.content}</p>
+                    <div className="flex justify-end pt-1">
+                      <button className="flex items-center gap-1 text-[10px] text-text-muted hover:text-red-500 transition-colors">
+                        <Heart size={11} /> {m.likes}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Post Reply Footer */}
+            <div className="p-3 border-t border-border bg-surface flex gap-2 items-center">
+              <input 
+                placeholder="Write a reply or message..." 
+                className="flex-1 bg-background border border-border rounded-xl px-3 py-1.5 text-xs outline-none focus:border-green-500 transition-colors"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    const inputVal = (e.target as HTMLInputElement).value
+                    if (inputVal.trim()) {
+                      const newReply = {
+                        author: userProfile.name,
+                        avatar: userProfile.avatar,
+                        location: userProfile.location,
+                        content: inputVal,
+                        time: 'Just now',
+                        likes: 0
+                      }
+                      setSelectedThread(prev => prev ? {
+                        ...prev,
+                        messages: [...prev.messages, newReply]
+                      } : null)
+                      ;(e.target as HTMLInputElement).value = ''
+                    }
+                  }
+                }}
+              />
+              <Button variant="primary" size="sm" onClick={(e) => {
+                const inputEl = e.currentTarget.previousElementSibling as HTMLInputElement
+                const inputVal = inputEl.value
+                if (inputVal.trim()) {
+                  const newReply = {
+                    author: userProfile.name,
+                    avatar: userProfile.avatar,
+                    location: userProfile.location,
+                    content: inputVal,
+                    time: 'Just now',
+                    likes: 0
+                  }
+                  setSelectedThread(prev => prev ? {
+                    ...prev,
+                    messages: [...prev.messages, newReply]
+                  } : null)
+                  inputEl.value = ''
+                }
+              }}>Send</Button>
             </div>
           </div>
         </div>
@@ -639,6 +857,97 @@ export default function FarmerCommunity({ onNavigate }: { onNavigate: (page: str
             
             <div className="flex justify-end gap-2">
               <Button variant="outlined" onClick={() => setShowModal(false)}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {connectionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in" onClick={() => setConnectionsModal(null)}>
+          <div className="bg-surface border border-border w-full max-w-sm rounded-2xl shadow-card p-5 relative animate-scale-up" onClick={e => e.stopPropagation()}>
+            <h3 className="text-md font-bold text-text-primary mb-1 capitalize">
+              {connectionsModal === 'followers' ? `${t('followers')} (${userProfile.followers})` : `${t('following')} (${userProfile.following})`}
+            </h3>
+            <p className="text-xs text-text-muted mb-4">
+              {connectionsModal === 'followers' ? 'Farmers and experts who follow your farm updates.' : 'Farmers and consultants you are following.'}
+            </p>
+            
+            <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar mb-4">
+              {connectionsModal === 'followers' ? (
+                connections.followers.length === 0 ? (
+                  <p className="text-xs text-text-muted text-center py-4">No followers yet.</p>
+                ) : (
+                  connections.followers.map((f, i) => (
+                    <div key={f.id} onClick={() => {
+                      setSelectedAuthorProfile({
+                        id: f.id,
+                        name: f.name,
+                        avatar: f.avatar,
+                        location: f.location,
+                        followers: 0
+                      });
+                      setConnectionsModal(null);
+                    }} className="flex items-center justify-between p-2 hover:bg-background rounded-xl transition-colors cursor-pointer group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-green-50 text-green-700 font-bold flex items-center justify-center text-xs">{f.avatar}</div>
+                        <div>
+                          <p className="text-xs font-semibold text-text-primary group-hover:text-green-600 transition-colors">{f.name}</p>
+                          <p className="text-[10px] text-text-muted">{f.role} • {f.location}</p>
+                        </div>
+                      </div>
+                      <button className="text-[10px] font-bold text-green-700 bg-green-50 hover:bg-green-100 px-2.5 py-1 rounded-lg border border-green-200">View</button>
+                    </div>
+                  ))
+                )
+              ) : (
+                connections.following.length === 0 ? (
+                  <p className="text-xs text-text-muted text-center py-4">Not following anyone yet.</p>
+                ) : (
+                  connections.following.map((f, i) => (
+                    <div key={f.id} onClick={() => {
+                      setSelectedAuthorProfile({
+                        id: f.id,
+                        name: f.name,
+                        avatar: f.avatar,
+                        location: f.location,
+                        followers: 0
+                      });
+                      setConnectionsModal(null);
+                    }} className="flex items-center justify-between p-2 hover:bg-background rounded-xl transition-colors cursor-pointer group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-green-50 text-green-700 font-bold flex items-center justify-center text-xs">{f.avatar}</div>
+                        <div>
+                          <p className="text-xs font-semibold text-text-primary group-hover:text-green-600 transition-colors">{f.name}</p>
+                          <p className="text-[10px] text-text-muted">{f.role} • {f.location}</p>
+                        </div>
+                      </div>
+                      <button onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          await unfollowUser(f.id);
+                          const u = await getCurrentUser();
+                          if (u) {
+                            setUserProfile(prev => ({
+                              ...prev,
+                              followers: u.followers_count ?? 0,
+                              following: u.following_count ?? 0
+                            }));
+                          }
+                          const c = await getUserConnections();
+                          setConnections(c);
+                        } catch (err) {
+                          console.warn(err);
+                        }
+                        setConnectionsModal(null);
+                      }} className="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-200">Unfollow</button>
+                    </div>
+                  ))
+                )
+              )}
+            </div>
+ 
+            <div className="flex justify-end">
+              <Button variant="outlined" size="sm" onClick={() => setConnectionsModal(null)}>Close</Button>
             </div>
           </div>
         </div>

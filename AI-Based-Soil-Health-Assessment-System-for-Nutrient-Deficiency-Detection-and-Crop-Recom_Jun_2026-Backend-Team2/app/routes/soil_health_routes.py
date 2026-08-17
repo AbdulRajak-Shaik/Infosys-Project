@@ -58,8 +58,13 @@ async def predict_soil_health_status(
                         "soil_health": result.get("soil_health", "Optimal"),
                     }
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save prediction history: {str(e)}"
+                )
 
         return result
     except FileNotFoundError as exc:
