@@ -91,7 +91,12 @@ export default function App() {
   useEffect(() => {
     if (appState === 'app') {
       getCurrentUser()
-        .then(u => setUser(u))
+        .then(u => {
+          setUser(u)
+          if (u?.role) {
+            setRole(u.role.toLowerCase() as Role)
+          }
+        })
         .catch(err => {
           console.warn('App user fetch note:', err)
           if (err?.message?.includes('401') || err?.message?.includes('Unauthorized')) {
@@ -159,10 +164,18 @@ export default function App() {
   const handleNavToggle = () => setThemeMode(isDark ? 'light' : 'dark')
 
   const handleLogin = (r: Role) => {
-    setRole(r)
     setCurrentPage('dashboard')
     setAppState('app')
-    getCurrentUser().then(u => setUser(u)).catch(() => {})
+    getCurrentUser().then(u => {
+      setUser(u)
+      if (u?.role) {
+        setRole(u.role.toLowerCase() as Role)
+      } else {
+        setRole(r)
+      }
+    }).catch(() => {
+      setRole(r)
+    })
   }
 
   // ── Global notification state ─────────────────────────────
@@ -205,10 +218,11 @@ export default function App() {
       await logoutUser()
     } catch (err) {
       console.warn('Logout request failed; clearing the local session.', err)
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
+      localStorage.clear()
+      sessionStorage.clear()
     } finally {
       setUser(null)
+      setRole('farmer')
       setAppState('landing')
       setCurrentPage('dashboard')
     }

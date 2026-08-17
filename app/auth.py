@@ -52,7 +52,7 @@ def register_user(db: Session, user_data: UserRegisterRequest) -> User:
         username=user_data.username,
         email=user_data.email,
         hashed_password=hashed_password,
-        role=user_data.role if getattr(user_data, "role", None) else UserRole.FARMER.value,
+        role=UserRole.FARMER.value,  # All registered users are strictly farmers. Only designated Admin account holds admin role.
         status=UserStatus.ACTIVE.value,
         region=user_data.region,
         language_id=user_data.language_id,

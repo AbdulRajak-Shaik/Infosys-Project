@@ -233,13 +233,13 @@ function RegisterForm({ onLogin }: { onSuccess?: () => void; onLogin: () => void
       const language_id = LANGUAGE_CODE_TO_ID[langCode] || 1
 
       await registerUser({
-        username: form.name.trim() || (form.role === 'admin' ? 'Admin' : 'Farmer'),
+        username: form.name.trim() || 'Farmer',
         email: form.email,
         password: form.password,
         confirm_password: form.confirm,
         language_id,
         region: form.state ? `${form.state}, ${form.district}` : '',
-        role: form.role,
+        role: 'farmer',
       })
       setDone(true)
     } catch (err: any) {
