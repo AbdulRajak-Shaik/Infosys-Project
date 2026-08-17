@@ -969,7 +969,8 @@ export interface HistoryItem {
 }
 
 function normalizeHistoryItem(item: any): HistoryItem {
-  const pType = item.type || item.prediction_type || (item.top_crop || item.predicted_crop ? 'Crop' : 'Soil');
+  // prediction_type from server is the ONLY authoritative source - never infer from top_crop
+  const pType = item.prediction_type || item.type || 'soil';
   const normalizedType = pType.charAt(0).toUpperCase() + pType.slice(1).toLowerCase();
   const pResult = item.result || item.top_crop || item.predicted_crop || item.soil_type || item.prediction_result || 'Soil Analyzed';
   let conf = item.confidence ?? item.soil_confidence ?? item.soil_health_score ?? 95;
