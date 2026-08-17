@@ -182,8 +182,8 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
   }))
 
   const totalCount = history.length
-  const cropCountTotal = history.filter((p: any) => p.prediction_type === 'crop').length
-  const soilCountTotal = history.filter((p: any) => p.prediction_type === 'soil').length
+  const cropCountTotal = history.filter((p: any) => p.prediction_type === 'crop' || (p.recommended_crops && p.recommended_crops.length > 0)).length
+  const soilCountTotal = history.filter((p: any) => p.prediction_type === 'soil' || p.type === 'Soil' || (!p.top_crop && !p.predicted_crop && (!p.recommended_crops || p.recommended_crops.length === 0))).length
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">

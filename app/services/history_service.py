@@ -28,8 +28,8 @@ def create_prediction_history(
         "soil_health_score": 85.0,
         "soil_fertility_status": "High Fertility",
         "nutrient_deficiencies": [],
-        "recommended_crops": ["Wheat", "Rice", "Cotton"],
-        "recommended_fertilizers": ["Urea", "DAP", "MOP"],
+        "recommended_crops": [],
+        "recommended_fertilizers": [],
     }
     merged_data = {**defaults, **data}
     try:

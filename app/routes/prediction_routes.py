@@ -40,7 +40,7 @@ async def predict_image(
                         "soil_image_path": "default_soil.jpg",
                         "soil_type": soil_type,
                         "soil_confidence": 96.5,
-                        "recommended_crops": ["Wheat", "Cotton", "Maize"],
+                        "recommended_crops": [],
                         "nutrient_deficiencies": ["Nitrogen", "Potassium"],
                     }
                 )
@@ -71,8 +71,8 @@ async def predict_image(
                         "soil_image_path": str(temp_file_path),
                         "soil_type": result.get("canonical_soil_type", result["soil_type"]),
                         "soil_confidence": result.get("confidence", 95.0),
-                        "recommended_crops": result.get("recommended_crops", ["Wheat", "Rice"]),
-                        "nutrient_deficiencies": result.get("nutrient_deficiencies", ["Nitrogen"]),
+                        "recommended_crops": [],
+                        "nutrient_deficiencies": result.get("nutrient_deficiencies", []),
                     }
                 )
             except Exception as e:

@@ -60,8 +60,8 @@ def list_prediction_history(
         {
             "history_id": prediction.id,
             "id": prediction.id,
-            "prediction_type": "crop" if prediction.recommended_crops else "soil",
-            "type": "Crop" if prediction.recommended_crops else "Soil",
+            "prediction_type": "crop" if (prediction.recommended_crops and len(prediction.recommended_crops) > 0) else "soil",
+            "type": "Crop" if (prediction.recommended_crops and len(prediction.recommended_crops) > 0) else "Soil",
             "prediction_date": prediction.created_at.isoformat() if prediction.created_at else None,
             "created_at": prediction.created_at.isoformat() if prediction.created_at else None,
             "date": prediction.created_at.strftime("%b %d, %Y %I:%M %p") if prediction.created_at else "Just now",
