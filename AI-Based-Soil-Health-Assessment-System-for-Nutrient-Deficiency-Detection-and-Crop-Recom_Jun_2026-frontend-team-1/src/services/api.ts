@@ -1010,10 +1010,31 @@ export function saveLocalPrediction(item: Partial<HistoryItem>) {
 }
 
 export async function getPredictionHistory(): Promise<HistoryItem[]> {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('access_token') : null;
+
+  // Authenticated user: server is the ONLY source of truth - prevents double counting
+  if (token) {
+    try {
+      const serverItems = await request<HistoryItem[]>('/history', { method: 'GET' })
+      if (Array.isArray(serverItems)) {
+        const normalized = serverItems.map(normalizeHistoryItem)
+        normalized.sort((a, b) => {
+          const timeA = new Date(a.created_at || a.prediction_date || 0).getTime()
+          const timeB = new Date(b.created_at || b.prediction_date || 0).getTime()
+          return timeB - timeA
+        })
+        return normalized
+      }
+    } catch {
+      // Server unavailable - fall through to localStorage fallback
+    }
+  }
+
+  // Guest / unauthenticated: use localStorage only
   const guestKey = 'guest_agroai_prediction_history';
   const defaultKey = 'agroai_prediction_history';
   const userKey = getUserScopedKey('agroai_prediction_history');
-  
+
   const keys = Array.from(new Set([guestKey, defaultKey, userKey]));
   let localItems: HistoryItem[] = [];
 
@@ -1026,7 +1047,7 @@ export async function getPredictionHistory(): Promise<HistoryItem[]> {
     } catch {}
   }
 
-  // De-duplicate local items by id or history_id
+  // De-duplicate by id
   const seenIds = new Set<string>();
   localItems = localItems.filter(item => {
     const idStr = String(item.id || item.history_id);
@@ -1035,30 +1056,14 @@ export async function getPredictionHistory(): Promise<HistoryItem[]> {
     return true;
   });
 
-  let combined: HistoryItem[] = [...localItems]
-
-  try {
-    const serverItems = await request<HistoryItem[]>('/history', { method: 'GET' })
-    if (Array.isArray(serverItems) && serverItems.length > 0) {
-      const normalizedServer = serverItems.map(normalizeHistoryItem)
-      const localIds = new Set(localItems.map((i: any) => String(i.id || i.history_id)))
-      const filteredServer = normalizedServer.filter((i: any) => !localIds.has(String(i.id || i.history_id)))
-      combined = [...localItems, ...filteredServer]
-    }
-  } catch {
-    // If server history API unavailable or empty, use local items
-  }
-
-  // Sort descending by date (newest prediction on top)
-  combined.sort((a, b) => {
+  localItems.sort((a, b) => {
     const timeA = new Date(a.created_at || a.prediction_date || a.date || a.id || 0).getTime()
     const timeB = new Date(b.created_at || b.prediction_date || b.date || b.id || 0).getTime()
     return timeB - timeA
   })
 
-  return combined
+  return localItems
 }
-
 export async function getHistoryDetail(id: number): Promise<any> {
   return request<any>(`/history/${id}`, { method: 'GET' });
 }
