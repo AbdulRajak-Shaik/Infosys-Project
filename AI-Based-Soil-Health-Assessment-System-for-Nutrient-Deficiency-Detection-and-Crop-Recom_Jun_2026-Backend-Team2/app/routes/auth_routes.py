@@ -349,6 +349,7 @@ def forgot_password(
     description="Records the current UTC logout time for the authenticated user."
 )
 def logout(
+    request: Request = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -356,9 +357,11 @@ def logout(
     current_user.last_logout_at = datetime.now(timezone.utc)
     db.add(current_user)
     
-    # Update latest login activity with logout_time and session_duration
+    # Update latest login activity with logout_time and session_duration, and create a logout event log
     try:
         from app.models import GeneralHistory
+        from app.services.history_service import create_general_history
+        
         latest_login = (
             db.query(GeneralHistory)
             .filter(
@@ -368,6 +371,15 @@ def logout(
             .order_by(GeneralHistory.created_at.desc())
             .first()
         )
+        
+        # Parse User Agent details
+        ua_str = request.headers.get("user-agent") if request else None
+        ip_addr = request.client.host if (request and request.client) else "127.0.0.1"
+        ua_info = parse_user_agent(ua_str)
+        
+        duration_sec = 0
+        duration_str = ""
+        
         if latest_login:
             res = dict(latest_login.prediction_result)
             logout_dt = datetime.now(timezone.utc)
@@ -383,11 +395,34 @@ def logout(
                     res["session_duration"] = f"{duration_sec // 60}m {duration_sec % 60}s"
                 else:
                     res["session_duration"] = f"{duration_sec // 3600}h {(duration_sec % 3600) // 60}m"
+                duration_str = res["session_duration"]
             else:
                 res["session_duration"] = "Unknown"
                 
             latest_login.prediction_result = res
             db.add(latest_login)
+            
+        # Create a new history event representing the logout itself
+        create_general_history(
+            db=db,
+            user_id=current_user.id,
+            module_name="Login Activity",
+            prediction_type="login_activity",
+            input_parameters={
+                "device": ua_info["device"],
+                "browser": ua_info["browser"],
+                "ip_address": ip_addr,
+                "action": "logout"
+            },
+            prediction_result={
+                "status": "success",
+                "logout_time": datetime.now(timezone.utc).isoformat(),
+                "session_duration": duration_str or "N/A"
+            },
+            confidence=100.0,
+            processing_time=0.01,
+            model_used="Auth Session Manager"
+        )
     except Exception as e:
         print(f"[ERROR] Failed to update logout history: {e}")
 

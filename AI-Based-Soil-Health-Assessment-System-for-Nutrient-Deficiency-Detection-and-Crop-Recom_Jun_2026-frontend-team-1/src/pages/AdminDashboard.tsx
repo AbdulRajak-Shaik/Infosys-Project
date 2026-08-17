@@ -25,6 +25,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
 
   const [healthData, setHealthData] = useState<any>(null)
   const [showHealth, setShowHealth] = useState(false)
+  const [chatbotMetricsState, setChatbotMetricsState] = useState<any>(null)
 
   const totalUsersText = useSarvamTranslation('Total Users')
   const activeTodayText = useSarvamTranslation('Active Today')
@@ -38,7 +39,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
   const cropData = insights?.crop_recommendation_counts ?? []
   const nutrientData = insights?.nutrient_deficiency_stats ?? []
   const langData = insights?.language_usage ?? []
-  const chatbotMetrics = insights?.chatbot_metrics
+  const chatbotMetrics = chatbotMetricsState || insights?.chatbot_metrics
 
   const filteredBotActivity = activity.filter((a: any) =>
     (a.user || '').toLowerCase().includes(botSearch.toLowerCase()) ||
@@ -52,12 +53,13 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
       setLoading(true)
       setError('')
       try {
-        const [sumRes, insightsRes, growthRes, activityRes, healthRes] = await Promise.all([
+        const [sumRes, insightsRes, growthRes, activityRes, healthRes, chatbotRes] = await Promise.all([
           api.get('/api/dashboard/stats').catch(() => ({ data: null })),
           api.get('/api/dashboard/insights').catch(() => ({ data: null })),
           api.get('/api/dashboard/user-growth').catch(() => ({ data: [] })),
           api.get('/api/chatbot/recent-activity').catch(() => ({ data: [] })),
           api.get('/admin/dashboard/system-health').catch(() => ({ data: null })),
+          api.get('/api/chatbot/monitoring-analytics').catch(() => ({ data: null })),
         ])
 
         if (!active) return
@@ -72,6 +74,7 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
         setInsights(insightsRes.data ?? null)
         setGrowth(growthRes.data ?? [])
         setHealthData(healthRes.data ?? null)
+        setChatbotMetricsState(chatbotRes.data?.kpis ?? null)
 
         const mapped = (activityRes.data || []).map((it: any) => ({
           id: it.id ? String(it.id) : `conv-${it.time || Math.random()}`,
@@ -263,7 +266,11 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={cropData.map((c: any) => ({ ...c, name: t(normalizeCropKey(c.name)) || t(c.name) || c.name }))} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
+                  <BarChart data={cropData.map((c: any) => {
+                    const key = normalizeCropKey(c.name);
+                    const trans = t(key);
+                    return { ...c, name: trans === key ? (t(c.name) || c.name) : trans };
+                  })} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -286,7 +293,11 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
-                    <Pie data={soilData.map((s: any) => ({ ...s, name: t(normalizeSoilKey(s.name)) || t(s.name) || s.name }))} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" nameKey="name">
+                    <Pie data={soilData.map((s: any) => {
+                      const key = normalizeSoilKey(s.name);
+                      const trans = t(key);
+                      return { ...s, name: trans === key ? (t(s.name) || s.name) : trans };
+                    })} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value" nameKey="name">
                       {soilData.map((_entry: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
@@ -307,7 +318,11 @@ export default function AdminDashboard({ onNavigate: _onNavigate }: AdminDashboa
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={nutrientData.map((n: any) => ({ ...n, name: t(normalizeNutrientKey(n.name)) || t(n.name) || n.name }))} layout="vertical" margin={{ top: 5, right: 5, bottom: 0, left: 10 }}>
+                  <BarChart data={nutrientData.map((n: any) => {
+                    const key = normalizeNutrientKey(n.name);
+                    const trans = t(key);
+                    return { ...n, name: trans === key ? (t(n.name) || n.name) : trans };
+                  })} layout="vertical" margin={{ top: 5, right: 5, bottom: 0, left: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
                     <XAxis type="number" domain={[0, 'auto']} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
                     <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />

@@ -218,6 +218,8 @@ class UserResponse(BaseModel):
     state: str | None = None
     profile_picture: str | None = None
     community: str | None = None
+    followers_count: int = 0
+    following_count: int = 0
 class LanguageResponse(BaseModel):
     """
     Schema representing a supported language.
@@ -569,4 +571,45 @@ class GenerateMissingTranslationsRequest(BaseModel):
     """Request schema to trigger Sarvam AI auto-generation of missing translations."""
 
     language_codes: list[str] | None = Field(default=None, description="Optional list of language codes to populate.")
+
+
+class AuthorResponse(BaseModel):
+    id: int
+    name: str
+    avatar: str
+    location: str
+    followers: int
+
+
+class CommunityPostResponse(BaseModel):
+    id: int
+    author: AuthorResponse
+    time: str
+    content: str
+    image: str | None = None
+    tags: list[str] = []
+    likes: int = 0
+    comments: int = 0
+    isLiked: bool = False
+    isSaved: bool = False
+
+
+class CommunityPostCreate(BaseModel):
+    content: str
+    tags: list[str] = []
+    image: str | None = None
+
+
+class ConnectionUserResponse(BaseModel):
+    id: int
+    name: str
+    avatar: str
+    location: str
+    role: str
+
+
+class ConnectionsResponse(BaseModel):
+    followers: list[ConnectionUserResponse]
+    following: list[ConnectionUserResponse]
+
         

@@ -13,9 +13,45 @@ from app.services.sarvam_service import translate_text
 
 def create_prediction_history(
     db: Session,
-    data: Dict[str, Any],
+    data: Dict[str, Any] = None,
+    **kwargs,
 ) -> PredictionHistory:
     """Save one fully completed final recommendation or module prediction."""
+    payload = {}
+    if data is not None:
+        payload.update(data)
+    payload.update(kwargs)
+
+    # Key mapping adjustments for compatibility
+    if "confidence" in payload and "soil_confidence" not in payload:
+        payload["soil_confidence"] = payload["confidence"]
+    if "input_data" in payload and "soil_image_path" not in payload:
+        payload["soil_image_path"] = payload["input_data"]
+
+    # Filter keys matching database model columns
+    valid_keys = {
+        "user_id",
+        "soil_image_path",
+        "soil_type",
+        "soil_confidence",
+        "nitrogen",
+        "phosphorus",
+        "potassium",
+        "ph",
+        "organic_carbon",
+        "electrical_conductivity",
+        "temperature",
+        "humidity",
+        "soil_health",
+        "soil_health_score",
+        "soil_fertility_status",
+        "nutrient_deficiencies",
+        "recommended_crops",
+        "recommended_fertilizers",
+        "prediction_type",
+    }
+    model_data = {k: v for k, v in payload.items() if k in valid_keys}
+
     defaults = {
         "soil_image_path": "/uploads/default_soil.jpg",
         "soil_type": "Clay Soil",
@@ -35,7 +71,7 @@ def create_prediction_history(
         "recommended_crops": ["Wheat", "Rice", "Cotton"],
         "recommended_fertilizers": ["Urea", "DAP", "MOP"],
     }
-    merged_data = {**defaults, **data}
+    merged_data = {**defaults, **model_data}
     try:
         prediction_history = PredictionHistory(**merged_data)
         db.add(prediction_history)
@@ -100,10 +136,25 @@ def get_prediction_history(
             return top_crop.get("crop")
         return str(top_crop)
 
+    seen = []  # List of tuples: (prediction_type, timestamp_epoch)
+
     # 1. PredictionHistory
     for p in preds:
         top_crop = _get_top_crop(p.recommended_crops)
-        pred_type = p.prediction_type or ("crop" if p.recommended_crops else "soil")
+        raw_pred_type = p.prediction_type or ("crop" if p.recommended_crops else "soil")
+        pred_type = raw_pred_type
+        if raw_pred_type:
+            raw_lower = raw_pred_type.lower()
+            if "soil" in raw_lower:
+                pred_type = "soil"
+            elif "crop" in raw_lower:
+                pred_type = "crop"
+            elif "fertilizer" in raw_lower or "nutrient" in raw_lower:
+                pred_type = "fertilizer"
+            elif "disease" in raw_lower:
+                pred_type = "disease"
+        if p.created_at:
+            seen.append((pred_type, p.created_at.timestamp()))
         
         # Translate values dynamically if language_id matches
         trans_soil_type = translate_text(p.soil_type, language_id)
@@ -118,7 +169,7 @@ def get_prediction_history(
             "id": p.id,
             "history_id": p.id,
             "prediction_type": pred_type,
-            "type": "Crop" if (pred_type == "crop") else ("Soil" if pred_type == "soil" else ("Final" if pred_type == "final" else ("Crop" if p.recommended_crops else "Soil"))),
+            "type": "Crop" if (pred_type == "crop") else ("Soil" if pred_type == "soil" else ("Fertilizer" if pred_type == "fertilizer" else ("Final" if pred_type == "final" else ("Crop" if p.recommended_crops else "Soil")))),
             "prediction_date": p.created_at.isoformat() if p.created_at else None,
             "created_at": p.created_at.isoformat() if p.created_at else None,
             "date": p.created_at.strftime("%b %d, %Y %I:%M %p") if p.created_at else "Just now",
@@ -136,7 +187,25 @@ def get_prediction_history(
 
     # 2. GeneralHistory
     for g in generals:
-        p_type = g.prediction_type
+        raw_p_type = g.prediction_type
+        p_type = raw_p_type
+        if raw_p_type:
+            raw_lower = raw_p_type.lower()
+            if "soil" in raw_lower:
+                p_type = "soil"
+            elif "crop" in raw_lower:
+                p_type = "crop"
+            elif "fertilizer" in raw_lower or "nutrient" in raw_lower:
+                p_type = "fertilizer"
+            elif "disease" in raw_lower:
+                p_type = "disease"
+
+        if g.created_at:
+            ts = g.created_at.timestamp()
+            # Skip if a record of same type is already seen within a 2.0s window
+            if any(p_t == p_type and abs(t_s - ts) <= 2.0 for p_t, t_s in seen):
+                continue
+            seen.append((p_type, ts))
         res = g.prediction_result
         inp = g.input_parameters
         
@@ -144,8 +213,9 @@ def get_prediction_history(
         input_text = "Parameters analyzed"
         
         if p_type == "soil":
-            result_text = res.get("soil_type", "Soil Analysis")
-            input_text = f"Image: {os.path.basename(inp.get('image_path', 'soil.jpg'))}"
+            result_text = res.get("soil_prediction") or res.get("soil_type", "Soil Analysis")
+            img_name = os.path.basename(inp.get('image_path', 'soil.jpg')) if inp.get('image_path') else inp.get('image_name', 'soil.jpg')
+            input_text = f"Image: {img_name}"
         elif p_type == "crop":
             result_text = res.get("recommended_crop") or (_get_top_crop(res.get("recommended_crops")) or "Crop Recommended")
             input_text = f"Soil: {inp.get('soil_type')}, N:{inp.get('nitrogen')} P:{inp.get('phosphorus')} K:{inp.get('potassium')} pH:{inp.get('ph')}"
@@ -187,9 +257,13 @@ def get_prediction_history(
             browser = inp.get("browser", "Chrome")
             ip_addr = inp.get("ip_address", "127.0.0.1")
             duration = res.get("session_duration", "")
-            result_text = f"Logged in from {browser}"
+            action = inp.get("action", "login")
+            if action == "logout":
+                result_text = f"Logged out from {browser}"
+            else:
+                result_text = f"Logged in from {browser}"
             input_text = f"Device: {device} | Browser: {browser} | IP: {ip_addr}"
-            if duration:
+            if duration and duration != "N/A":
                 input_text += f" | Duration: {duration}"
         elif p_type == "notification":
             title = inp.get("title", "Alert")
@@ -205,6 +279,10 @@ def get_prediction_history(
         trans_result = translate_text(result_text, language_id)
         trans_input = translate_text(input_text, language_id)
 
+        # For soil classification, if we stored translated messages, retrieve the soil_type accordingly
+        if p_type == "soil" and "soil_information" in res:
+            trans_result = res["soil_information"].get("soil_name", trans_result)
+        
         combined.append({
             "id": g.id + 10000,
             "history_id": g.id + 10000,
@@ -213,7 +291,7 @@ def get_prediction_history(
             "prediction_date": g.created_at.isoformat() if g.created_at else None,
             "created_at": g.created_at.isoformat() if g.created_at else None,
             "date": g.created_at.strftime("%b %d, %Y %I:%M %p") if g.created_at else "Just now",
-            "soil_type": translate_text(inp.get("soil_type") or inp.get("soiltype") or "Loamy", language_id),
+            "soil_type": res["soil_information"].get("soil_name", "Loamy") if (p_type == "soil" and "soil_information" in res) else translate_text(inp.get("soil_type") or inp.get("soiltype") or "Loamy", language_id),
             "soil_health": "Optimal" if p_type == "soil" else "Healthy",
             "soil_health_score": 100.0,
             "soil_fertility_status": "High Fertility",
@@ -223,6 +301,7 @@ def get_prediction_history(
             "confidence": int(conf_val),
             "input": trans_input,
             "status": "success",
+            "raw": res,
         })
 
     # 3. ChatHistory

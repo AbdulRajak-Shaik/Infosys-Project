@@ -233,6 +233,7 @@ export default function AIChatbot() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [attachedImage, setAttachedImage] = useState<string | null>(null)
   const [isRecording, setIsRecording] = useState(false)
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -532,6 +533,73 @@ export default function AIChatbot() {
         />
       )}
 
+      {/* Mobile Chat History Drawer */}
+      {mobileSidebarOpen && (
+        <div className="fixed inset-0 z-[1100] lg:hidden flex">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setMobileSidebarOpen(false)} />
+          <aside className="relative w-64 bg-surface h-full p-4 flex flex-col gap-4 shadow-2xl animate-slide-in-right z-10 border-r border-border">
+            <div className="flex justify-between items-center pb-2 border-b border-border">
+              <h3 className="font-bold text-text-primary text-xs flex items-center gap-2">
+                <Bot size={14} className="text-green-600" />
+                {t('recentChats')}
+              </h3>
+              <button onClick={() => setMobileSidebarOpen(false)} className="p-1 text-text-muted hover:bg-background rounded-lg"><X size={14} /></button>
+            </div>
+            
+            <Button variant="primary" icon={<Plus size={12} />} onClick={() => { handleNewChat(language); setMobileSidebarOpen(false); }} className="w-full justify-center text-xs py-2">
+              {t('newConversation')}
+            </Button>
+
+            <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
+              {sessions.map(chat => (
+                <div
+                  key={chat.id}
+                  onClick={() => { setActiveSessionId(chat.id); setMobileSidebarOpen(false); }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs transition-all cursor-pointer group ${activeSessionId === chat.id ? 'bg-green-50 text-green-700 font-medium border border-green-200' : 'text-text-secondary hover:bg-background border border-transparent'}`}
+                >
+                  <div className="flex items-center gap-2 overflow-hidden flex-1 mr-1">
+                    <MessageSquare size={13} className={activeSessionId === chat.id ? 'text-green-600' : 'text-text-muted'} />
+                    <div className="truncate text-left">
+                      <p className="truncate text-xs font-semibold">{chat.title === 'New Conversation' ? t('newConversation') : chat.title}</p>
+                      <p className="text-[9px] text-text-muted">{chat.date}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => handleDeleteSession(e, chat.id)}
+                    className="p-1 text-text-muted hover:text-red-500 rounded transition-all"
+                    title="Delete conversation"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <h4 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-2">{t('Suggested')}</h4>
+              <div className="space-y-1">
+                {suggestedQuestions.slice(0, 2).map(q => (
+                  <button key={q} onClick={() => { handleSend(q); setMobileSidebarOpen(false); }} className="w-full text-left px-2 py-1.5 rounded-lg text-[10px] text-text-muted hover:bg-background hover:text-text-secondary transition-colors leading-relaxed truncate">
+                    <Translate text={q} />
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            <button
+              onClick={() => { setShowLangModal(true); setMobileSidebarOpen(false); }}
+              className="p-2.5 bg-green-50 rounded-xl border border-green-200 hover:border-green-400 transition-all flex items-center justify-between text-left group mt-auto"
+            >
+              <div>
+                <p className="text-[11px] font-semibold text-green-700">Language: {language}</p>
+                <p className="text-[9px] text-green-600">{t('Click to switch language')}</p>
+              </div>
+              <Globe size={14} className="text-green-600 group-hover:rotate-12 transition-transform" />
+            </button>
+          </aside>
+        </div>
+      )}
+
       {/* Hidden file inputs */}
       <input type="file" ref={fileInputRef} accept="image/*" className="hidden" onChange={handleImageFileChange} />
       <input type="file" ref={cameraInputRef} accept="image/*" capture="environment" className="hidden" onChange={handleImageFileChange} />
@@ -598,9 +666,15 @@ export default function AIChatbot() {
 
       {/* Main Chat */}
       <div className="flex-1 flex flex-col bg-background">
-        {/* Chat Header */}
         <div className="bg-surface border-b border-border px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="lg:hidden p-1.5 text-text-secondary hover:bg-background rounded-lg transition-colors flex items-center justify-center border border-border"
+              title={t('chatHistory') || 'Chat History'}
+            >
+              <MessageSquare size={16} />
+            </button>
             <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
               <Bot size={18} className="text-white" />
             </div>

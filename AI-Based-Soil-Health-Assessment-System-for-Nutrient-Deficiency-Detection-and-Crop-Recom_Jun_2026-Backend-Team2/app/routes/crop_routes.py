@@ -64,7 +64,7 @@ async def predict_crop(
                     db,
                     user_id=current_user.id,
                     module_name="Crop Recommendation",
-                    prediction_type="crop",
+                    prediction_type="CROP_RECOMMENDATION",
                     input_parameters=request_data,
                     prediction_result={
                         "recommended_crops": result.get("recommended_crops", []),
@@ -78,7 +78,12 @@ async def predict_crop(
                     model_used="CatBoost"
                 )
             except Exception as e:
-                print(f"[ERROR] Failed to save crop prediction history: {e}")
+                import traceback
+                traceback.print_exc()
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Failed to save crop prediction history: {str(e)}"
+                )
 
         return result
     except FileNotFoundError as exc:
