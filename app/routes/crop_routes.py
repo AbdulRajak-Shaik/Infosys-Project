@@ -45,10 +45,13 @@ async def predict_crop(
         if current_user and getattr(current_user, "id", None):
             try:
                 rec_crops = result.get("recommended_crops", [result.get("recommended_crop", "Wheat")])
+                if isinstance(rec_crops, str):
+                    rec_crops = [rec_crops]
                 create_prediction_history(
                     db,
                     {
                         "user_id": current_user.id,
+                        "prediction_type": "crop",
                         "soil_type": request.soil_type,
                         "nitrogen": request.nitrogen,
                         "phosphorus": request.phosphorus,

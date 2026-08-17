@@ -112,6 +112,7 @@ class PredictionHistory(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    prediction_type: Mapped[str] = mapped_column(String(50), nullable=False, server_default="soil")
     soil_image_path: Mapped[str] = mapped_column(String(500), nullable=False)
     soil_type: Mapped[str] = mapped_column(String(100), nullable=False)
     soil_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)

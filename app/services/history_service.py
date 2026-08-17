@@ -13,6 +13,7 @@ def create_prediction_history(
 ) -> PredictionHistory:
     """Save one fully completed final recommendation or module prediction."""
     defaults = {
+        "prediction_type": "soil",
         "soil_image_path": "/uploads/default_soil.jpg",
         "soil_type": "Clay Soil",
         "soil_confidence": 95.0,

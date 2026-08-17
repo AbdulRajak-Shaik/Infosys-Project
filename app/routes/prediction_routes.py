@@ -37,6 +37,7 @@ async def predict_image(
                     db,
                     {
                         "user_id": current_user.id,
+                        "prediction_type": "soil",
                         "soil_image_path": "default_soil.jpg",
                         "soil_type": soil_type,
                         "soil_confidence": 96.5,
@@ -68,6 +69,7 @@ async def predict_image(
                     db,
                     {
                         "user_id": current_user.id,
+                        "prediction_type": "soil",
                         "soil_image_path": str(temp_file_path),
                         "soil_type": result.get("canonical_soil_type", result["soil_type"]),
                         "soil_confidence": result.get("confidence", 95.0),
