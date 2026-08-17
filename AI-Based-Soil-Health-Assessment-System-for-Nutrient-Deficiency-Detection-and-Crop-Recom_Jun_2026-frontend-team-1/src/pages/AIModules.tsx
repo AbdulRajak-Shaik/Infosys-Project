@@ -1343,11 +1343,15 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
           console.warn('Soil image predict note:', e)
         }
       }
-      const payload = {
+      const resolvedSoilType = currentSoilType || (imageFile?.name?.toLowerCase().includes('clay') ? 'Clay Soil' : 'Clay Soil')
+      const payload: any = {
+        soil_type: resolvedSoilType,
         nitrogen: parseFloat(form.N) || 90,
         phosphorus: parseFloat(form.P) || 42,
         potassium: parseFloat(form.K) || 43,
         ph: parseFloat(form.ph) || 6.5,
+        organic_carbon: 0.62,
+        electrical_conductivity: 0.45,
         temperature: weatherData?.temperature || 28.5,
         humidity: weatherData?.humidity || 65,
         rainfall: weatherData?.rainfall || 120,
@@ -1361,7 +1365,6 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
 
       const predictedCrop = res?.recommended_crop || 'Cotton'
       const confidence = res?.confidence || 0.96
-      const resolvedSoilType = currentSoilType || (imageFile?.name?.toLowerCase().includes('clay') ? 'Clay Soil' : 'Clay Soil')
 
       setCropApiResult(res || { recommended_crop: predictedCrop, confidence })
 

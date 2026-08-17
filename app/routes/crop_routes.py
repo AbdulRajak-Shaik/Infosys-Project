@@ -17,15 +17,16 @@ router = APIRouter()
 class CropPredictionRequest(BaseModel):
     """Request model for crop recommendation."""
 
-    soil_type: str = Field(..., description="Type of soil (e.g., 'Clayey', 'Sandy', 'Loamy')")
+    soil_type: str = Field("Clay Soil", description="Type of soil (e.g., 'Clayey', 'Sandy', 'Loamy')")
     nitrogen: float = Field(..., ge=0, description="Nitrogen content (N) in kg/ha")
     phosphorus: float = Field(..., ge=0, description="Phosphorus content (P) in kg/ha")
     potassium: float = Field(..., ge=0, description="Potassium content (K) in kg/ha")
-    ph: float = Field(..., ge=0, le=14, description="Soil pH value (0-14)")
-    organic_carbon: float = Field(..., description="Organic carbon content")
-    electrical_conductivity: float = Field(..., description="Electrical conductivity")
-    temperature: float = Field(..., ge=-50, le=60, description="Temperature in Celsius")
-    humidity: float = Field(..., ge=0, le=100, description="Humidity percentage (0-100)")
+    ph: float = Field(6.5, ge=0, le=14, description="Soil pH value (0-14)")
+    organic_carbon: float = Field(0.5, description="Organic carbon content")
+    electrical_conductivity: float = Field(1.0, description="Electrical conductivity")
+    temperature: float = Field(28.5, ge=-50, le=60, description="Temperature in Celsius")
+    humidity: float = Field(65.0, ge=0, le=100, description="Humidity percentage (0-100)")
+    rainfall: float | None = Field(100.0, description="Rainfall in mm")
 
 
 @router.post("/predict-crop", tags=["Crop Recommendation"])
