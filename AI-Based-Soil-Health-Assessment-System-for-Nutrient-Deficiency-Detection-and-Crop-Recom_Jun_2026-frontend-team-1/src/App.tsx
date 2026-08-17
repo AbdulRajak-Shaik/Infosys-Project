@@ -89,6 +89,9 @@ export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null)
 
   useEffect(() => {
+    // Purge any legacy un-scoped prediction history keys from localStorage
+    localStorage.removeItem('agroai_prediction_history')
+    localStorage.removeItem('agroai_prediction_history_guest')
     if (appState === 'app') {
       getCurrentUser()
         .then(u => {

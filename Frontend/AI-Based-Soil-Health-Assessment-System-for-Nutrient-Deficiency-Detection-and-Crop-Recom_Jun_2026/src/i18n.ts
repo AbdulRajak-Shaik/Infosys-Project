@@ -106,7 +106,16 @@ export function useTranslation() {
   return { t, currentLanguage }
 }
 
+import { useSarvamTranslation } from './services/sarvamClient'
+export { useSarvamTranslation }
+
+export function Translate({ text, mode = 'translate', children }: { text: string; mode?: 'translate' | 'transliterate'; children?: (translated: string) => React.ReactNode }) {
+  const translated = useSarvamTranslation(text, mode)
+  return React.createElement(React.Fragment, null, children ? children(translated) : translated)
+}
+
 export function LanguageRuntime({ children }: { children: ReactNode }) {
   return React.createElement(React.Fragment, null, children)
 }
+
 

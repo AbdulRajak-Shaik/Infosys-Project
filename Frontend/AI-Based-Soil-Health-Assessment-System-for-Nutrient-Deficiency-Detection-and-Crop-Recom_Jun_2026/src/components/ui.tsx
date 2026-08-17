@@ -1,6 +1,6 @@
 import { type ReactNode, type ButtonHTMLAttributes } from 'react'
 import { Search, X } from 'lucide-react'
-import { useTranslation } from '../i18n'
+import { useTranslation, useSarvamTranslation, Translate } from '../i18n'
 
 export interface SearchInputProps {
   value: string
@@ -13,13 +13,14 @@ export interface SearchInputProps {
 }
 
 export function SearchInput({ value, onChange, placeholder, className = '', containerClassName = '', icon, rightElement }: SearchInputProps) {
+  const translatedPlaceholder = useSarvamTranslation(placeholder || '')
   return (
     <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border border-border focus-within:border-text-muted bg-background transition-colors ${containerClassName}`}>
       {icon ? icon : <Search size={16} className="text-text-muted flex-shrink-0" />}
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
+        placeholder={translatedPlaceholder}
         className={`w-full bg-transparent text-sm text-text-primary placeholder-text-muted outline-none border-none focus:ring-0 ${className}`}
       />
       {value && !rightElement && (
@@ -115,19 +116,21 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode
   hint?: string
 }
-export function Input({ label, error, hint, icon, className = '', ...props }: InputProps) {
+export function Input({ label, error, hint, icon, className = '', placeholder, ...props }: InputProps) {
+  const translatedPlaceholder = useSarvamTranslation(placeholder || '')
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      {label && <label className="text-sm font-semibold text-text-primary">{label}{props.required && <span className="text-error ml-1">*</span>}</label>}
+      {label && <label className="text-sm font-semibold text-text-primary"><Translate text={label} />{props.required && <span className="text-error ml-1">*</span>}</label>}
       <div className="relative group">
         {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted group-focus-within:text-primary-600 transition-colors">{icon}</div>}
         <input
+          placeholder={translatedPlaceholder}
           className={`w-full px-3 py-2 rounded-lg border text-sm bg-background placeholder-text-muted transition-all duration-200 outline-none focus:ring-2 focus:border-text-muted focus:ring-text-muted/25 ${icon ? 'pl-9' : ''} ${error ? 'border-error focus:ring-error/20 focus:border-error' : 'border-border hover:border-border'}`}
           {...props}
         />
       </div>
-      {error && <p className="text-xs text-error animate-fade-in">{error}</p>}
-      {hint && !error && <p className="text-xs text-text-muted">{hint}</p>}
+      {error && <p className="text-xs text-error animate-fade-in"><Translate text={error} /></p>}
+      {hint && !error && <p className="text-xs text-text-muted"><Translate text={hint} /></p>}
     </div>
   )
 }
@@ -139,16 +142,22 @@ interface SelectInputProps {
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void
   className?: string
 }
+
+function OptionTranslator({ value, text }: { value: string; text: string }) {
+  const translated = useSarvamTranslation(text)
+  return <option value={value}>{translated}</option>
+}
+
 export function SelectInput({ label, options, value, onChange, className = '' }: SelectInputProps) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
-      {label && <label className="text-sm font-medium text-text-secondary">{label}</label>}
+      {label && <label className="text-sm font-medium text-text-secondary"><Translate text={label} /></label>}
       <select
         value={value}
         onChange={onChange}
         className="w-full px-3 py-2.5 rounded-xl border border-border text-sm bg-background text-text-primary transition-all-smooth hover:border-border appearance-none focus:outline-none focus:border-text-muted focus:ring-2 focus:ring-text-muted/25"
       >
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        {options.map(o => <OptionTranslator key={o.value} value={o.value} text={o.label} />)}
       </select>
     </div>
   )
@@ -200,6 +209,7 @@ export function Breadcrumb({ items, onNavigate }: {items: { label: string; page?
 
 export function Toast({ message, type = 'success', onClose }: { message: string; type?: 'success' | 'error' | 'warning'; onClose: () => void }) {
   const { t } = useTranslation()
+  const translatedMessage = useSarvamTranslation(message)
   const wrapperStyles = {
     success: 'bg-surface border-green-200 text-green-800',
     error:   'bg-surface border-red-200   text-red-700',
@@ -242,7 +252,7 @@ export function Toast({ message, type = 'success', onClose }: { message: string;
           <circle cx="0" cy="6" r="1.8" stroke="#F9A825" fill="none" strokeWidth="1.8" />
         </svg>
       )}
-      <span className="text-sm font-medium">{message}</span>
+      <span className="text-sm font-medium">{translatedMessage}</span>
       <button onClick={onClose} aria-label={t('dismiss')} className="ml-1 opacity-40 hover:opacity-70 transition-opacity">
         <svg width="12" height="12" viewBox="-6 -6 12 12">
           <path d="M -4 -4 L 4 4 M 4 -4 L -4 4" stroke="currentColor" fill="none" strokeWidth="1.8" strokeLinecap="round" />

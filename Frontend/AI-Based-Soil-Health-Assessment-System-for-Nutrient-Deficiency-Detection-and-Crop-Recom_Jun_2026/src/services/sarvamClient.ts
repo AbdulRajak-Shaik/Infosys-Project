@@ -1262,3 +1262,31 @@ export function useSarvamLocation(originalLocation: string): string {
   if (isEnglish) return originalLocation || '';
   return translatedLocation || localVal || originalLocation;
 }
+
+/**
+ * Custom React hook for dynamic Sarvam AI text translation.
+ */
+export function useSarvamTranslation(text: string, mode: 'translate' | 'transliterate' = 'translate'): string {
+  const { currentLanguage } = useLanguage();
+  const [translated, setTranslated] = useState<string>(text || '');
+
+  useEffect(() => {
+    if (!text || currentLanguage === 'en') {
+      setTranslated(text || '');
+      return;
+    }
+    let isMounted = true;
+    translateWithSarvam(text, currentLanguage, mode)
+      .then(res => {
+        if (isMounted && typeof res === 'string' && res) {
+          setTranslated(res);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [text, currentLanguage, mode]);
+
+  return translated || text || '';
+}

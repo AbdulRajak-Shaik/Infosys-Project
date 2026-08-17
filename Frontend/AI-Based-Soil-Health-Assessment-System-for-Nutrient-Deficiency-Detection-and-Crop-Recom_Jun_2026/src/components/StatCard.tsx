@@ -2,8 +2,8 @@ import { type ReactNode } from 'react'
 import { TrendingUp, TrendingDown } from 'lucide-react'
 
 interface StatCardProps {
-  title: string
-  value: string
+  title: ReactNode
+  value: ReactNode
   change?: string
   trend?: 'up' | 'down'
   icon: ReactNode

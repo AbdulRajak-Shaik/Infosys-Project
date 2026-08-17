@@ -1,23 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Leaf, Brain, Cloud, Shield, Users, Sprout, Bug, FlaskConical, Bot, ChevronRight, Star, ArrowRight, CheckCircle2, Zap, Globe, BarChart3, Menu, X } from 'lucide-react'
 import { Button } from '../components/ui'
 import FloatingChatbot from '../components/FloatingChatbot'
 import LanguageSelector from '../components/LanguageSelector'
 import { FEATURES } from '../config'
 import { useTranslation } from '../i18n'
+import { getPlatformStats, type PlatformStats } from '../services/api'
 
 interface LandingPageProps {
   onLogin: () => void
   onRegister: () => void
   onGuestTrial?: () => void
 }
-
-const stats = [
-  { value: '50K+', label: 'Farmers Served' },
-  { value: '98.2%', label: 'AI Accuracy' },
-  { value: '12', label: 'Crop Types' },
-  { value: '24/7', label: 'AI Support' },
-]
 
 const features = [
   { icon: <Leaf size={24} className="text-green-600" />, title: 'soilClassification', desc: 'soilClassificationDesc' },
@@ -28,22 +22,28 @@ const features = [
   { icon: <Cloud size={24} className="text-blue-500" />, title: 'weatherIntelligence', desc: 'weatherIntelligenceDesc' },
 ]
 
-const testimonials = [
-  { name: 'Rajesh Kumar', role: 'roleWheatFarmer', rating: 5, text: 'testimonial1Text' },
-  { name: 'Mohammed Al-Farsi', role: 'roleDatePalmFarmer', rating: 5, text: 'testimonial2Text' },
-]
-
 const faqs = [
   { q: 'faq1Q', a: 'faq1A' },
   { q: 'faq2Q', a: 'faq2A' },
   { q: 'faq3Q', a: 'faq3A' },
 ]
 
+
 export default function LandingPage({ onLogin, onRegister, onGuestTrial }: LandingPageProps) {
   const { t } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
   const handleTrialClick = onGuestTrial ?? onRegister
+
+  // Real platform statistics from backend — no hardcoded values
+  const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null)
+  useEffect(() => {
+    getPlatformStats()
+      .then(s => setPlatformStats(s))
+      .catch(() => setPlatformStats(null))
+  }, [])
+
+  const fmt = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(1).replace('.0', '')}K` : String(n)
 
   return (
     <div className="min-h-screen bg-surface font-['Inter']">
@@ -123,10 +123,10 @@ export default function LandingPage({ onLogin, onRegister, onGuestTrial }: Landi
               <div className="absolute w-48 h-48 rounded-full bg-blue-100 opacity-30 animate-float" style={{ animationDelay: '1.5s', top: '10%', right: '5%' }} />
               <div className="relative z-10 grid grid-cols-2 gap-4">
                 {[
-                  { label: t('modelAccuracy'), value: '98.2%', icon: <Brain size={20} className="text-green-600" />, bg: 'bg-green-50' },
-                  { label: t('cropAnalyses'), value: '2.4M', icon: <Sprout size={20} className="text-blue-600" />, bg: 'bg-blue-50' },
-                  ...(FEATURES.DISEASE_DETECTION ? [{ label: t('diseaseAlerts'), value: '12K', icon: <Bug size={20} className="text-orange-600" />, bg: 'bg-orange-50' }] : [{ label: t('soilAnalyses'), value: '15K', icon: <FlaskConical size={20} className="text-orange-600" />, bg: 'bg-orange-50' }]),
-                  { label: t('totalPredictions'), value: '50K+', icon: <Users size={20} className="text-purple-600" />, bg: 'bg-purple-50' },
+                  { label: t('registeredFarmers') || 'Registered Farmers', value: platformStats ? fmt(platformStats.farmer_count) : '…', icon: <Users size={20} className="text-green-600" />, bg: 'bg-green-50' },
+                  { label: t('totalPredictions') || 'Total Predictions', value: platformStats ? fmt(platformStats.total_predictions) : '…', icon: <Brain size={20} className="text-blue-600" />, bg: 'bg-blue-50' },
+                  { label: t('feedbackReceived') || 'Feedback Received', value: platformStats ? fmt(platformStats.feedback_count) : '…', icon: <Sprout size={20} className="text-orange-600" />, bg: 'bg-orange-50' },
+                  { label: t('languagesSupported') || 'Languages Supported', value: platformStats ? String(platformStats.language_count) : '…', icon: <Globe size={20} className="text-purple-600" />, bg: 'bg-purple-50' },
                 ].map((item, i) => (
                   <div key={i} className={`${item.bg} rounded-2xl p-5 shadow-card border border-white animate-float`} style={{ animationDelay: `${i * 0.5}s` }}>
                     <div className="mb-2">{item.icon}</div>
@@ -140,19 +140,19 @@ export default function LandingPage({ onLogin, onRegister, onGuestTrial }: Landi
         </div>
       </section>
 
-      {/* Stats */}
+      {/* Stats — real DB data only */}
       <section className="py-12 border-y border-border bg-surface">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { value: '50K+', key: 'farmersServed' },
-              { value: '98.2%', key: 'aiAccuracy' },
-              { value: '12', key: 'cropTypes' },
+              { value: platformStats ? platformStats.farmer_count.toLocaleString() : '—', key: 'farmersServed' },
+              { value: platformStats ? platformStats.total_predictions.toLocaleString() : '—', key: 'totalPredictions' },
+              { value: platformStats ? String(platformStats.language_count) : '—', key: 'languagesSupported' },
               { value: '24/7', key: 'aiSupport' },
             ].map(s => (
               <div key={s.key} className="text-center">
                 <p className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(135deg, #2E7D32, #1565C0)' }}>{s.value}</p>
-                <p className="text-sm text-text-muted mt-1 font-medium">{t(s.key)}</p>
+                <p className="text-sm text-text-muted mt-1 font-medium">{t(s.key) || s.key}</p>
               </div>
             ))}
           </div>
@@ -245,35 +245,36 @@ export default function LandingPage({ onLogin, onRegister, onGuestTrial }: Landi
         </div>
       </section>
 
-      {/* Testimonials */}
+      {/* Community / Real Feedback Stats — no fabricated testimonials */}
       <section id="testimonials" className="py-20 bg-surface">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-3xl md:text-4xl font-bold text-text-primary mb-4">{t('trustedByFarmers')}</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((tItem, i) => (
-              <div key={i} className="bg-background rounded-2xl p-6 border border-border hover:shadow-card transition-all-smooth">
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: tItem.rating }).map((_, j) => (
-                    <Star key={j} size={14} fill="#FB8C00" className="text-orange-400" />
-                  ))}
-                </div>
-                <p className="text-text-secondary text-sm leading-relaxed mb-5 italic">"{t(tItem.text) || tItem.text}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-white text-xs font-bold">
-                    {tItem.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm text-text-primary">{t(tItem.name) || tItem.name}</p>
-                    <p className="text-xs text-text-muted">{t(tItem.role) || tItem.role}</p>
-                  </div>
-                </div>
+        <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-text-primary mb-4">{t('trustedByFarmers') || 'Trusted by Farmers'}</h2>
+          <p className="text-text-muted text-lg mb-12">{t('joinTheFarmerCommunity') || 'Join a growing community of farmers using real AI-powered analysis.'}</p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+            <div className="bg-background rounded-2xl p-8 border border-border hover:shadow-card transition-all-smooth text-center">
+              <p className="text-4xl font-bold text-green-700 mb-1">{platformStats ? platformStats.farmer_count.toLocaleString() : '—'}</p>
+              <p className="text-sm text-text-muted font-medium">{t('registeredFarmers') || 'Registered Farmers'}</p>
+            </div>
+            <div className="bg-background rounded-2xl p-8 border border-border hover:shadow-card transition-all-smooth text-center">
+              <p className="text-4xl font-bold text-blue-700 mb-1">{platformStats ? platformStats.total_predictions.toLocaleString() : '—'}</p>
+              <p className="text-sm text-text-muted font-medium">{t('totalPredictions') || 'Total Predictions'}</p>
+            </div>
+            <div className="bg-background rounded-2xl p-8 border border-border hover:shadow-card transition-all-smooth text-center">
+              <div className="flex justify-center gap-0.5 mb-1">
+                {[1,2,3,4,5].map(s => (
+                  <Star key={s} size={20} fill={platformStats && platformStats.avg_rating >= s ? '#FB8C00' : 'none'} className={platformStats && platformStats.avg_rating >= s ? 'text-orange-400' : 'text-gray-300'} />
+                ))}
               </div>
-            ))}
+              <p className="text-4xl font-bold text-orange-600 mb-1">
+                {platformStats && platformStats.avg_rating > 0 ? platformStats.avg_rating.toFixed(1) : '—'}
+              </p>
+              <p className="text-sm text-text-muted font-medium">{t('averageRating') || 'Average Rating'}</p>
+            </div>
           </div>
+          <p className="text-sm text-text-muted mt-8 italic">{t('realDataNote') || 'All numbers are real-time counts from our platform database.'}</p>
         </div>
       </section>
+
 
       {/* FAQ */}
       <section id="faq" className="py-20 bg-background">
