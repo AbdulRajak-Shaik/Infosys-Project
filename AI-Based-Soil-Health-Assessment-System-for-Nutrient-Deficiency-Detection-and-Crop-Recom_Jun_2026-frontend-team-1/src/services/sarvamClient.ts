@@ -1147,9 +1147,11 @@ export async function translateWithSarvam(
     return localVal;
   }
 
-  // 2. Call Sarvam AI backend service
+  // 2. Call Sarvam AI backend service (with 3s timeout to prevent UI from hanging)
   try {
     const endpoint = mode === 'transliterate' ? '/api/transliterate/' : '/api/translate/';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
     const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1160,7 +1162,9 @@ export async function translateWithSarvam(
         source_language_code: 'en-IN',
         target_language_code: sarvamCode,
       }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (response.ok) {
       const data = await response.json();

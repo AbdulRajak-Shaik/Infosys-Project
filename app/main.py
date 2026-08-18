@@ -120,11 +120,24 @@ if os.path.exists(FRONTEND_DIST):
     if os.path.exists(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="static-assets")
 
+    # List of all API path prefixes that must NOT be handled by SPA
+    API_PREFIXES = (
+        "docs", "redoc", "openapi.json",
+        "login", "register", "admin", "refresh",
+        "feedback", "history", "predict", "recommend-crop", "predict-crop",
+        "predict-image", "nutrient", "soil", "crop", "fertilizer",
+        "chatbot", "chat", "task", "analytics", "weather",
+        "language", "platform-stats", "api", "notifications",
+        "profile", "change-password", "forgot-password",
+    )
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
-        # Do not intercept API docs or schema
-        if full_path.startswith("docs") or full_path.startswith("redoc") or full_path.startswith("openapi.json"):
-            return None
+        from fastapi.responses import JSONResponse, RedirectResponse
+        # Do not intercept known API routes
+        if any(full_path == p or full_path.startswith(p + '/') for p in API_PREFIXES):
+            # Redirect to the path with trailing slash so the registered API route handles it
+            return RedirectResponse(url=f"/{full_path}/", status_code=307)
         target_file = os.path.join(FRONTEND_DIST, full_path)
         if full_path and os.path.isfile(target_file):
             return FileResponse(target_file)

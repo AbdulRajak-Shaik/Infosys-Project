@@ -192,7 +192,7 @@ def translate_text_by_code(text: str, target_lang_code: str) -> str:
                 },
                 method="POST",
             )
-            with urlopen(request, timeout=5) as response:
+            with urlopen(request, timeout=2) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 translated = res_data.get("translated_text")
                 if isinstance(translated, str) and translated.strip():
@@ -249,7 +249,7 @@ def transliterate_text(text: str, target_lang_code: str) -> str:
                 },
                 method="POST",
             )
-            with urlopen(request, timeout=5) as response:
+            with urlopen(request, timeout=2) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
                 transliterated = res_data.get("transliterated_text")
                 if isinstance(transliterated, str) and transliterated.strip():
