@@ -1152,7 +1152,12 @@ export async function translateWithSarvam(
     const endpoint = mode === 'transliterate' ? '/api/transliterate/' : '/api/translate/';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
-    const response = await fetch(`http://127.0.0.1:8000${endpoint}`, {
+    const apiBase = import.meta.env.VITE_API_BASE_URL
+      ? (import.meta.env.VITE_API_BASE_URL as string).replace(/\/$/, '')
+      : (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+          ? ''
+          : 'http://127.0.0.1:8000');
+    const response = await fetch(`${apiBase}${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

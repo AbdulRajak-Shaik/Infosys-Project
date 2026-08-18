@@ -3,7 +3,11 @@
  * Connects React UI to FastAPI Backend at http://127.0.0.1:8000
  */
 
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)
+  ? (import.meta.env.VITE_API_BASE_URL as string).replace(/\/$/, '')
+  : (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+      ? ''
+      : 'http://127.0.0.1:8000');
 
 function getAuthHeaders(isFormData = false): Record<string, string> {
   const headers: Record<string, string> = {};
@@ -1144,9 +1148,8 @@ export interface PlatformStats {
 
 export async function getPlatformStats(): Promise<PlatformStats> {
   // This endpoint is public — try direct fetch then request()
-  const BASE = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/+$/, '');
   try {
-    const res = await fetch(`${BASE}/platform-stats`);
+    const res = await fetch(`${BASE_URL}/platform-stats`);
     if (res.ok) {
       return (await res.json()) as PlatformStats;
     }

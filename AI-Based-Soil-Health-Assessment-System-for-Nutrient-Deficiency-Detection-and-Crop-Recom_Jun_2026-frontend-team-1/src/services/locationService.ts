@@ -26,7 +26,13 @@ export interface LocationResult {
 // ── Internal helpers ──────────────────────────────────────────────────
 
 function getApiBase(): string {
-  return (import.meta.env.VITE_API_BASE_URL as string | undefined) || 'http://127.0.0.1:8000'
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return (import.meta.env.VITE_API_BASE_URL as string).replace(/\/$/, '')
+  }
+  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return ''
+  }
+  return 'http://127.0.0.1:8000'
 }
 
 function getAuthHeader(): Record<string, string> {
