@@ -237,11 +237,11 @@ class PredictionHistorySummaryResponse(BaseModel):
 
     history_id: int
     id: int
+    prediction_type: str = "soil"
+    type: str = "Soil"
     prediction_date: Any = None
     created_at: Any = None
     date: str | None = None
-    type: str | None = None
-    prediction_type: str | None = None
     soil_type: str
     soil_health: str
     soil_health_score: float
@@ -249,9 +249,9 @@ class PredictionHistorySummaryResponse(BaseModel):
     top_crop: str | None = None
     predicted_crop: str | None = None
     result: str | None = None
-    confidence: float | None = None
+    confidence: float | int | None = None
     input: str | None = None
-    status: str | None = "success"
+    status: str = "success"
 
     model_config = ConfigDict(extra="allow")
 

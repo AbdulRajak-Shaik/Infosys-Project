@@ -346,18 +346,19 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
 
                 const pConf = Math.round(p.confidence ? (p.confidence > 1 ? p.confidence : p.confidence * 100) : 95)
                 const pDate = p.created_at ? formatLocalizedDate(p.created_at, currentLanguage) : formatLocalizedDate(Date.now(), currentLanguage)
+
                 return (
                   <div key={p.id || idx} className="flex items-center gap-3 p-3 rounded-xl bg-background hover:bg-background transition-colors">
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold ${pTypeRaw === 'crop' ? 'bg-green-100 text-green-700' : pTypeRaw === 'soil' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                       {pTypeRaw[0].toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary truncate"><Translate text={pResultLabel} /></p>
-                      <p className="text-xs text-text-muted"><Translate text={pDate} /> · <Translate text={pTypeLabel} /></p>
+                      <p className="text-sm font-medium text-text-primary truncate">{pResultLabel}</p>
+                      <p className="text-xs text-text-muted">{pDate} · {pTypeLabel}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-text-secondary">{pConf}%</p>
-                      <Badge color="green"><Translate text="Success" /></Badge>
+                      <Badge color="green">{t('success') || 'Success'}</Badge>
                     </div>
                   </div>
                 )
@@ -397,8 +398,8 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
                   <div key={n.id} className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-lg bg-background flex items-center justify-center flex-shrink-0">{n.icon}</div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-text-primary"><Translate text={titleText} /></p>
-                      <p className="text-xs text-text-muted"><Translate text={descText} /> · <Translate text={timeText} /></p>
+                      <p className="text-sm font-medium text-text-primary">{titleText}</p>
+                      <p className="text-xs text-text-muted">{descText} · {timeText}</p>
                     </div>
                   </div>
                 )

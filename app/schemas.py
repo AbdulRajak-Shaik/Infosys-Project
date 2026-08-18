@@ -198,12 +198,21 @@ class PredictionHistorySummaryResponse(BaseModel):
 
     history_id: int
     id: int
-    prediction_date: datetime
+    prediction_type: str = "soil"
+    type: str = "Soil"
+    prediction_date: Any = None
+    created_at: Any = None
+    date: str | None = None
     soil_type: str
     soil_health: str
     soil_health_score: float
     soil_fertility_status: str
-    top_crop: str | None
+    top_crop: str | None = None
+    predicted_crop: str | None = None
+    result: str | None = None
+    confidence: float | int | None = None
+    input: str | None = None
+    status: str = "success"
 
 
 class PredictionHistoryDetailResponse(BaseModel):
