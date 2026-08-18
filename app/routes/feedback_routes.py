@@ -12,6 +12,7 @@ router = APIRouter(
 )
 
 
+@router.post("", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED, include_in_schema=False)
 @router.post(
     "/",
     response_model=FeedbackResponse,
@@ -32,6 +33,7 @@ def submit_feedback(
     return create_feedback(db, new_feedback)
 
 
+@router.get("", response_model=list[FeedbackResponse], include_in_schema=False)
 @router.get(
     "/",
     response_model=list[FeedbackResponse],

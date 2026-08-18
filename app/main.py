@@ -104,11 +104,51 @@ app.include_router(language_router)
 app.include_router(weather_router)
 
 
+@app.get("/platform-stats", tags=["Public"])
+def platform_stats():
+    """
+    Public endpoint — no authentication required.
+    Returns real aggregate platform metrics from the database.
+    Used by the Landing Page and About page to display actual numbers.
+    """
+    from sqlalchemy import func
+    from app.database import SessionLocal
+    from app.models import PredictionHistory, Feedback, User, UserRole, Language
+    db = SessionLocal()
+    try:
+        total_users: int = db.query(func.count(User.id)).scalar() or 0
+        farmer_count: int = db.query(User).filter(User.role == UserRole.FARMER.value).count()
+        total_predictions: int = db.query(func.count(PredictionHistory.id)).scalar() or 0
+        feedback_count: int = db.query(func.count(Feedback.id)).scalar() or 0
+        avg_rating_raw = db.query(func.avg(Feedback.rating)).scalar()
+        avg_rating: float = round(float(avg_rating_raw), 1) if avg_rating_raw is not None else 0.0
+        language_count: int = db.query(func.count(Language.id)).scalar() or 0
+        return {
+            "total_users": total_users,
+            "farmer_count": farmer_count,
+            "total_predictions": total_predictions,
+            "feedback_count": feedback_count,
+            "avg_rating": avg_rating,
+            "language_count": language_count,
+        }
+    except Exception as exc:
+        print(f"Platform stats error: {exc}")
+        return {
+            "total_users": 0,
+            "farmer_count": 0,
+            "total_predictions": 0,
+            "feedback_count": 0,
+            "avg_rating": 0.0,
+            "language_count": 0,
+        }
+    finally:
+        db.close()
+
 
 # ── Unified Fullstack Static File & SPA Serving ───────────────
 import os
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIST = os.path.join(BASE_DIR, "dist")
@@ -133,11 +173,10 @@ if os.path.exists(FRONTEND_DIST):
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
-        from fastapi.responses import JSONResponse, RedirectResponse
-        # Do not intercept known API routes
-        if any(full_path == p or full_path.startswith(p + '/') for p in API_PREFIXES):
-            # Redirect to the path with trailing slash so the registered API route handles it
-            return RedirectResponse(url=f"/{full_path}/", status_code=307)
+        # Do not intercept known API routes - let them return 404 JSON if not matched
+        clean_path = full_path.strip("/")
+        if any(clean_path == p or clean_path.startswith(p + '/') for p in API_PREFIXES):
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
         target_file = os.path.join(FRONTEND_DIST, full_path)
         if full_path and os.path.isfile(target_file):
             return FileResponse(target_file)

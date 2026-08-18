@@ -2366,7 +2366,7 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
         date: f.created_at ? new Date(f.created_at).toLocaleDateString() : 'Recent',
         category: f.category || 'General',
         rating: f.rating || 5,
-        comment: f.comment,
+        comment: f.comment || '',
         adminResponse: f.admin_response || '',
         isResolved: Boolean(f.is_resolved),
         helpfulCount: 0
@@ -2374,9 +2374,9 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
     })
 
     const filteredFeedback = feedbackList.filter(f => 
-      f.user.toLowerCase().includes(search.toLowerCase()) || 
-      f.comment.toLowerCase().includes(search.toLowerCase()) || 
-      f.category.toLowerCase().includes(search.toLowerCase())
+      (f.user || '').toLowerCase().includes(search.toLowerCase()) || 
+      (f.comment || '').toLowerCase().includes(search.toLowerCase()) || 
+      (f.category || '').toLowerCase().includes(search.toLowerCase())
     )
 
     const toggleReply = (id: any) => setAdminReplyState(prev => ({ ...prev, [id]: !prev[id] }))
@@ -2640,7 +2640,8 @@ export function Feedback({ role, onNavigate }: { role?: string, onNavigate?: (pa
               } catch {}
 
               try {
-                await submitFeedback(rating, comment || 'Great platform!')
+                await submitFeedback(rating, comment || 'Great platform!', category)
+                fetchFeedbackData()
               } catch (e) {
                 console.warn('Feedback submit note:', e)
               }

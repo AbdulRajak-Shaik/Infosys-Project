@@ -397,6 +397,7 @@ class FeedbackCreate(BaseModel):
 
     rating: int = Field(..., ge=1, le=5)
     comment: str = Field(..., min_length=1, max_length=500)
+    category: str | None = None
 
 
 class FeedbackResponse(BaseModel):
