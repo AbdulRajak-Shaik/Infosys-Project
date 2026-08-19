@@ -16,41 +16,55 @@ except ImportError:
 
 
 class GeminiService:
-    """Generate chatbot responses with automatic API-key and model fallback."""
+    """Generate chatbot responses using Google Gemini AI with automatic key rotation and model fallback."""
 
-    # Try these models in order — most recent first
-    _MODELS = (
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-8b",
-        "gemini-1.5-pro",
-    )
+    _PRIMARY_MODEL = "gemini-2.5-flash"
+    _FALLBACK_MODELS = ("gemini-2.5-pro", "gemini-2.0-flash", "gemini-1.5-flash")
+    _TIMEOUT_SECS = 12
 
-    # Hard timeout per individual Gemini API call (seconds)
-    _CALL_TIMEOUT_SECS = 8
-
-    def _try_model(self, api_key: str, model_name: str, prompt: str) -> str | None:
-        """Attempt a single generate_content call; return text or None on failure."""
+    def _call_gemini_api(self, api_key: str, model_name: str, prompt: str) -> str | None:
+        """Direct REST API call to Gemini with timeout and clean candidate extraction."""
         try:
-            if genai is None:
-                return None
-            try:
-                from google.genai import types as _t
-                http_opts = _t.HttpOptions(api_version="v1beta")
-                client = genai.Client(api_key=api_key, http_options=http_opts)
-            except Exception:
-                client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(model=model_name, contents=prompt)
-            text = getattr(response, "text", None)
-            return text if text else None
+            import requests
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "maxOutputTokens": 1024,
+                }
+            }
+            res = requests.post(url, json=payload, timeout=self._TIMEOUT_SECS)
+            if res.status_code == 200:
+                data = res.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts and "text" in parts[0]:
+                        text = parts[0]["text"].strip()
+                        if text:
+                            return text
+            else:
+                print(f"[Gemini REST] {model_name} returned status {res.status_code}")
         except Exception as exc:
-            print(f"[Gemini] {model_name}: {str(exc)[:140]}")
-            return None
+            print(f"[Gemini REST] {model_name} error: {exc}")
+
+        # Try SDK as secondary fallback
+        if genai is not None:
+            try:
+                client = genai.Client(api_key=api_key)
+                response = client.models.generate_content(model=model_name, contents=prompt)
+                text = getattr(response, "text", None)
+                if text and text.strip():
+                    return text.strip()
+            except Exception as exc:
+                print(f"[Gemini SDK] {model_name} error: {exc}")
+
+        return None
 
     def generate_response(self, prompt: str, language_id: int | None = None) -> str:
-        """Return Gemini's generated text with parallel model attempts; fall back to local response."""
-        del language_id  # language is embedded in prompt
+        """Return Gemini's generated response using active models and configured keys."""
+        del language_id
 
         api_keys = [
             k for k in (
@@ -62,33 +76,24 @@ class GeminiService:
             ) if k and k.strip()
         ]
 
-        if genai is not None and api_keys:
-            import concurrent.futures
-            api_key = api_keys[0]  # use first key only; all keys use same API access level
+        if api_keys:
+            # 1. Try primary fast model (gemini-2.5-flash) across all keys
+            for key in api_keys:
+                result = self._call_gemini_api(key, self._PRIMARY_MODEL, prompt)
+                if result:
+                    print(f"[Gemini] [OK] Successfully generated response via {self._PRIMARY_MODEL}")
+                    return result
 
-            # Submit all model calls IN PARALLEL — total wait = slowest single call, not sum
-            with concurrent.futures.ThreadPoolExecutor(max_workers=len(self._MODELS)) as pool:
-                futures = {
-                    pool.submit(self._try_model, api_key, model_name, prompt): model_name
-                    for model_name in self._MODELS
-                }
-                try:
-                    for future in concurrent.futures.as_completed(futures, timeout=self._CALL_TIMEOUT_SECS):
-                        model_name = futures[future]
-                        try:
-                            result = future.result()
-                            if result:
-                                print(f"[Gemini] ✓ {model_name} responded successfully")
-                                # Cancel any remaining futures to free resources
-                                for f in futures:
-                                    f.cancel()
-                                return result
-                        except Exception as exc:
-                            print(f"[Gemini] {model_name}: {exc}")
-                except concurrent.futures.TimeoutError:
-                    print(f"[Gemini] All models timed out after {self._CALL_TIMEOUT_SECS}s — using local fallback")
+            # 2. Try fallback models if primary failed
+            for fallback_model in self._FALLBACK_MODELS:
+                for key in api_keys:
+                    result = self._call_gemini_api(key, fallback_model, prompt)
+                    if result:
+                        print(f"[Gemini] [OK] Successfully generated response via {fallback_model}")
+                        return result
 
-        # All Gemini attempts failed — serve local agriculture knowledge immediately
+        # 3. All external attempts exhausted — serve rich local agricultural knowledge
+        print("[Gemini] Fallback to local agricultural knowledge engine")
         return _local_agriculture_response(prompt)
 
 

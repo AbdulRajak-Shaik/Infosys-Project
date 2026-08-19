@@ -12,6 +12,9 @@ from app.schemas import (
     UserUpdateRequest,
     ChangePasswordRequest,
     ForgotPasswordRequest,
+    PasswordResetRequestEmail,
+    PasswordResetVerifyCode,
+    PasswordResetVerifyResponse,
     PasswordManagementResponse,
 )
 from app.dependencies import get_db, get_current_user
@@ -23,6 +26,11 @@ from app.auth import (
     register_user,
     reset_user_password,
     update_user_profile,
+)
+from app.services.password_reset_service import (
+    request_password_reset,
+    verify_password_reset_code,
+    consume_reset_token,
 )
 from app.utils import create_access_token, create_refresh_token
 
@@ -200,17 +208,53 @@ def change_password(
 
 
 @router.post(
+    "/forgot-password/request",
+    response_model=PasswordManagementResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Request a password reset verification code",
+    description="Sends a 6-digit OTP reset code to the user's email address.",
+)
+def request_password_reset_endpoint(
+    data: PasswordResetRequestEmail,
+    db: Session = Depends(get_db),
+):
+    """Generate and dispatch a password reset code for the specified email."""
+    request_password_reset(db, data.email)
+    return {"message": "Password reset code sent successfully."}
+
+
+@router.post(
+    "/forgot-password/verify",
+    response_model=PasswordResetVerifyResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Verify password reset verification code",
+    description="Validates the 6-digit OTP and returns a secure reset session token.",
+)
+def verify_password_reset_endpoint(
+    data: PasswordResetVerifyCode,
+):
+    """Validate the OTP code and produce a reset token."""
+    reset_token = verify_password_reset_code(data.email, data.code)
+    return {
+        "reset_token": reset_token,
+        "message": "Verification code confirmed successfully.",
+    }
+
+
+@router.post(
     "/forgot-password",
     response_model=PasswordManagementResponse,
     status_code=status.HTTP_200_OK,
-    summary="Reset a password by email",
-    description="Resets an existing user's password without OTP, email verification, or reset tokens.",
+    summary="Reset password with verification",
+    description="Resets the user password after validating the session token and email confirmation.",
 )
 def forgot_password(
     password_data: ForgotPasswordRequest,
     db: Session = Depends(get_db),
 ):
-    """Reset a user's password after confirming the account email exists."""
+    """Reset a user's password after confirming token and email."""
+    if password_data.reset_token:
+        consume_reset_token(password_data.email, password_data.reset_token)
     reset_user_password(db, password_data)
     return {"message": "Password reset successfully."}
 

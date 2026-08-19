@@ -112,10 +112,28 @@ class ChangePasswordRequest(BaseModel):
         return _validate_password_complexity(value)
 
 
+class PasswordResetRequestEmail(BaseModel):
+    """Payload for requesting an OTP password reset code."""
+    email: EmailStr
+
+
+class PasswordResetVerifyCode(BaseModel):
+    """Payload for verifying an OTP password reset code."""
+    email: EmailStr
+    code: str
+
+
+class PasswordResetVerifyResponse(BaseModel):
+    """Response returned when an OTP code is successfully verified."""
+    reset_token: str
+    message: str = "Verification code confirmed successfully."
+
+
 class ForgotPasswordRequest(BaseModel):
     """Payload for resetting a password by email."""
 
     email: EmailStr
+    reset_token: str | None = None
     new_password: str = Field(..., description="New password meeting the registration password rules.")
     confirm_password: str
 
