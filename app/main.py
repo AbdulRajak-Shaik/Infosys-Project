@@ -32,7 +32,8 @@ try:
     with engine.connect() as conn:
         for col_def in [
             "ALTER TABLE feedback ADD COLUMN admin_response VARCHAR(500)",
-            "ALTER TABLE feedback ADD COLUMN is_resolved BOOLEAN DEFAULT FALSE"
+            "ALTER TABLE feedback ADD COLUMN is_resolved BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE prediction_history ADD COLUMN prediction_type VARCHAR(50) DEFAULT 'soil'"
         ]:
             try:
                 conn.execute(text(col_def))

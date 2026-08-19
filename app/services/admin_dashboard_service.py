@@ -136,12 +136,19 @@ def _parse_json_list(val: object) -> list:
     if isinstance(val, list):
         return val
     if isinstance(val, str):
+        val_str = val.strip()
+        if not val_str:
+            return []
         try:
-            parsed = json.loads(val)
+            parsed = json.loads(val_str)
             if isinstance(parsed, list):
                 return parsed
+            if isinstance(parsed, str) and parsed.strip():
+                return [parsed.strip()]
         except Exception:
-            pass
+            if "," in val_str:
+                return [c.strip() for c in val_str.split(",") if c.strip()]
+            return [val_str]
     return []
 
 
@@ -153,16 +160,20 @@ def get_dashboard_insights(db: Session) -> dict[str, object]:
     nutrient_counts = Counter()
 
     for record in prediction_history:
-        if record.soil_type:
+        if getattr(record, "soil_type", None):
             soil_counts[record.soil_type] += 1
 
-        crops = _parse_json_list(record.recommended_crops)
+        crops = _parse_json_list(getattr(record, "recommended_crops", None))
         for crop in crops:
-            crop_counts[_normalize_chart_value(crop)] += 1
+            c_name = _normalize_chart_value(crop)
+            if c_name:
+                crop_counts[c_name] += 1
 
-        deficiencies = _parse_json_list(record.nutrient_deficiencies)
+        deficiencies = _parse_json_list(getattr(record, "nutrient_deficiencies", None))
         for deficiency in deficiencies:
-            nutrient_counts[_normalize_chart_value(deficiency)] += 1
+            d_name = _normalize_chart_value(deficiency)
+            if d_name:
+                nutrient_counts[d_name] += 1
 
     soil_type_distribution = [
         {"name": name, "value": count}
