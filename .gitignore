@@ -5,3 +5,6 @@ __pycache__/
 test.db
 reports/
 .pytest_cache/
+Project-Presentation-PPT/
+Project-Presentarion-PPT/
+*.pptx
