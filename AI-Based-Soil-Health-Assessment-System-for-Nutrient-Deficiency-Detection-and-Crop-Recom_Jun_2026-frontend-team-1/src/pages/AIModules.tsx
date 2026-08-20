@@ -657,56 +657,85 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
     </div>,
 
     // Card 2 — Recommended Crop
-    <div key="crop" className="bg-surface rounded-2xl shadow-card border border-l-4 border-green-500 p-5 animate-fade-in" style={{ borderLeftWidth: 4 }}>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
-            <Sprout size={16} className="text-white" />
-          </div>
-          <h4 className="font-bold text-text-primary">{t('recommendedCrop')}</h4>
-        </div>
-        <div className="flex items-center gap-1.5 bg-green-100 px-3 py-1 rounded-full">
-          <CheckCircle2 size={12} className="text-green-600" />
-          <span className="text-xs font-bold text-green-700">96 / 100 Match</span>
-        </div>
-      </div>
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-16 h-16 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-4xl">
-          🌱
-        </div>
-        <div>
-          <h3 className="text-2xl font-bold text-text-primary">{t(apiResult?.recommended_crop || 'Cotton')}</h3>
-          <p className="text-sm text-text-muted">Gossypium hirsutum</p>
-          <Badge color="green">{t('excellentMatch')}</Badge>
-        </div>
-      </div>
-
-      <div className="mt-5 border-t border-border pt-4">
-        <h4 className="text-xs font-bold text-text-primary uppercase tracking-wide mb-3">{t("top5RecommendedCrops")}</h4>
-        <div className="space-y-2">
-          {[
-            { rank: '#1', name: t('Cotton'), score: 100, match: t('excellentMatch'), color: 'bg-green-600' },
-            { rank: '#2', name: t('Soybean'), score: 94, match: 'Very Good Match', color: 'bg-green-500' },
-            { rank: '#3', name: t('Wheat'), score: 79, match: 'Good Match', color: 'bg-emerald-500' },
-            { rank: '#4', name: t('Sugarcane'), score: 73, match: 'Moderate Match', color: 'bg-amber-500' },
-            { rank: '#5', name: t('Maize'), score: 55, match: 'Suitable Match', color: 'bg-orange-500' },
-          ].map(c => (
-            <div key={c.rank} className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border text-xs">
-              <div className="flex items-center gap-3">
-                <span className="font-bold text-green-700 w-8">{c.rank}</span>
-                <span className="font-semibold text-text-primary">{c.name}</span>
+    (() => {
+      // Use API response crops; fall back gracefully if not available
+      const apiCrops: Array<{ crop: string; score?: number }> = Array.isArray(apiResult?.recommended_crops)
+        ? apiResult.recommended_crops.map((c: any) => typeof c === 'string' ? { crop: c } : c)
+        : []
+      const topCropName = apiCrops[0]?.crop || apiResult?.recommended_crop || 'Cotton'
+      const topScore = Math.round(apiCrops[0]?.score ?? 96)
+      const SCORE_COLORS = ['bg-green-600', 'bg-green-500', 'bg-emerald-500', 'bg-amber-500', 'bg-orange-500']
+      const MATCH_LABELS = ['Excellent Match', 'Very Good Match', 'Good Match', 'Moderate Match', 'Suitable Match']
+      return (
+        <div key="crop" className="bg-surface rounded-2xl shadow-card border border-l-4 border-green-500 p-5 animate-fade-in" style={{ borderLeftWidth: 4 }}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
+                <Sprout size={16} className="text-white" />
               </div>
-              <div className="flex items-center gap-3 w-36">
-                <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${c.color}`} style={{ width: `${c.score}%` }} />
-                </div>
-                <span className="font-bold text-text-secondary w-12 text-right">{c.score}/100</span>
-              </div>
+              <h4 className="font-bold text-text-primary">{t('recommendedCrop')}</h4>
             </div>
-          ))}
+            <div className="flex items-center gap-1.5 bg-green-100 px-3 py-1 rounded-full">
+              <CheckCircle2 size={12} className="text-green-600" />
+              <span className="text-xs font-bold text-green-700">{topScore} / 100 Match</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-16 h-16 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-4xl">
+              🌱
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-text-primary">{t(topCropName)}</h3>
+              <p className="text-sm text-text-muted">{t('aiRecommended') || 'AI Recommended'}</p>
+              <Badge color="green">{topScore >= 80 ? t('excellentMatch') : topScore >= 60 ? 'Good Match' : 'Moderate Match'}</Badge>
+            </div>
+          </div>
+          <div className="mt-5 border-t border-border pt-4">
+            <h4 className="text-xs font-bold text-text-primary uppercase tracking-wide mb-3">{t("top5RecommendedCrops")}</h4>
+            <div className="space-y-2">
+              {apiCrops.length > 0 ? apiCrops.map((c, idx) => {
+                const score = Math.round(c.score ?? (100 - idx * 12))
+                const color = SCORE_COLORS[idx] || 'bg-gray-400'
+                const matchLabel = MATCH_LABELS[idx] || 'Suitable Match'
+                return (
+                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className="font-bold text-green-700 w-8">#{idx + 1}</span>
+                      <span className="font-semibold text-text-primary">{t(c.crop) || c.crop}</span>
+                    </div>
+                    <div className="flex items-center gap-3 w-36">
+                      <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full ${color}`} style={{ width: `${score}%` }} />
+                      </div>
+                      <span className="font-bold text-text-secondary w-16 text-right">{score}/100</span>
+                    </div>
+                  </div>
+                )
+              }) : [
+                { rank: '#1', name: t('Cotton'), score: 100, color: 'bg-green-600' },
+                { rank: '#2', name: t('Soybean'), score: 94, color: 'bg-green-500' },
+                { rank: '#3', name: t('Wheat'), score: 79, color: 'bg-emerald-500' },
+                { rank: '#4', name: t('Sugarcane'), score: 73, color: 'bg-amber-500' },
+                { rank: '#5', name: t('Maize'), score: 55, color: 'bg-orange-500' },
+              ].map(c => (
+                <div key={c.rank} className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border text-xs">
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-green-700 w-8">{c.rank}</span>
+                    <span className="font-semibold text-text-primary">{c.name}</span>
+                  </div>
+                  <div className="flex items-center gap-3 w-36">
+                    <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${c.color}`} style={{ width: `${c.score}%` }} />
+                    </div>
+                    <span className="font-bold text-text-secondary w-16 text-right">{c.score}/100</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>,
+      )
+    })(),
 
     // Card 3 — Fertilizer Advisory Schedule
     (() => {
