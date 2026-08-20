@@ -35,7 +35,7 @@ Write-Host "[2/2] Starting Frontend at http://localhost:5173 ..." -ForegroundCol
 Start-Process powershell -ArgumentList @(
     "-NoExit",
     "-Command",
-    "Set-Location 'C:\agroscan-fe'; Write-Host 'Frontend starting...' -ForegroundColor Green; npm run dev"
+    "Set-Location '$ROOT\frontend'; Write-Host 'Frontend starting...' -ForegroundColor Green; npm run dev"
 ) -WindowStyle Normal
 
 Write-Host ""

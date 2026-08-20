@@ -1,7 +1,90 @@
-.env
-venv/
+# ============================================================
+# AgroAI — .gitignore
+# ============================================================
+
+# ---------- Python ----------
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist-info/
+.eggs/
+build/
+
+# ---------- Virtual Environments ----------
+venv/
+.venv/
+env/
+ENV/
+Backend/venv/
+
+# ---------- Environment / Secrets ----------
+.env
+.env.local
+.env.*.local
+
+# ---------- Databases ----------
+# Note: soil_health.db at root is kept for Render (SQLite deployment)
+# All other .db files are excluded
+Backend/*.db
+AI-Based-Soil-Health-Assessment-System-for-Nutrient-Deficiency-Detection-and-Crop-Recom_Jun_2026-Backend-Team2/**/*.db
+*.db-journal
+*.db-shm
+*.db-wal
 test.db
+
+# ---------- Logs ----------
+*.log
+logs/
 reports/
+
+# ---------- Node / Frontend ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ---------- Frontend Build (keep dist/ — Render serves it) ----------
+# dist/ is intentionally tracked for Render deployment
+
+# ---------- Testing ----------
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+
+# ---------- IDEs ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+
+# ---------- Uploads (runtime-generated) ----------
+app/uploads/*
+!app/uploads/.gitkeep
+
+# ---------- Cache ----------
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# ---------- Jupyter ----------
+.ipynb_checkpoints/
+
+# ---------- Celery ----------
+celerybeat-schedule
+celerybeat.pid
+
+# ---------- Misc ----------
+*.bak
+*.tmp
+*.temp
+scratch/

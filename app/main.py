@@ -51,14 +51,14 @@ except Exception as exc:
 
 # Seed default database accounts and languages
 try:
-    from seed_users import seed_users
+    from app.seed_users import seed_users
     seed_users()
 except Exception as exc:
     print(f"User seeding note: {exc}")
 
 app = FastAPI(
-    title="User Authentication API",
-    description="Production-ready FastAPI backend with PostgreSQL, security best-practices, Alembic support, image prediction, and crop recommendation.",
+    title="AgroAI — Soil Health Assessment Platform",
+    description="Fullstack agricultural intelligence platform: soil classification, crop recommendation, nutrient analysis, fertilizer advisory, multilingual AI chatbot, and weather analytics.",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
@@ -160,7 +160,7 @@ from fastapi.responses import FileResponse, JSONResponse
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FRONTEND_DIST = os.path.join(BASE_DIR, "dist")
 if not os.path.exists(FRONTEND_DIST):
-    FRONTEND_DIST = os.path.join(BASE_DIR, "AI-Based-Soil-Health-Assessment-System-for-Nutrient-Deficiency-Detection-and-Crop-Recom_Jun_2026-frontend-team-1", "dist")
+    FRONTEND_DIST = os.path.join(BASE_DIR, "frontend", "dist")
 
 if os.path.exists(FRONTEND_DIST):
     assets_dir = os.path.join(FRONTEND_DIST, "assets")
