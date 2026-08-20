@@ -566,10 +566,11 @@ function AIEmptyState() {
   )
 }
 
-function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onViewHistory, formData, weatherInfo, locationInfo }: {
+function ResultPanel({ imagePreview, imageFile, apiResult, cropApiResult, onNewPrediction, onViewHistory, formData, weatherInfo, locationInfo }: {
   imagePreview: string | null
   imageFile?: File | null
   apiResult?: any
+  cropApiResult?: any
   onNewPrediction: () => void
   onViewHistory?: () => void
   formData?: { N: string; P: string; K: string; ph: string }
@@ -658,11 +659,12 @@ function ResultPanel({ imagePreview, imageFile, apiResult, onNewPrediction, onVi
 
     // Card 2 — Recommended Crop
     (() => {
-      // Use API response crops; fall back gracefully if not available
-      const apiCrops: Array<{ crop: string; score?: number }> = Array.isArray(apiResult?.recommended_crops)
-        ? apiResult.recommended_crops.map((c: any) => typeof c === 'string' ? { crop: c } : c)
+      // Use dedicated cropApiResult so soil classification never overrides crop results
+      const cropData = cropApiResult || apiResult
+      const apiCrops: Array<{ crop: string; score?: number }> = Array.isArray(cropData?.recommended_crops)
+        ? cropData.recommended_crops.map((c: any) => typeof c === 'string' ? { crop: c } : c)
         : []
-      const topCropName = apiCrops[0]?.crop || apiResult?.recommended_crop || 'Cotton'
+      const topCropName = apiCrops[0]?.crop || cropData?.recommended_crop || 'Cotton'
       const topScore = Math.round(apiCrops[0]?.score ?? 96)
       const SCORE_COLORS = ['bg-green-600', 'bg-green-500', 'bg-emerald-500', 'bg-amber-500', 'bg-orange-500']
       const MATCH_LABELS = ['Excellent Match', 'Very Good Match', 'Good Match', 'Moderate Match', 'Suitable Match']
@@ -1753,7 +1755,7 @@ export function CropRecommendation({ onNavigate, guestMode, guestPredictionDone,
         <div className="min-h-[520px] lg:sticky lg:top-20">
           {stage === 'idle' && <AIEmptyState />}
           {stage === 'loading' && <AILoadingPanel />}
-          {stage === 'result' && <ResultPanel imagePreview={imagePreview} imageFile={imageFile} apiResult={soilApiResult || cropApiResult} onNewPrediction={handleReset} onViewHistory={() => onNavigate?.('history')} formData={form} weatherInfo={weatherData} locationInfo={locationData} />}
+          {stage === 'result' && <ResultPanel imagePreview={imagePreview} imageFile={imageFile} apiResult={soilApiResult || cropApiResult} cropApiResult={cropApiResult} onNewPrediction={handleReset} onViewHistory={() => onNavigate?.('history')} formData={form} weatherInfo={weatherData} locationInfo={locationData} />}
         </div>
       </div>
     </div>
