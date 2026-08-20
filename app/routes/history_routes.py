@@ -49,6 +49,23 @@ def _serialize_detail(prediction: PredictionHistory) -> Dict[str, Any]:
     }
 
 
+def _detect_prediction_type(prediction: PredictionHistory) -> str:
+    pt = getattr(prediction, "prediction_type", "") or ""
+    pt_lower = pt.lower().strip()
+    if pt_lower in ("crop", "crop_recommendation", "crop_analysis") or "crop" in pt_lower:
+        return "crop"
+    if pt_lower in ("soil", "soil_classification", "soil_analysis"):
+        return "soil"
+    # Fallback: if recommended_crops is populated and not empty, it's a crop recommendation
+    rec_crops = getattr(prediction, "recommended_crops", None)
+    if rec_crops:
+        if isinstance(rec_crops, list) and len(rec_crops) > 0:
+            return "crop"
+        if isinstance(rec_crops, str) and rec_crops not in ("[]", "", '""'):
+            return "crop"
+    return "soil"
+
+
 @router.get("/history", response_model=List[PredictionHistorySummaryResponse])
 def list_prediction_history(
     current_user: User = Depends(get_current_user),
@@ -60,9 +77,8 @@ def list_prediction_history(
         {
             "history_id": prediction.id,
             "id": prediction.id,
-            # Use the stored prediction_type column as the authoritative source
-            "prediction_type": prediction.prediction_type,
-            "type": prediction.prediction_type.capitalize(),
+            "prediction_type": _detect_prediction_type(prediction),
+            "type": _detect_prediction_type(prediction).capitalize(),
             "prediction_date": prediction.created_at.isoformat() if prediction.created_at else None,
             "created_at": prediction.created_at.isoformat() if prediction.created_at else None,
             "date": prediction.created_at.strftime("%b %d, %Y %I:%M %p") if prediction.created_at else "Just now",

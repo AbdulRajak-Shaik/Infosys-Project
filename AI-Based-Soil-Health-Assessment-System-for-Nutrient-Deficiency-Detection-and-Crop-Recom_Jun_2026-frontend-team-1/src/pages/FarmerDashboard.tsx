@@ -136,6 +136,16 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
     },
   ]
 
+  const isCropRecord = (h: any) => {
+    const pt = (h.prediction_type || h.type || '').toLowerCase()
+    return pt === 'crop' || pt.includes('crop') || (pt !== 'soil' && Boolean(h.predicted_crop || h.top_crop))
+  }
+
+  const isSoilRecord = (h: any) => {
+    const pt = (h.prediction_type || h.type || '').toLowerCase()
+    return pt === 'soil' || pt.includes('soil') || !isCropRecord(h)
+  }
+
   // Dynamic Prediction Trend generated from real history for trailing 6 months up to current month (e.g. Aug)
   const currentMonthIndex = new Date().getMonth()
   const monthsIndices = Array.from({ length: 6 }, (_, i) => (currentMonthIndex - 5 + i + 12) % 12)
@@ -147,8 +157,8 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
       const d = new Date(h.created_at)
       return d.getMonth() === mIdx
     })
-    const cropCount = monthHistory.filter(h => h.prediction_type === 'crop').length
-    const soilCount = monthHistory.filter(h => h.prediction_type === 'soil').length
+    const cropCount = monthHistory.filter(isCropRecord).length
+    const soilCount = monthHistory.filter(isSoilRecord).length
 
     return {
       month: monthName,
@@ -161,7 +171,7 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
   const cropCounts: Record<string, number> = {}
   let hasCropPredictions = false
   history.forEach(h => {
-    const crop = h.predicted_crop || (h.prediction_type === 'crop' ? h.result : null)
+    const crop = h.predicted_crop || (isCropRecord(h) ? h.result : null)
     if (crop) {
       cropCounts[crop] = (cropCounts[crop] || 0) + 1
       hasCropPredictions = true
@@ -182,8 +192,8 @@ export default function FarmerDashboard({ onNavigate }: FarmerDashboardProps) {
   }))
 
   const totalCount = history.length
-  const cropCountTotal = history.filter((p: any) => p.prediction_type === 'crop').length
-  const soilCountTotal = history.filter((p: any) => p.prediction_type === 'soil').length
+  const cropCountTotal = history.filter(isCropRecord).length
+  const soilCountTotal = history.filter(isSoilRecord).length
 
   return (
     <div className="p-4 md:p-6 space-y-6 animate-fade-in">
