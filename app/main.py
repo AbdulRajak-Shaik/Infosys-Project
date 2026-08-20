@@ -40,6 +40,12 @@ try:
                 conn.commit()
             except Exception:
                 pass
+        # Normalize legacy 'soil_analysis' type → 'soil' for all existing rows
+        try:
+            conn.execute(text("UPDATE prediction_history SET prediction_type = 'soil' WHERE prediction_type = 'soil_analysis'"))
+            conn.commit()
+        except Exception:
+            pass
 except Exception as exc:
     print(f"DB connection note: {exc}")
 
