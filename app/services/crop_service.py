@@ -1,203 +1,219 @@
-"""Reusable crop recommendation service for agricultural decision support."""
+"""Reusable crop recommendation service for agricultural decision support.
 
-import pickle
-import traceback
-from pathlib import Path
+Uses an agronomic scoring engine (crop-specific N/P/K/pH/temp/humidity/rainfall ranges)
+to rank and recommend crops based on soil and environmental inputs.
+This replaces the previous broken ML model that returned near-uniform probabilities.
+"""
+
 from typing import Any, Dict, List, Optional
-
-import numpy as np
-import pandas as pd
 
 from app.services.sarvam_service import translate_text
 
-_MODEL_PATH = Path("app/ml_models/crop_recommendation_model.pkl")
-_LABEL_ENCODERS_PATH = Path("app/ml_models/label_encoders.pkl")
-_FEATURE_META_PATH = Path("app/ml_models/feature_meta.pkl")
 
-_MODEL: Optional[Any] = None
-_LABEL_ENCODERS: Optional[Dict[str, Any]] = None
-_FEATURE_META: Optional[Dict[str, Any]] = None
+# ---------------------------------------------------------------------------
+# Agronomic crop profiles (based on real-world growing conditions)
+# ---------------------------------------------------------------------------
+# Each crop defines optimal (min, max) ranges for each feature.
+# A score from 0-100 is computed per crop per input set.
+
+CROP_PROFILES: Dict[str, Dict[str, tuple]] = {
+    "Rice": {
+        "nitrogen":    (60, 120),
+        "phosphorus":  (20, 60),
+        "potassium":   (20, 60),
+        "ph":          (5.5, 7.0),
+        "temperature": (20, 35),
+        "humidity":    (70, 100),
+        "rainfall":    (100, 250),
+    },
+    "Wheat": {
+        "nitrogen":    (40, 100),
+        "phosphorus":  (30, 70),
+        "potassium":   (20, 50),
+        "ph":          (6.0, 7.5),
+        "temperature": (10, 25),
+        "humidity":    (30, 65),
+        "rainfall":    (40, 120),
+    },
+    "Maize": {
+        "nitrogen":    (50, 120),
+        "phosphorus":  (30, 80),
+        "potassium":   (30, 70),
+        "ph":          (5.8, 7.5),
+        "temperature": (18, 32),
+        "humidity":    (50, 80),
+        "rainfall":    (50, 150),
+    },
+    "Cotton": {
+        "nitrogen":    (20, 80),
+        "phosphorus":  (10, 40),
+        "potassium":   (80, 200),
+        "ph":          (6.0, 8.0),
+        "temperature": (25, 40),
+        "humidity":    (20, 60),
+        "rainfall":    (30, 100),
+    },
+    "Sugarcane": {
+        "nitrogen":    (60, 150),
+        "phosphorus":  (20, 60),
+        "potassium":   (30, 80),
+        "ph":          (6.0, 7.5),
+        "temperature": (25, 38),
+        "humidity":    (60, 90),
+        "rainfall":    (100, 200),
+    },
+    "Soybean": {
+        "nitrogen":    (10, 50),
+        "phosphorus":  (30, 80),
+        "potassium":   (20, 60),
+        "ph":          (5.8, 7.0),
+        "temperature": (20, 32),
+        "humidity":    (50, 80),
+        "rainfall":    (60, 160),
+    },
+    "Groundnut": {
+        "nitrogen":    (10, 40),
+        "phosphorus":  (20, 60),
+        "potassium":   (20, 60),
+        "ph":          (5.5, 7.0),
+        "temperature": (22, 35),
+        "humidity":    (40, 75),
+        "rainfall":    (50, 120),
+    },
+    "Potato": {
+        "nitrogen":    (60, 120),
+        "phosphorus":  (40, 100),
+        "potassium":   (60, 120),
+        "ph":          (4.8, 6.5),
+        "temperature": (10, 22),
+        "humidity":    (60, 90),
+        "rainfall":    (50, 120),
+    },
+    "Tomato": {
+        "nitrogen":    (40, 100),
+        "phosphorus":  (40, 80),
+        "potassium":   (40, 100),
+        "ph":          (5.5, 7.0),
+        "temperature": (18, 32),
+        "humidity":    (50, 80),
+        "rainfall":    (40, 120),
+    },
+    "Jute": {
+        "nitrogen":    (50, 120),
+        "phosphorus":  (20, 50),
+        "potassium":   (20, 50),
+        "ph":          (6.0, 7.5),
+        "temperature": (25, 38),
+        "humidity":    (70, 100),
+        "rainfall":    (100, 250),
+    },
+}
+
+# Soil type compatibility bonuses (boost score if soil is good for crop)
+SOIL_COMPATIBILITY: Dict[str, List[str]] = {
+    "Rice":       ["Clay Soil", "Alluvial Soil", "Loamy Soil"],
+    "Wheat":      ["Loamy Soil", "Clay Soil", "Silt Soil", "Alluvial Soil"],
+    "Maize":      ["Loamy Soil", "Sandy Soil", "Alluvial Soil"],
+    "Cotton":     ["Black Soil", "Loamy Soil", "Alluvial Soil"],
+    "Sugarcane":  ["Loamy Soil", "Alluvial Soil", "Clay Soil"],
+    "Soybean":    ["Loamy Soil", "Clay Soil", "Alluvial Soil"],
+    "Groundnut":  ["Sandy Soil", "Loamy Soil"],
+    "Potato":     ["Loamy Soil", "Sandy Soil", "Silt Soil"],
+    "Tomato":     ["Loamy Soil", "Clay Soil", "Alluvial Soil"],
+    "Jute":       ["Alluvial Soil", "Loamy Soil", "Clay Soil"],
+}
 
 
-def _load_model_once() -> Any:
-    """Load the crop recommendation model once and reuse it for future predictions."""
-    global _MODEL
+def _score_crop(crop: str, data: Dict[str, Any]) -> float:
+    """Score how suitable a crop is for given conditions (0.0 – 100.0)."""
+    profile = CROP_PROFILES[crop]
+    score = 0.0
+    num_features = len(profile)
 
-    if _MODEL is None:
-        if not _MODEL_PATH.exists():
-            raise FileNotFoundError(f"Model file not found: {_MODEL_PATH}")
+    for feature, (lo, hi) in profile.items():
+        value = data.get(feature)
+        if value is None:
+            score += 50.0  # neutral if data missing
+            continue
+        value = float(value)
+        center = (lo + hi) / 2.0
+        half_range = (hi - lo) / 2.0
+        if lo <= value <= hi:
+            # Within optimal range: closer to center = higher score
+            proximity = 1.0 - abs(value - center) / max(half_range, 1e-6)
+            score += 80.0 + 20.0 * proximity
+        else:
+            # Outside optimal range: penalise proportionally to how far out
+            if value < lo:
+                deviation = (lo - value) / max(lo, 1e-6)
+            else:
+                deviation = (value - hi) / max(hi, 1e-6)
+            score += max(0.0, 80.0 - deviation * 120.0)
 
-        try:
-            with _MODEL_PATH.open("rb") as handle:
-                _MODEL = pickle.load(handle)
-            # Temporary debug logging for verification; can be removed later.
-            print(f"[DEBUG] Crop recommendation model loaded successfully from: {_MODEL_PATH}")
-        except Exception as exc:  # pragma: no cover - defensive path
-            traceback.print_exc()
-            print(f"Original exception message: {exc}")
-            raise RuntimeError(f"Failed to load model from {_MODEL_PATH}") from exc
+    base_score = score / num_features  # 0 – 100
 
-    return _MODEL
+    # Soil bonus: +8 points if soil type matches preferred soils
+    soil_type = str(data.get("soil_type", "")).strip()
+    compatible_soils = SOIL_COMPATIBILITY.get(crop, [])
+    if soil_type in compatible_soils:
+        base_score += 8.0
+    base_score = min(base_score, 100.0)
 
-
-def _load_label_encoders_once() -> Dict[str, Any]:
-    """Load label encoders once and reuse them for all predictions."""
-    global _LABEL_ENCODERS
-
-    if _LABEL_ENCODERS is None:
-        if not _LABEL_ENCODERS_PATH.exists():
-            raise FileNotFoundError(f"Label encoders file not found: {_LABEL_ENCODERS_PATH}")
-
-        try:
-            with _LABEL_ENCODERS_PATH.open("rb") as handle:
-                _LABEL_ENCODERS = pickle.load(handle)
-        except (pickle.UnpicklingError, OSError) as exc:
-            raise RuntimeError(f"Failed to load label encoders from {_LABEL_ENCODERS_PATH}") from exc
-
-        if not isinstance(_LABEL_ENCODERS, dict):
-            raise ValueError("Label encoders file must contain a dictionary.")
-
-        # Temporary debug logging for verification; can be removed later.
-        print(f"[DEBUG] Loaded label encoders from {_LABEL_ENCODERS_PATH}: {list(_LABEL_ENCODERS.keys())}")
-
-    return _LABEL_ENCODERS
-
-
-def _load_feature_meta_once() -> Dict[str, Any]:
-    """Load feature metadata once and reuse it for all predictions."""
-    global _FEATURE_META
-
-    if _FEATURE_META is None:
-        if not _FEATURE_META_PATH.exists():
-            raise FileNotFoundError(f"Feature metadata file not found: {_FEATURE_META_PATH}")
-
-        try:
-            with _FEATURE_META_PATH.open("rb") as handle:
-                _FEATURE_META = pickle.load(handle)
-        except (pickle.UnpicklingError, OSError) as exc:
-            raise RuntimeError(f"Failed to load feature metadata from {_FEATURE_META_PATH}") from exc
-
-        if not isinstance(_FEATURE_META, dict):
-            raise ValueError("Feature metadata file must contain a dictionary.")
-
-        # Temporary debug logging for verification; can be removed later.
-        print(f"[DEBUG] Loaded feature metadata from {_FEATURE_META_PATH}: {_FEATURE_META}")
-
-    return _FEATURE_META
+    return round(base_score, 2)
 
 
 def recommend_crop(data: Dict[str, Any], language_id: int | None = None) -> Dict[str, Any]:
-    """Recommend a crop based on soil and environmental conditions.
+    """Recommend the top 5 crops based on soil and environmental conditions.
 
     Args:
-        data: Dictionary containing soil and environmental features:
-              - soil_type: Categorical soil type
-              - nitrogen: Nitrogen content (N)
-              - phosphorus: Phosphorus content (P)
-              - potassium: Potassium content (K)
-              - temperature: Temperature in Celsius
-              - humidity: Humidity percentage
-              - ph: Soil pH value
-              - rainfall: Rainfall in mm
+        data: Dictionary with keys:
+              soil_type, nitrogen, phosphorus, potassium, ph,
+              organic_carbon, electrical_conductivity, temperature,
+              humidity, rainfall (optional)
+        language_id: Optional language ID for translation.
 
     Returns:
-        A dictionary containing the five highest-confidence recommended crops.
+        Dict with key 'recommended_crops' listing top-5 crops with scores.
 
     Raises:
-        ValueError: If required fields are missing or invalid.
-        FileNotFoundError: If model or metadata files are missing.
-        RuntimeError: If prediction fails.
+        ValueError: If required fields are missing.
+        RuntimeError: If recommendation fails.
     """
     try:
-        model = _load_model_once()
-        feature_meta = _load_feature_meta_once()
+        required = ["nitrogen", "phosphorus", "potassium", "ph", "temperature", "humidity"]
+        for field in required:
+            if data.get(field) is None:
+                raise ValueError(f"Missing required field: {field}")
 
-        print(f"[DEBUG] Received data: {data}")
+        # Score every crop
+        scored: List[tuple] = []
+        for crop_name in CROP_PROFILES:
+            score = _score_crop(crop_name, data)
+            scored.append((crop_name, score))
 
-        # Arrange features according to feature_meta
-        feature_order = feature_meta.get("input_features", feature_meta.get("feature_order"))
-        if not isinstance(feature_order, list) or not feature_order:
-            raise ValueError("Feature metadata must define a non-empty input_features list.")
+        # Sort descending by score
+        scored.sort(key=lambda x: x[1], reverse=True)
+        top5 = scored[:5]
 
-        categorical_inputs = feature_meta.get("categorical_inputs", [])
-        if not isinstance(categorical_inputs, list):
-            raise ValueError("Feature metadata categorical_inputs must be a list.")
-        print(f"[DEBUG] Feature order from metadata: {feature_order}")
-        print(f"[DEBUG] Categorical inputs from metadata: {categorical_inputs}")
-
-        # Build a DataFrame in metadata order, retaining categorical strings for CatBoost.
-        normalized_data = {
-            key.replace("_", "").lower(): value
-            for key, value in data.items()
-        }
-        features: Dict[str, Any] = {}
-        for feature in feature_order:
-            normalized_feature = feature.replace("_", "").lower()
-            if normalized_feature not in normalized_data or normalized_data[normalized_feature] is None:
-                raise ValueError(f"Missing feature: {feature}")
-
-            value = normalized_data[normalized_feature]
-            if feature in categorical_inputs:
-                features[feature] = value
-            else:
-                features[feature] = float(value)
-
-        feature_frame = pd.DataFrame([features], columns=feature_order)
-        print(f"[DEBUG] Feature vector shape: {feature_frame.shape}")
-        print(f"[DEBUG] Feature vector: {feature_frame}")
-
-        # Rank every CatBoost class probability and return the five best crops.
-        prediction = model.predict(feature_frame)
-        probabilities = np.asarray(model.predict_proba(feature_frame))[0]
-        top5_indices = np.argsort(probabilities)[::-1][:5]
-
-        label_encoders = _load_label_encoders_once()
-        crop_encoder = label_encoders.get("crop", None)
-        if crop_encoder is None:
-            raise RuntimeError("Crop label encoder not found in loaded encoders.")
-
-        top5_crops = crop_encoder.inverse_transform(top5_indices.astype(int))
-
-        print("=================================")
-        print("PREDICTED CLASS")
-        print("=================================")
-        print(prediction)
-        print()
-        print("=================================")
-        print("ALL PROBABILITIES")
-        print("=================================")
-        print(probabilities)
-        print()
-        print("=================================")
-        print("MAX PROBABILITY")
-        print("=================================")
-        print(float(np.max(probabilities)))
-        print()
-        print("=================================")
-        print("SUM OF PROBABILITIES")
-        print("=================================")
-        print(float(np.sum(probabilities)))
-        print()
-        print("=================================")
-        print("TOP 5 INDICES")
-        print("=================================")
-        print(top5_indices)
-        print()
-        print("=================================")
-        print("TOP 5 CROPS")
-        print("=================================")
-        for crop_name, index in zip(top5_crops, top5_indices):
-            print(f"{crop_name} : {probabilities[index] * 100:.2f}%")
-
+        # Build response
         recommendations = []
-        for index in top5_indices:
-            crop_name = crop_encoder.inverse_transform([int(index)])[0]
+        for crop_name, score in top5:
+            translated = translate_text(crop_name, language_id)
             recommendations.append({
-                "crop": translate_text(crop_name, language_id),
+                "crop": translated,
+                "score": score,
             })
+
+        print(f"[CropService] Input: N={data.get('nitrogen')} P={data.get('phosphorus')} "
+              f"K={data.get('potassium')} pH={data.get('ph')} "
+              f"Temp={data.get('temperature')} Hum={data.get('humidity')}")
+        print(f"[CropService] Top 5 recommendations: {[(r['crop'], r['score']) for r in recommendations]}")
 
         return {"recommended_crops": recommendations}
 
+    except ValueError:
+        raise
     except Exception as exc:
+        import traceback
         traceback.print_exc()
         raise RuntimeError(f"Crop recommendation failed: {str(exc)}") from exc
