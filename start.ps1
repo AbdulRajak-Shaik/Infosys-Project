@@ -10,9 +10,9 @@ Write-Host ""
 # Kill anything already on port 8000
 $existing = netstat -ano | Select-String ":8000" | Select-String "LISTENING"
 if ($existing) {
-    $pid = ($existing -split '\s+')[-1]
-    Write-Host "Killing existing process on port 8000 (PID: $pid)..." -ForegroundColor Yellow
-    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+    $existingPid = ($existing -split '\s+')[-1]
+    Write-Host "Killing existing process on port 8000 (PID: $existingPid)..." -ForegroundColor Yellow
+    Stop-Process -Id $existingPid -Force -ErrorAction SilentlyContinue
     Start-Sleep -Seconds 1
 }
 
