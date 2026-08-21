@@ -18,7 +18,7 @@ import sys
 import os
 
 # Ensure project root is on path when run as a standalone script
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.database import SessionLocal
 from app.models import Language, TranslationKey, Translation
